@@ -3,8 +3,8 @@
 #define LOG_BUFFER_SIZE 50  // Reduced from 150 to save flash space
 #pragma once
 
-#define FIRMWARE_VERSION "26.2.0"
-#define UI_VERSION "26.2.0"
+#define FIRMWARE_VERSION "26.2.2"
+#define UI_VERSION "26.2.2"
 
 #define DATA_PIN 4
 #define DEFAULT_BRIGHTNESS 5
