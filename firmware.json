@@ -2,41 +2,41 @@
   "version": "26.2.0",
   "ui_version": "26.2.0",
   "released": "2026-01-09T10:14:05Z",
-  "firmware": "https://github.com/ronkuijpers/Wordclock/releases/download/v26.2.0/wordclock-v26.2.0.bin",
+  "firmware": "https://github.com/lumetric-io/Wordclock/releases/download/v26.2.0/wordclock-v26.2.0.bin",
   "files": [
     {
       "path": "/admin.html",
-      "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/admin.html",
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/admin.html",
       "sha256": "d6c6a295245c0da5b4783e99b3fe464b2b06281464b9a8d9291a142374e11d74"
     },
     {
       "path": "/changepw.html",
-      "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/changepw.html",
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/changepw.html",
       "sha256": "4eca474197b774878b0d56bdda7bc63af2bda08e7eeabc2413b46399351a977a"
     },
     {
       "path": "/dashboard.html",
-      "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/dashboard.html",
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/dashboard.html",
       "sha256": "f7058a9f75211927c8802013094a3201ad4ebd0d59e117a0e272c0a62046d8b7"
     },
     {
       "path": "/logs.html",
-      "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/logs.html",
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/logs.html",
       "sha256": "bd225018bf0697d693cc3c983c8f668623aad43dada9a55a653fe9efe203e868"
     },
     {
       "path": "/mqtt.html",
-      "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/mqtt.html",
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/mqtt.html",
       "sha256": "4a95962fe2aae81f53084ade962e0044fd8472b16cf4b615d89633da65e4829c"
     },
     {
       "path": "/setup.html",
-      "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/setup.html",
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/setup.html",
       "sha256": "6d3e35ee659c17a8a230c0060a1fb51847952e23a0954af3e6b86dcb1ff265e3"
     },
     {
       "path": "/update.html",
-      "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/update.html",
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/update.html",
       "sha256": "0b71af60ce0346ca3afbba3164054723413b2d0921530a63cecf208fd7f1c90b"
     }
   ],
@@ -47,42 +47,42 @@
       "released": "2026-01-09T10:14:05Z",
       "firmware": {
         "version": "26.2.0",
-        "url": "https://github.com/ronkuijpers/Wordclock/releases/download/v26.2.0/wordclock-v26.2.0.bin"
+        "url": "https://github.com/lumetric-io/Wordclock/releases/download/v26.2.0/wordclock-v26.2.0.bin"
       },
       "files": [
         {
           "path": "/admin.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/admin.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/admin.html",
           "sha256": "d6c6a295245c0da5b4783e99b3fe464b2b06281464b9a8d9291a142374e11d74"
         },
         {
           "path": "/changepw.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/changepw.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/changepw.html",
           "sha256": "4eca474197b774878b0d56bdda7bc63af2bda08e7eeabc2413b46399351a977a"
         },
         {
           "path": "/dashboard.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/dashboard.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/dashboard.html",
           "sha256": "f7058a9f75211927c8802013094a3201ad4ebd0d59e117a0e272c0a62046d8b7"
         },
         {
           "path": "/logs.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/logs.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/logs.html",
           "sha256": "bd225018bf0697d693cc3c983c8f668623aad43dada9a55a653fe9efe203e868"
         },
         {
           "path": "/mqtt.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/mqtt.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/mqtt.html",
           "sha256": "4a95962fe2aae81f53084ade962e0044fd8472b16cf4b615d89633da65e4829c"
         },
         {
           "path": "/setup.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/setup.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/setup.html",
           "sha256": "6d3e35ee659c17a8a230c0060a1fb51847952e23a0954af3e6b86dcb1ff265e3"
         },
         {
           "path": "/update.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.0/data/update.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.0/data/update.html",
           "sha256": "0b71af60ce0346ca3afbba3164054723413b2d0921530a63cecf208fd7f1c90b"
         }
       ],
@@ -94,42 +94,42 @@
       "released": "2026-01-10T08:02:27Z",
       "firmware": {
         "version": "26.2.2-rc.2",
-        "url": "https://github.com/ronkuijpers/Wordclock/releases/download/v26.2.2-rc.2/wordclock-v26.2.2-rc.2.bin"
+        "url": "https://github.com/lumetric-io/Wordclock/releases/download/v26.2.2-rc.2/wordclock-v26.2.2-rc.2.bin"
       },
       "files": [
         {
           "path": "/admin.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-rc.2/data/admin.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.2/data/admin.html",
           "sha256": "d6c6a295245c0da5b4783e99b3fe464b2b06281464b9a8d9291a142374e11d74"
         },
         {
           "path": "/changepw.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-rc.2/data/changepw.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.2/data/changepw.html",
           "sha256": "4eca474197b774878b0d56bdda7bc63af2bda08e7eeabc2413b46399351a977a"
         },
         {
           "path": "/dashboard.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-rc.2/data/dashboard.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.2/data/dashboard.html",
           "sha256": "f7058a9f75211927c8802013094a3201ad4ebd0d59e117a0e272c0a62046d8b7"
         },
         {
           "path": "/logs.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-rc.2/data/logs.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.2/data/logs.html",
           "sha256": "bd225018bf0697d693cc3c983c8f668623aad43dada9a55a653fe9efe203e868"
         },
         {
           "path": "/mqtt.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-rc.2/data/mqtt.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.2/data/mqtt.html",
           "sha256": "4a95962fe2aae81f53084ade962e0044fd8472b16cf4b615d89633da65e4829c"
         },
         {
           "path": "/setup.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-rc.2/data/setup.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.2/data/setup.html",
           "sha256": "6d3e35ee659c17a8a230c0060a1fb51847952e23a0954af3e6b86dcb1ff265e3"
         },
         {
           "path": "/update.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-rc.2/data/update.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.2/data/update.html",
           "sha256": "0b71af60ce0346ca3afbba3164054723413b2d0921530a63cecf208fd7f1c90b"
         }
       ],
@@ -141,42 +141,42 @@
       "released": "2026-01-10T13:59:55Z",
       "firmware": {
         "version": "26.2.2-dev.6",
-        "url": "https://github.com/ronkuijpers/Wordclock/releases/download/v26.2.2-dev.6/wordclock-v26.2.2-dev.6.bin"
+        "url": "https://github.com/lumetric-io/Wordclock/releases/download/v26.2.2-dev.6/wordclock-v26.2.2-dev.6.bin"
       },
       "files": [
         {
           "path": "/admin.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-dev.6/data/admin.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.6/data/admin.html",
           "sha256": "d6c6a295245c0da5b4783e99b3fe464b2b06281464b9a8d9291a142374e11d74"
         },
         {
           "path": "/changepw.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-dev.6/data/changepw.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.6/data/changepw.html",
           "sha256": "4eca474197b774878b0d56bdda7bc63af2bda08e7eeabc2413b46399351a977a"
         },
         {
           "path": "/dashboard.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-dev.6/data/dashboard.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.6/data/dashboard.html",
           "sha256": "f7058a9f75211927c8802013094a3201ad4ebd0d59e117a0e272c0a62046d8b7"
         },
         {
           "path": "/logs.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-dev.6/data/logs.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.6/data/logs.html",
           "sha256": "bd225018bf0697d693cc3c983c8f668623aad43dada9a55a653fe9efe203e868"
         },
         {
           "path": "/mqtt.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-dev.6/data/mqtt.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.6/data/mqtt.html",
           "sha256": "4a95962fe2aae81f53084ade962e0044fd8472b16cf4b615d89633da65e4829c"
         },
         {
           "path": "/setup.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-dev.6/data/setup.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.6/data/setup.html",
           "sha256": "6d3e35ee659c17a8a230c0060a1fb51847952e23a0954af3e6b86dcb1ff265e3"
         },
         {
           "path": "/update.html",
-          "url": "https://raw.githubusercontent.com/ronkuijpers/Wordclock/v26.2.2-dev.6/data/update.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.6/data/update.html",
           "sha256": "0b71af60ce0346ca3afbba3164054723413b2d0921530a63cecf208fd7f1c90b"
         }
       ],

@@ -1,6 +1,6 @@
 # Word Clock Firmware
 
-[![Version](https://img.shields.io/badge/version-26.1.5-green.svg)](https://github.com/ronkuijpers/Wordclock/releases)
+[![Version](https://img.shields.io/badge/version-26.1.5-green.svg)](https://github.com/lumetric-io/Wordclock/releases)
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
 
 ESP32-based word clock firmware with extensive IoT capabilities, featuring Home Assistant integration, OTA updates, and a comprehensive web interface.
@@ -9,7 +9,7 @@ ESP32-based word clock firmware with extensive IoT capabilities, featuring Home 
 
 ## TL;DR
 
-1. Download the latest release binary from the [GitHub releases page](https://github.com/ronkuijpers/Wordclock/releases).
+1. Download the latest release binary from the [GitHub releases page](https://github.com/lumetric-io/Wordclock/releases).
 2. Flash the ESP32:  
    ```bash
    esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 \
@@ -63,7 +63,7 @@ ESP32-based word clock firmware with extensive IoT capabilities, featuring Home 
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/ronkuijpers/Wordclock.git
+   git clone https://github.com/lumetric-io/Wordclock.git
    cd Wordclock
    ```
 
@@ -256,9 +256,9 @@ See [CHANGELOG.md](docs/CHANGELOG.md) for release history.
 ## Support & Contributions
 
 **Getting Help:**
-- 🐛 [Report a bug](https://github.com/ronkuijpers/Wordclock/issues/new?template=bug_report.md)
-- 💡 [Request a feature](https://github.com/ronkuijpers/Wordclock/issues/new?template=feature_request.md)
-- ❓ [Ask a question](https://github.com/ronkuijpers/Wordclock/discussions)
+- 🐛 [Report a bug](https://github.com/lumetric-io/Wordclock/issues/new?template=bug_report.md)
+- 💡 [Request a feature](https://github.com/lumetric-io/Wordclock/issues/new?template=feature_request.md)
+- ❓ [Ask a question](https://github.com/lumetric-io/Wordclock/discussions)
 
 **Contributing:**
 Bug reports and feature requests are welcome in the issue tracker. Please include device details, firmware version, and logs from `/logs.html` where possible. Pull requests should target the `main` branch and include relevant tests or reproduction steps.

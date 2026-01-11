@@ -265,7 +265,7 @@ void syncUiFilesFromConfiguredVersion() {
 
   bool ok = true;
   for (const char* name : UI_FILES) {
-    const String url = String("https://raw.githubusercontent.com/ronkuijpers/Wordclock/v") + targetVersion + "/data/" + name;
+    const String url = String("https://raw.githubusercontent.com/lumetric-io/Wordclock/v") + targetVersion + "/data/" + name;
     const String path = "/" + String(name);
     if (!downloadToFs(url, path, *client)) {
       ok = false;
