@@ -26,6 +26,8 @@ build_info.h
 tools/
 *.info
 coverage_html/
+boards/
+*.csv
 
 # Backup- en tijdelijke bestanden
 *.bak
