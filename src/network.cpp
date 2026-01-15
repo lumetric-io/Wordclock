@@ -6,6 +6,7 @@
 #include "log.h"
 #include "led_controller.h"
 #include "secrets.h"
+#include "system_utils.h"
 
 extern bool clockEnabled;
 extern bool g_wifiHadCredentialsAtBoot;
@@ -88,5 +89,5 @@ void resetWiFiSettings() {
   clockEnabled = false;
   showLeds({});
   delay(EEPROM_WRITE_DELAY_MS);
-  ESP.restart();
+  safeRestart();
 }

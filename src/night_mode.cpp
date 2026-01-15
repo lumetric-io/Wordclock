@@ -5,71 +5,73 @@
 NightMode nightMode;
 
 void NightMode::begin() {
-  prefs.begin(PREF_NAMESPACE, false);
-  enabled = prefs.getBool("enabled", false);
-  uint8_t storedEffect = prefs.getUChar("effect", static_cast<uint8_t>(NightModeEffect::Dim));
+  prefs_.begin(PREF_NAMESPACE, false);
+  enabled_ = prefs_.getBool("enabled", false);
+  uint8_t storedEffect = prefs_.getUChar("effect", static_cast<uint8_t>(NightModeEffect::Dim));
   if (storedEffect > static_cast<uint8_t>(NightModeEffect::Dim)) {
     storedEffect = static_cast<uint8_t>(NightModeEffect::Dim);
   }
-  effect = static_cast<NightModeEffect>(storedEffect);
-  dimPercent = prefs.getUChar("dim_pct", 20);
-  if (dimPercent > 100) dimPercent = 100;
-  startMinutes = prefs.getUShort("start", 22 * 60);
-  if (startMinutes >= 24 * 60) startMinutes = 22 * 60;
-  endMinutes = prefs.getUShort("end", 6 * 60);
-  if (endMinutes >= 24 * 60) endMinutes = 6 * 60;
-  prefs.end();
+  effect_ = static_cast<NightModeEffect>(storedEffect);
+  dimPercent_ = prefs_.getUChar("dim_pct", 20);
+  if (dimPercent_ > 100) dimPercent_ = 100;
+  startMinutes_ = prefs_.getUShort("start", 22 * 60);
+  if (startMinutes_ >= 24 * 60) startMinutes_ = 22 * 60;
+  endMinutes_ = prefs_.getUShort("end", 6 * 60);
+  if (endMinutes_ >= 24 * 60) endMinutes_ = 6 * 60;
+  prefs_.end();
 
-  overrideMode = NightModeOverride::Auto;
-  active = false;
-  scheduleActive = false;
-  hasValidTime = false;
+  overrideMode_ = NightModeOverride::Auto;
+  active_ = false;
+  scheduleActive_ = false;
+  hasValidTime_ = false;
+  dirty_ = false;
+  lastFlush_ = millis();
 }
 
 void NightMode::updateFromTime(const struct tm& timeinfo) {
   uint16_t minutes = static_cast<uint16_t>((timeinfo.tm_hour * 60) + timeinfo.tm_min);
   bool newScheduleActive = computeScheduleActive(minutes);
-  bool scheduleChanged = (newScheduleActive != scheduleActive);
-  scheduleActive = newScheduleActive;
-  hasValidTime = true;
+  bool scheduleChanged = (newScheduleActive != scheduleActive_);
+  scheduleActive_ = newScheduleActive;
+  hasValidTime_ = true;
   if (scheduleChanged) {
     updateEffectiveState("schedule");
-  } else if (overrideMode == NightModeOverride::Auto) {
+  } else if (overrideMode_ == NightModeOverride::Auto) {
     // In auto mode we still need to keep active state aligned with schedule/enabled/time
     updateEffectiveState(nullptr);
   }
 }
 
 void NightMode::markTimeInvalid() {
-  if (!hasValidTime) return;
-  hasValidTime = false;
-  if (overrideMode == NightModeOverride::Auto && active) {
+  if (!hasValidTime_) return;
+  hasValidTime_ = false;
+  if (overrideMode_ == NightModeOverride::Auto && active_) {
     updateEffectiveState("time-invalid");
   }
 }
 
 void NightMode::setEnabled(bool on) {
-  if (enabled == on) return;
-  enabled = on;
-  persistEnabled();
-  logInfo(String("🌙 Night mode ") + (enabled ? "enabled" : "disabled"));
+  if (enabled_ == on) return;
+  enabled_ = on;
+  markDirty();  // Instead of persistEnabled()
+  logInfo(String("🌙 Night mode ") + (enabled_ ? "enabled" : "disabled"));
   updateEffectiveState("enabled");
 }
 
 void NightMode::setEffect(NightModeEffect mode) {
-  if (effect == mode) return;
-  effect = mode;
-  persistEffect();
-  const char* label = (effect == NightModeEffect::Off) ? "off" : "dim";
+  if (effect_ == mode) return;
+  effect_ = mode;
+  markDirty();  // Instead of persistEffect()
+  const char* label = (effect_ == NightModeEffect::Off) ? "off" : "dim";
   logInfo(String("🌙 Night mode effect -> ") + label);
   updateEffectiveState("effect");
 }
 
 void NightMode::setDimPercent(uint8_t pct) {
   if (pct > 100) pct = 100;
-  if (dimPercent == pct) return;
-  dimPercent = pct;
-  persistDimPercent();
+  if (dimPercent_ == pct) return;
+  dimPercent_ = pct;
+  markDirty();  // Instead of persistDimPercent()
   logInfo(String("🌙 Night mode dim -> ") + pct + "%");
   publishState();
 }
@@ -77,19 +79,19 @@ void NightMode::setDimPercent(uint8_t pct) {
 void NightMode::setSchedule(uint16_t startMin, uint16_t endMin) {
   startMin %= (24 * 60);
   endMin %= (24 * 60);
-  if (startMinutes == startMin && endMinutes == endMin) return;
-  startMinutes = startMin;
-  endMinutes = endMin;
-  persistSchedule();
-  logInfo(String("🌙 Night schedule -> ") + formatMinutes(startMinutes) + " - " + formatMinutes(endMinutes));
-  if (overrideMode == NightModeOverride::Auto && hasValidTime) {
+  if (startMinutes_ == startMin && endMinutes_ == endMin) return;
+  startMinutes_ = startMin;
+  endMinutes_ = endMin;
+  markDirty();  // Instead of persistSchedule()
+  logInfo(String("🌙 Night schedule -> ") + formatMinutes(startMinutes_) + " - " + formatMinutes(endMinutes_));
+  if (overrideMode_ == NightModeOverride::Auto && hasValidTime_) {
     updateEffectiveState("schedule-update");
   }
 }
 
 void NightMode::setOverride(NightModeOverride mode) {
-  if (overrideMode == mode) return;
-  overrideMode = mode;
+  if (overrideMode_ == mode) return;
+  overrideMode_ = mode;
   const char* label = "auto";
   if (mode == NightModeOverride::ForceOn) label = "force-on";
   else if (mode == NightModeOverride::ForceOff) label = "force-off";
@@ -98,13 +100,13 @@ void NightMode::setOverride(NightModeOverride mode) {
 }
 
 uint8_t NightMode::applyToBrightness(uint8_t baseBrightness) const {
-  if (!active) return baseBrightness;
-  if (effect == NightModeEffect::Off) {
+  if (!active_) return baseBrightness;
+  if (effect_ == NightModeEffect::Off) {
     return 0;
   }
-  uint16_t scaled = static_cast<uint16_t>(baseBrightness) * dimPercent;
+  uint16_t scaled = static_cast<uint16_t>(baseBrightness) * dimPercent_;
   uint8_t result = static_cast<uint8_t>(scaled / 100);
-  if (dimPercent > 0 && baseBrightness > 0 && result == 0) {
+  if (dimPercent_ > 0 && baseBrightness > 0 && result == 0) {
     result = 1; // avoid rounding to zero when dimming but base is small
   }
   return result;
@@ -136,52 +138,55 @@ bool NightMode::parseTimeString(const String& text, uint16_t& minutesOut) {
 }
 
 bool NightMode::computeScheduleActive(uint16_t minutes) const {
-  if (!enabled) return false;
-  if (startMinutes == endMinutes) {
+  if (!enabled_) return false;
+  if (startMinutes_ == endMinutes_) {
     return false; // zero-length window
   }
-  if (startMinutes < endMinutes) {
-    return minutes >= startMinutes && minutes < endMinutes;
+  if (startMinutes_ < endMinutes_) {
+    return minutes >= startMinutes_ && minutes < endMinutes_;
   }
   // Wrap around midnight
-  return minutes >= startMinutes || minutes < endMinutes;
+  return minutes >= startMinutes_ || minutes < endMinutes_;
 }
 
-void NightMode::persistEnabled() {
-  prefs.begin(PREF_NAMESPACE, false);
-  prefs.putBool("enabled", enabled);
-  prefs.end();
+void NightMode::flush() {
+  if (!dirty_) return;
+  
+  prefs_.begin(PREF_NAMESPACE, false);
+  prefs_.putBool("enabled", enabled_);
+  prefs_.putUChar("effect", static_cast<uint8_t>(effect_));
+  prefs_.putUChar("dim_pct", dimPercent_);
+  prefs_.putUShort("start", startMinutes_);
+  prefs_.putUShort("end", endMinutes_);
+  prefs_.end();
+  
+  dirty_ = false;
+  lastFlush_ = millis();
 }
 
-void NightMode::persistEffect() {
-  prefs.begin(PREF_NAMESPACE, false);
-  prefs.putUChar("effect", static_cast<uint8_t>(effect));
-  prefs.end();
+void NightMode::loop() {
+  if (dirty_ && (millis() - lastFlush_) >= AUTO_FLUSH_DELAY_MS) {
+    flush();
+  }
 }
 
-void NightMode::persistDimPercent() {
-  prefs.begin(PREF_NAMESPACE, false);
-  prefs.putUChar("dim_pct", dimPercent);
-  prefs.end();
-}
-
-void NightMode::persistSchedule() {
-  prefs.begin(PREF_NAMESPACE, false);
-  prefs.putUShort("start", startMinutes);
-  prefs.putUShort("end", endMinutes);
-  prefs.end();
+void NightMode::markDirty() {
+  if (!dirty_) {
+    dirty_ = true;
+    lastFlush_ = millis();
+  }
 }
 
 void NightMode::updateEffectiveState(const char* reason) {
   bool newActive;
-  if (overrideMode == NightModeOverride::ForceOn) {
+  if (overrideMode_ == NightModeOverride::ForceOn) {
     newActive = true;
-  } else if (overrideMode == NightModeOverride::ForceOff) {
+  } else if (overrideMode_ == NightModeOverride::ForceOff) {
     newActive = false;
   } else {
-    newActive = (enabled && hasValidTime && scheduleActive);
+    newActive = (enabled_ && hasValidTime_ && scheduleActive_);
   }
-  if (newActive == active) {
+  if (newActive == active_) {
     if (reason == nullptr) {
       return;
     }
@@ -189,9 +194,9 @@ void NightMode::updateEffectiveState(const char* reason) {
     publishState();
     return;
   }
-  active = newActive;
+  active_ = newActive;
   const char* label = reason ? reason : "state-change";
-  logInfo(String("🌙 Night mode ") + (active ? "ACTIVE" : "INACTIVE") + " (" + label + ")");
+  logInfo(String("🌙 Night mode ") + (active_ ? "ACTIVE" : "INACTIVE") + " (" + label + ")");
   publishState();
 }
 

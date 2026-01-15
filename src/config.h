@@ -1,6 +1,6 @@
 // Log buffer and default log level
 #define DEFAULT_LOG_LEVEL LOG_LEVEL_ERROR
-#define LOG_BUFFER_SIZE 150
+#define LOG_BUFFER_SIZE 50  // Reduced from 150 to save flash space
 #pragma once
 
 #define FIRMWARE_VERSION "26.1.5_logo"

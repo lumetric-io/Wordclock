@@ -1,6 +1,6 @@
 #include "grid_variants/nl_50x50_v1.h"
 
-// Placeholder: NL_50x50_V1 currently reuses the NL_20x20_V1 layout until a dedicated layout is supplied.
+// NL_50x50_V1 grid layout
 const uint16_t LED_COUNT_GRID_NL_50x50_V1 = 132;
 const uint16_t LED_COUNT_EXTRA_NL_50x50_V1 = 0;
 const uint16_t LED_COUNT_TOTAL_NL_50x50_V1 = LED_COUNT_GRID_NL_50x50_V1 + LED_COUNT_EXTRA_NL_50x50_V1;

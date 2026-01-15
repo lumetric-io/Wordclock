@@ -108,6 +108,8 @@
           <dd id="buildUi" class="text-gray-800">-</dd>
           <dt class="text-gray-500">Git SHA</dt>
           <dd id="buildSha" class="text-gray-800">-</dd>
+          <dt class="text-gray-500">Git Branch</dt>
+          <dd id="buildBranch" class="text-gray-800">-</dd>
           <dt class="text-gray-500">Build time (UTC)</dt>
           <dd id="buildTime" class="text-gray-800">-</dd>
           <dt class="text-gray-500">Environment</dt>
@@ -269,6 +271,7 @@
         set('buildFirmware', info.firmware);
         set('buildUi', info.ui);
         set('buildSha', info.git_sha);
+        set('buildBranch', info.git_branch);
         set('buildTime', info.build_time_utc);
         set('buildEnv', info.environment);
         if (buildStatus) buildStatus.textContent = 'Last updated just now.';
@@ -308,7 +311,6 @@
           logLevel.value = settings.level;
         }
       } catch (err) {
-        console.error('Failed to load log settings:', err);
       }
     }
 

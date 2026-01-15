@@ -15,16 +15,38 @@ def get_git_sha():
         return "unknown"
 
 
+def get_git_branch():
+    """Get current git branch name, or 'unknown' if not available."""
+    try:
+        # Try to get branch name from git
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            stderr=subprocess.DEVNULL
+        ).decode().strip()
+        # Remove 'heads/' prefix if present (can happen in CI)
+        if branch.startswith("heads/"):
+            branch = branch[6:]
+        return branch
+    except Exception:
+        return "unknown"
+
+
 def write_build_info(*args, **kwargs):
     sha = get_git_sha()
+    branch = get_git_branch()
     build_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     env_name = env.get("PIOENV", "unknown")
+    
+    # Enable debug logging only for 'dev' branch
+    enable_debug = "1" if branch == "dev" else "0"
 
     content = f"""#pragma once
 
 #define BUILD_GIT_SHA "{sha}"
+#define BUILD_GIT_BRANCH "{branch}"
 #define BUILD_TIME_UTC "{build_time}"
 #define BUILD_ENV_NAME "{env_name}"
+#define ENABLE_DEBUG_LOGGING {enable_debug}
 """
     include_dir = env.subst("$PROJECT_INCLUDE_DIR")
     os.makedirs(include_dir, exist_ok=True)
@@ -33,7 +55,8 @@ def write_build_info(*args, **kwargs):
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
 
-    print(f"[buildinfo] SHA={sha} env={env_name} time={build_time}")
+    debug_status = "ENABLED" if enable_debug == "1" else "DISABLED"
+    print(f"[buildinfo] SHA={sha} branch={branch} env={env_name} time={build_time} debug={debug_status}")
 
 
 env.AddPreAction("buildprog", write_build_info)

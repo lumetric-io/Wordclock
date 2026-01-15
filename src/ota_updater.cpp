@@ -4,14 +4,26 @@
 #include <ArduinoJson.h>
 #include <Update.h>
 #include <vector>
+#include <algorithm>
+#include <cstring>
 #include "fs_compat.h"
 #include "config.h"
 #include "log.h"
 #include "secrets.h"
 #include "ota_updater.h"
 #include "display_settings.h"
+#include "system_utils.h"
 
 static const char* FS_VERSION_FILE = "/.fs_version"; // marker
+static const char* UI_FILES[] = {
+  "admin.html",
+  "changepw.html",
+  "dashboard.html",
+  "logs.html",
+  "mqtt.html",
+  "setup.html",
+  "update.html",
+};
 
 struct FileEntry {
   String path;
@@ -48,6 +60,7 @@ static bool downloadToFs(const String& url, const String& path, WiFiClientSecure
   }
 
   int len = http.getSize();
+  const int expectedLen = len;
   if (len == 0) { http.end(); return false; }
 
   String tmp = path + ".tmp";
@@ -58,9 +71,15 @@ static bool downloadToFs(const String& url, const String& path, WiFiClientSecure
   WiFiClient& s = http.getStream();
   uint8_t buf[2048];
   int written = 0;
+  bool readTimedOut = false;
   while (http.connected() && (len > 0 || len == -1)) {
     size_t n = s.readBytes(buf, sizeof(buf));
-    if (n == 0) break;
+    if (n == 0) {
+      if (http.connected()) {
+        readTimedOut = true;
+      }
+      break;
+    }
     f.write(buf, n);
     written += n;
     if (len > 0) len -= n;
@@ -68,12 +87,27 @@ static bool downloadToFs(const String& url, const String& path, WiFiClientSecure
   f.flush(); f.close();
   http.end();
 
+  if (readTimedOut) {
+    logError("HTTP read timeout for " + url);
+    FS_IMPL.remove(tmp);
+    return false;
+  }
+  if (expectedLen > 0 && written != expectedLen) {
+    logError("HTTP short read for " + url + " (" + String(written) + "/" + String(expectedLen) + ")");
+    FS_IMPL.remove(tmp);
+    return false;
+  }
+  if (written == 0) {
+    FS_IMPL.remove(tmp);
+    return false;
+  }
+
   FS_IMPL.remove(path);
   if (!FS_IMPL.rename(tmp, path)) {
     FS_IMPL.remove(tmp);
     return false;
   }
-  logInfo("Wrote " + path + " (" + String(written) + " bytes)");
+  logDebug("Wrote " + path + " (" + String(written) + " bytes)");
   return true;
 }
 
@@ -93,19 +127,51 @@ static void writeFsVersion(const String& v) {
   f.close();
 }
 
-static bool fetchManifest(JsonDocument& doc, WiFiClientSecure& client) {
+static String normalizeChannel(String ch) {
+  ch.toLowerCase();
+  if (ch != "stable" && ch != "early" && ch != "develop") {
+    ch = "stable";
+  }
+  return ch;
+}
+
+static String buildManifestUrl(const String& channel) {
+  String url = String(VERSION_URL_BASE);
+  url += (url.indexOf('?') >= 0) ? "&channel=" : "?channel=";
+  url += channel;
+  return url;
+}
+
+static bool fetchManifest(JsonDocument& doc, WiFiClientSecure& client, const String& channel) {
   HTTPClient http;
   http.setTimeout(15000);
-  http.begin(client, VERSION_URL);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  http.addHeader("Accept-Encoding", "identity");
+  const String url = buildManifestUrl(channel);
+  logDebug("OTA manifest URL: " + url);
+  http.begin(client, url);
   int code = http.GET();
   if (code != 200) {
     logError("Failed to GET manifest: HTTP " + String(code));
+    logError("Manifest URL: " + url);
     http.end();
     return false;
   }
-  DeserializationError err = deserializeJson(doc, http.getStream());
+  String payload = http.getString();
   http.end();
-  if (err) { logError("JSON parse error"); return false; }
+  if (payload.length() == 0) {
+    logError("Manifest body is empty");
+    return false;
+  }
+  DeserializationError err = deserializeJson(doc, payload);
+  if (err) {
+    logError(String("JSON parse error: ") + err.c_str());
+    logError("Manifest size: " + String(payload.length()));
+    // Log first 200 chars of payload for debugging
+    String preview = payload.substring(0, 200);
+    logError("Payload preview: " + preview);
+    return false;
+  }
   return true;
 }
 
@@ -121,8 +187,7 @@ static JsonVariant selectChannelBlock(JsonDocument& doc, const String& requested
       return blk;
     }
   }
-  selected = "legacy";
-  return JsonVariant(); // empty -> legacy/top-level
+  return JsonVariant(); // empty -> legacy/top-level (keep selected as requested)
 }
 
 static bool parseFiles(JsonVariantConst jfiles, std::vector<FileEntry>& out) {
@@ -134,6 +199,42 @@ static bool parseFiles(JsonVariantConst jfiles, std::vector<FileEntry>& out) {
     e.url  = v["url"]  | "";
     e.sha256 = v["sha256"] | "";
     if (e.path.length() && e.url.length()) out.push_back(e);
+  }
+  return true;
+}
+
+static bool isHtmlFileHealthy(const char* path) {
+  File f = FS_IMPL.open(path, "r");
+  if (!f) return false;
+  size_t size = f.size();
+  if (size < 64) { f.close(); return false; }
+
+  const size_t headLen = std::min<size_t>(256, size);
+  char headBuf[257] = {0};
+  size_t headRead = f.readBytes(headBuf, headLen);
+  headBuf[headRead] = '\0';
+  if (std::strstr(headBuf, "<!DOCTYPE html") == nullptr) {
+    f.close();
+    return false;
+  }
+
+  const size_t tailLen = std::min<size_t>(256, size);
+  if (size > tailLen) {
+    f.seek(size - tailLen, SeekSet);
+  } else {
+    f.seek(0, SeekSet);
+  }
+  char tailBuf[257] = {0};
+  size_t tailRead = f.readBytes(tailBuf, tailLen);
+  tailBuf[tailRead] = '\0';
+  f.close();
+  return std::strstr(tailBuf, "</html>") != nullptr;
+}
+
+static bool areUiFilesHealthy() {
+  for (const char* name : UI_FILES) {
+    String path = "/" + String(name);
+    if (!isHtmlFileHealthy(path.c_str())) return false;
   }
   return true;
 }
@@ -152,26 +253,19 @@ void syncUiFilesFromConfiguredVersion() {
   }
   const String currentVersion = readFsVersion();
   if (currentVersion == targetVersion) {
-    logInfo("UI up-to-date (configured version match).");
-    return;
+    if (areUiFilesHealthy()) {
+      logInfo("UI up-to-date (configured version match).");
+      return;
+    }
+    logWarn("UI version matches but files look invalid; re-syncing.");
   }
-
-  static const char* UI_FILES[] = {
-    "admin.html",
-    "changepw.html",
-    "dashboard.html",
-    "logs.html",
-    "mqtt.html",
-    "setup.html",
-    "update.html",
-  };
 
   std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure());
   client->setInsecure();
 
   bool ok = true;
   for (const char* name : UI_FILES) {
-    const String url = String("https://raw.githubusercontent.com/ronkuijpers/Wordclock/v") + targetVersion + "/data/" + name;
+    const String url = String("https://raw.githubusercontent.com/lumetric-io/Wordclock/v") + targetVersion + "/data/" + name;
     const String path = "/" + String(name);
     if (!downloadToFs(url, path, *client)) {
       ok = false;
@@ -196,14 +290,10 @@ void syncFilesFromManifest() {
   std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure());
   client->setInsecure();
 
-  JsonDocument doc;
-  if (!fetchManifest(doc, *client)) return;
+  String requestedChannel = normalizeChannel(displaySettings.getUpdateChannel());
 
-  String requestedChannel = displaySettings.getUpdateChannel();
-  requestedChannel.toLowerCase();
-  if (requestedChannel != "stable" && requestedChannel != "early" && requestedChannel != "develop") {
-    requestedChannel = "stable";
-  }
+  JsonDocument doc;
+  if (!fetchManifest(doc, *client, requestedChannel)) return;
   String selectedChannel;
   JsonVariant channelBlock = selectChannelBlock(doc, requestedChannel, selectedChannel);
   if (requestedChannel != selectedChannel) {
@@ -227,8 +317,11 @@ void syncFilesFromManifest() {
   const String currentFsVer = readFsVersion();
 
   if (manifestVersion.length() && manifestVersion == currentFsVer) {
-    logInfo("UI up-to-date (version match).");
-    return;
+    if (areUiFilesHealthy()) {
+      logInfo("UI up-to-date (version match).");
+      return;
+    }
+    logWarn("UI version matches but files look invalid; re-syncing.");
   }
 
   std::vector<FileEntry> files;
@@ -257,14 +350,10 @@ void checkForFirmwareUpdate() {
   std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure());
   client->setInsecure();
 
-  JsonDocument doc;
-  if (!fetchManifest(doc, *client)) return;
+  String requestedChannel = normalizeChannel(displaySettings.getUpdateChannel());
 
-  String requestedChannel = displaySettings.getUpdateChannel();
-  requestedChannel.toLowerCase();
-  if (requestedChannel != "stable" && requestedChannel != "early" && requestedChannel != "develop") {
-    requestedChannel = "stable";
-  }
+  JsonDocument doc;
+  if (!fetchManifest(doc, *client, requestedChannel)) return;
   String selectedChannel;
   JsonVariant channelBlock = selectChannelBlock(doc, requestedChannel, selectedChannel);
   if (requestedChannel != selectedChannel) {
@@ -358,7 +447,7 @@ void checkForFirmwareUpdate() {
   if (Update.isFinished()) {
     logInfo("✅ Firmware updated, rebooting...");
     delay(500);
-    ESP.restart();
+    safeRestart();
   } else {
     logError("❌ Update not finished");
   }

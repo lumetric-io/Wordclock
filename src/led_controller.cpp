@@ -127,6 +127,34 @@ void blinkAllLeds(uint8_t blinks, uint16_t onMs, uint16_t offMs) {
 #endif
 }
 
+void showLedsWithBrightness(const std::vector<uint16_t> &ledIndices, 
+                            const std::vector<uint8_t> &brightnessMultipliers) {
+#ifndef PIO_UNIT_TESTING
+  ensureStripLength();
+  strip.clear();
+  uint8_t r, g, b, w;
+  ledState.getRGBW(r, g, b, w);
+  
+  for (size_t i = 0; i < ledIndices.size() && i < brightnessMultipliers.size(); ++i) {
+    uint16_t idx = ledIndices[i];
+    if (idx < strip.numPixels()) {
+      uint8_t multiplier = brightnessMultipliers[i];
+      // Apply brightness as color intensity (0-255 where 255 = full brightness)
+      uint8_t finalR = (r * multiplier) / 255;
+      uint8_t finalG = (g * multiplier) / 255;
+      uint8_t finalB = (b * multiplier) / 255;
+      uint8_t finalW = (w * multiplier) / 255;
+      strip.setPixelColor(idx, strip.Color(finalR, finalG, finalB, finalW));
+    }
+  }
+  uint8_t brightness = nightMode.applyToBrightness(ledState.getBrightness());
+  strip.setBrightness(brightness);
+  strip.show();
+#else
+  lastShown = ledIndices;
+#endif
+}
+
 #ifdef PIO_UNIT_TESTING
 const std::vector<uint16_t>& test_getLastShownLeds() {
   return lastShown;

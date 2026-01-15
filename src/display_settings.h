@@ -5,148 +5,136 @@
 #include "log.h"
 
 constexpr GridVariant FIRMWARE_DEFAULT_GRID_VARIANT = GridVariant::NL_V4;
-enum class WordAnimationMode : uint8_t { Classic = 0, Smart = 1 };
+enum class WordAnimationMode : uint8_t { Classic = 0 };
 
 class DisplaySettings {
 public:
   void begin() {
-    prefs.begin("display", false);
-    hetIsDurationSec = prefs.getUShort("his_sec", 360); // default ALWAYS (360s)
-    if (hetIsDurationSec > 360) hetIsDurationSec = 360;
-    sellMode = prefs.getBool("sell_on", false);
-    animateWords = prefs.getBool("anim_on", false); // default OFF unless enabled via UI
-    uint8_t storedAnimMode = prefs.getUChar("anim_mode", static_cast<uint8_t>(WordAnimationMode::Classic));
-    if (storedAnimMode > static_cast<uint8_t>(WordAnimationMode::Smart)) {
-      storedAnimMode = static_cast<uint8_t>(WordAnimationMode::Classic);
-    }
-    animationMode = static_cast<WordAnimationMode>(storedAnimMode);
-    autoUpdate = prefs.getBool("auto_upd", true);
+    prefs_.begin("wc_display", false);  // Note: renamed namespace for safety
+    hetIsDurationSec_ = prefs_.getUShort("his_sec", 360); // default ALWAYS (360s)
+    if (hetIsDurationSec_ > 360) hetIsDurationSec_ = 360;
+    sellMode_ = prefs_.getBool("sell_on", false);
+    animateWords_ = prefs_.getBool("anim_on", false); // default OFF unless enabled via UI
+    animationMode_ = WordAnimationMode::Classic; // Only Classic mode available
+    
+    autoUpdate_ = prefs_.getBool("auto_upd", true);
     const uint8_t defaultVariantId = gridVariantToId(FIRMWARE_DEFAULT_GRID_VARIANT);
-    const bool hasGridKey = prefs.isKey("grid_id");
+    const bool hasGridKey = prefs_.isKey("grid_id");
     // Track whether a grid variant was already stored so we can detect migrations
-    if (!initialized) {
-      hasStoredVariant = hasGridKey;
+    if (!initialized_) {
+      hasStoredVariant_ = hasGridKey;
     }
-    uint8_t storedVariant = prefs.getUChar("grid_id", defaultVariantId);
+    uint8_t storedVariant = prefs_.getUChar("grid_id", defaultVariantId);
     if (!hasGridKey) {
-      prefs.putUChar("grid_id", defaultVariantId);
+      prefs_.putUChar("grid_id", defaultVariantId);
       storedVariant = defaultVariantId;
     }
-    prefs.end();
+    prefs_.end();
 
-    gridVariant = gridVariantFromId(storedVariant);
-    if (!setActiveGridVariant(gridVariant)) {
-      gridVariant = FIRMWARE_DEFAULT_GRID_VARIANT;
-      setActiveGridVariant(gridVariant);
-      prefs.begin("display", false);
-      prefs.putUChar("grid_id", defaultVariantId);
-      prefs.end();
+    gridVariant_ = gridVariantFromId(storedVariant);
+    if (!setActiveGridVariant(gridVariant_)) {
+      gridVariant_ = FIRMWARE_DEFAULT_GRID_VARIANT;
+      setActiveGridVariant(gridVariant_);
+      prefs_.begin("wc_display", false);
+      prefs_.putUChar("grid_id", defaultVariantId);
+      prefs_.end();
     }
 
     // Update channel (stable by default)
-    prefs.begin("display", true);
-    hasStoredUpdateChannel = prefs.isKey("upd_ch");
-    String ch = hasStoredUpdateChannel ? prefs.getString("upd_ch", "stable") : String("stable");
-    prefs.end();
+    prefs_.begin("wc_display", true);
+    hasStoredUpdateChannel_ = prefs_.isKey("upd_ch");
+    String ch = hasStoredUpdateChannel_ ? prefs_.getString("upd_ch", "stable") : String("stable");
+    prefs_.end();
     ch.toLowerCase();
     if (ch != "stable" && ch != "early" && ch != "develop") ch = "stable";
-    updateChannel = ch;
-    if (updateChannel == "develop" && autoUpdate) {
-      autoUpdate = false;
-      prefs.begin("display", false);
-      prefs.putBool("auto_upd", autoUpdate);
-      prefs.end();
+    updateChannel_ = ch;
+    if (updateChannel_ == "develop" && autoUpdate_) {
+      autoUpdate_ = false;
+      prefs_.begin("wc_display", false);
+      prefs_.putBool("auto_upd", autoUpdate_);
+      prefs_.end();
       logInfo("🔁 Automatic updates disabled for develop channel");
     }
-    initialized = true;
+    initialized_ = true;
+    
+    dirty_ = false;
+    lastFlush_ = millis();
   }
 
-  uint16_t getHetIsDurationSec() const { return hetIsDurationSec; }
-  bool isSellMode() const { return sellMode; }
-  bool getAnimateWords() const { return animateWords; }
-  WordAnimationMode getAnimationMode() const { return animationMode; }
-  uint8_t getAnimationModeId() const { return static_cast<uint8_t>(animationMode); }
-  bool getAutoUpdate() const { return autoUpdate; }
-  String getUpdateChannel() const { return updateChannel; }
-  bool hasStoredChannel() const { return hasStoredUpdateChannel; }
-  GridVariant getGridVariant() const { return gridVariant; }
-  uint8_t getGridVariantId() const { return gridVariantToId(gridVariant); }
-  bool hasPersistedGridVariant() const { return hasStoredVariant; }
+  uint16_t getHetIsDurationSec() const { return hetIsDurationSec_; }
+  bool isSellMode() const { return sellMode_; }
+  bool getAnimateWords() const { return animateWords_; }
+  WordAnimationMode getAnimationMode() const { return animationMode_; }
+  uint8_t getAnimationModeId() const { return static_cast<uint8_t>(animationMode_); }
+  bool getAutoUpdate() const { return autoUpdate_; }
+  String getUpdateChannel() const { return updateChannel_; }
+  bool hasStoredChannel() const { return hasStoredUpdateChannel_; }
+  GridVariant getGridVariant() const { return gridVariant_; }
+  uint8_t getGridVariantId() const { return gridVariantToId(gridVariant_); }
+  bool hasPersistedGridVariant() const { return hasStoredVariant_; }
 
   void setHetIsDurationSec(uint16_t s) {
     if (s > 360) s = 360;
-    hetIsDurationSec = s;
-    prefs.begin("display", false);
-    prefs.putUShort("his_sec", hetIsDurationSec);
-    prefs.end();
+    if (hetIsDurationSec_ == s) return;
+    hetIsDurationSec_ = s;
+    markDirty();
   }
+
   void setSellMode(bool on) {
-    sellMode = on;
-    prefs.begin("display", false);
-    prefs.putBool("sell_on", sellMode);
-    prefs.end();
+    if (sellMode_ == on) return;
+    sellMode_ = on;
+    markDirty();
   }
 
   void setAnimateWords(bool on) {
-    animateWords = on;
-    prefs.begin("display", false);
-    prefs.putBool("anim_on", animateWords);
-    prefs.end();
+    if (animateWords_ == on) return;
+    animateWords_ = on;
+    markDirty();
   }
 
   void setAnimationMode(WordAnimationMode mode) {
-    animationMode = mode;
-    prefs.begin("display", false);
-    prefs.putUChar("anim_mode", static_cast<uint8_t>(animationMode));
-    prefs.end();
+    // Only Classic mode is supported
+    animationMode_ = WordAnimationMode::Classic;
   }
 
   void setAnimationModeById(uint8_t id) {
-    if (id > static_cast<uint8_t>(WordAnimationMode::Smart)) {
-      id = static_cast<uint8_t>(WordAnimationMode::Classic);
-    }
-    setAnimationMode(static_cast<WordAnimationMode>(id));
+    // Only Classic mode is supported
+    animationMode_ = WordAnimationMode::Classic;
   }
 
   void setAutoUpdate(bool on) {
-    autoUpdate = on;
-    prefs.begin("display", false);
-    prefs.putBool("auto_upd", autoUpdate);
-    prefs.end();
+    if (autoUpdate_ == on) return;
+    autoUpdate_ = on;
+    markDirty();
   }
 
   void setUpdateChannel(const String& channel) {
     String ch = channel;
     ch.toLowerCase();
     if (ch != "stable" && ch != "early" && ch != "develop") ch = "stable"; // default/fallback
-    if (ch == updateChannel) return;
-    updateChannel = ch;
-    prefs.begin("display", false);
-    prefs.putString("upd_ch", updateChannel);
-    prefs.end();
-    logInfo(String("🔀 Update channel set to ") + updateChannel);
-    if (updateChannel == "develop" && autoUpdate) {
-      autoUpdate = false;
-      prefs.begin("display", false);
-      prefs.putBool("auto_upd", autoUpdate);
-      prefs.end();
+    if (ch == updateChannel_) return;
+    updateChannel_ = ch;
+    markDirty();
+    logInfo(String("🔀 Update channel set to ") + updateChannel_);
+    if (updateChannel_ == "develop" && autoUpdate_) {
+      autoUpdate_ = false;
+      markDirty();
       logInfo("🔁 Automatic updates disabled for develop channel");
     }
   }
 
   void resetUpdateChannel() {
     setUpdateChannel("stable");
-    hasStoredUpdateChannel = false;
+    hasStoredUpdateChannel_ = false;
   }
 
   void setGridVariant(GridVariant variant) {
     if (!setActiveGridVariant(variant)) {
       return;
     }
-    gridVariant = variant;
-    prefs.begin("display", false);
-    prefs.putUChar("grid_id", gridVariantToId(gridVariant));
-    prefs.end();
+    if (gridVariant_ == variant) return;
+    gridVariant_ = variant;
+    markDirty();
   }
 
   void setGridVariantById(uint8_t id) {
@@ -158,18 +146,68 @@ public:
     setGridVariant(gridVariantFromId(id));
   }
 
+  /**
+   * @brief Force immediate write to persistent storage
+   * @note Call before critical operations (OTA, deep sleep, restart)
+   */
+  void flush() {
+    if (!dirty_) return;
+    
+    prefs_.begin("wc_display", false);
+    // Batch write all settings
+    prefs_.putUShort("his_sec", hetIsDurationSec_);
+    prefs_.putBool("sell_on", sellMode_);
+    prefs_.putBool("anim_on", animateWords_);
+    prefs_.putUChar("anim_mode", static_cast<uint8_t>(animationMode_));
+    prefs_.putBool("auto_upd", autoUpdate_);
+    prefs_.putString("upd_ch", updateChannel_);
+    prefs_.putUChar("grid_id", gridVariantToId(gridVariant_));
+    prefs_.end();
+    
+    dirty_ = false;
+    lastFlush_ = millis();
+  }
+
+  /**
+   * @brief Automatic flush if dirty and sufficient time passed
+   * @note Call periodically from main loop (every 1-5 seconds)
+   */
+  void loop() {
+    if (dirty_ && (millis() - lastFlush_) >= AUTO_FLUSH_DELAY_MS) {
+      flush();
+    }
+  }
+
+  // Query persistence state
+  bool isDirty() const { return dirty_; }
+  unsigned long millisSinceLastFlush() const { 
+    return millis() - lastFlush_; 
+  }
+
 private:
-  uint16_t hetIsDurationSec = 360; // default ALWAYS
-  bool sellMode = false;
-  bool animateWords = false; // default OFF
-  WordAnimationMode animationMode = WordAnimationMode::Classic;
-  bool autoUpdate = true;    // default ON to keep current behavior
-  String updateChannel = "stable";
-  GridVariant gridVariant = FIRMWARE_DEFAULT_GRID_VARIANT;
-  bool hasStoredVariant = false;
-  bool hasStoredUpdateChannel = false;
-  bool initialized = false;
-  Preferences prefs;
+  void markDirty() {
+    if (!dirty_) {
+      dirty_ = true;
+      lastFlush_ = millis();
+    }
+  }
+
+  uint16_t hetIsDurationSec_ = 360; // default ALWAYS
+  bool sellMode_ = false;
+  bool animateWords_ = false; // default OFF
+  WordAnimationMode animationMode_ = WordAnimationMode::Classic;
+  bool autoUpdate_ = true;    // default ON to keep current behavior
+  String updateChannel_ = "stable";
+  GridVariant gridVariant_ = FIRMWARE_DEFAULT_GRID_VARIANT;
+  bool hasStoredVariant_ = false;
+  bool hasStoredUpdateChannel_ = false;
+  bool initialized_ = false;
+  bool dirty_ = false;
+  unsigned long lastFlush_ = 0;
+  
+  Preferences prefs_;
+  
+  static const unsigned long AUTO_FLUSH_DELAY_MS = 5000;  // 5 seconds
 };
 
 extern DisplaySettings displaySettings;

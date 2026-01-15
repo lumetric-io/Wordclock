@@ -3,12 +3,15 @@
 // #include "network.h"  // For access to telnetClient
 #include "config.h"
 
+#ifndef LOG_LEVEL_ENUM_DEFINED
+#define LOG_LEVEL_ENUM_DEFINED
 enum LogLevel {
   LOG_LEVEL_DEBUG = 0,
   LOG_LEVEL_INFO,
   LOG_LEVEL_WARN,
   LOG_LEVEL_ERROR
 };
+#endif // LOG_LEVEL_ENUM_DEFINED
 extern LogLevel LOG_LEVEL;
 
 // Basic log function

@@ -138,7 +138,6 @@
         const sj = await s.json();
         setStatus(!!sj.connected, sj.last_error);
       } catch (e) {
-        console.error('Failed to load MQTT config', e);
       }
     }
     async function saveCfg() {

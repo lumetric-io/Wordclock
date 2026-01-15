@@ -33,6 +33,9 @@
 #include "mqtt_client.h"
 #include "night_mode.h"
 #include "setup_state.h"
+#include "led_state.h"
+#include "settings_migration.h"
+#include "system_utils.h"
 
 
 bool clockEnabled = true;
@@ -51,14 +54,39 @@ WebServer server(80);
 
 // Tracking (handled inside loop as statics)
 
+// Flush all settings to persistent storage
+void flushAllSettings() {
+  logDebug("Flushing all settings to persistent storage...");
+  ledState.flush();
+  displaySettings.flush();
+  nightMode.flush();
+  setupState.flush();
+  logDebug("Settings flush complete");
+}
+
+// Call before any ESP.restart()
+void safeRestart() {
+  flushAllSettings();
+  delay(100);  // Allow flash write to complete
+  ESP.restart();
+}
+
 // Setup: initialiseert hardware, netwerk, OTA, filesystem en start de hoofdservices
 void setup() {
   Serial.begin(SERIAL_BAUDRATE);
   delay(MDNS_START_DELAY_MS);
   initLogSettings();
 
+  // IMPORTANT: Migrate settings before initializing them
+  SettingsMigration::migrateIfNeeded();
+
   initNetwork();              // WiFiManager (WiFi-instellingen en verbinding)
   initOTA();                  // OTA (Over-the-air updates)
+  
+  // Register flush handler for OTA start
+  ArduinoOTA.onStart([]() {
+    flushAllSettings();
+  });
 
   // Start mDNS voor lokale netwerknaam
   if (MDNS.begin(MDNS_HOSTNAME)) {
@@ -112,8 +140,6 @@ void setup() {
   initTimeSync(TZ_INFO, NTP_SERVER1, NTP_SERVER2);
   initDisplay();
   initWordclockSystem(uiAuth);
-  // Skip word-walk preview when setup is not finished
-  startupSequence.setWordWalkEnabled(!g_wifiHadCredentialsAtBoot && setupState.isComplete());
   initStartupSequence(startupSequence);
 }
 
@@ -151,6 +177,16 @@ void loop() {
   }
   ArduinoOTA.handle();
   mqttEventLoop();
+
+  // Periodic settings flush (every ~1 second)
+  static unsigned long lastSettingsFlush = 0;
+  if (millis() - lastSettingsFlush >= 1000) {
+    ledState.loop();
+    displaySettings.loop();
+    nightMode.loop();
+    setupState.loop();
+    lastSettingsFlush = millis();
+  }
 
   // Startup animatie: blokkeert klok tot animatie klaar is
   if (updateStartupSequence(startupSequence)) {

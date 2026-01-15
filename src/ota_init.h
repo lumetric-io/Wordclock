@@ -3,6 +3,7 @@
 #include <ArduinoOTA.h>
 #include "log.h"
 #include "secrets.h"
+#include "system_utils.h"
 
 // Initialize OTA (Over-the-air updates)
 // This function configures and starts the OTA service to allow firmware updates over the network.
@@ -18,7 +19,7 @@ inline void initOTA() {
     ArduinoOTA.onEnd([]() {
         logInfo("✅ OTA update complete, restarting in 1s");
         delay(OTA_UPDATE_COMPLETE_DELAY_MS);
-        ESP.restart();
+        safeRestart();
     });
     ArduinoOTA.onError([](ota_error_t err) {
         String msg = "[OTA] Error: ";

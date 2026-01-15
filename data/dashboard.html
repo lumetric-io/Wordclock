@@ -106,6 +106,7 @@
       <p class="text-xs text-gray-500 mt-2">Als de eindtijd eerder is dan de starttijd loopt nightmode over middernacht.</p>
     </section>
 
+
     <section class="bg-white p-4 rounded-2xl shadow mb-4">
       <h2 class="text-xl font-semibold mb-2">Actions</h2>
       <div class="grid grid-cols-2 gap-2">
@@ -166,14 +167,6 @@
         <input type="checkbox" id="animateWords" class="form-checkbox">
         <span>Word-by-word animation</span>
       </label>
-      <div class="mb-3">
-        <label for="animMode" class="block text-sm mb-1">Animatiestijl</label>
-        <select id="animMode" class="w-full border rounded p-2 text-sm">
-          <option value="classic">Klassiek: alle woorden opnieuw</option>
-          <option value="smart">Slim: alleen veranderende woorden</option>
-        </select>
-        <p class="text-xs text-gray-500 mt-1">Slim laat ongewijzigde woorden staan en animeert alleen 'HET/IS' en de wijzigingen.</p>
-      </div>
       <label class="inline-flex items-center space-x-2 mb-2">
         <input type="checkbox" id="hetIsAlways2" class="form-checkbox">
         <span>Always show 'HET IS'</span>
@@ -245,14 +238,18 @@
 
       async load(name) {
         const loader = this.loaders.get(name);
-        if (!loader || loader.loading) {
-          if (!loader) console.warn('[DataLoader] Loader not found:', name);
+        if (!loader) {
+          return;
+        }
+        if (loader.loading) {
           return;
         }
 
         loader.loading = true;
         loader.lastError = null;
-        console.log('[DataLoader] Loading:', name);
+        // Only log if not in interval mode to reduce noise
+        if (!this.intervals.has(name)) {
+        }
 
         try {
           const result = await Promise.race([
@@ -263,22 +260,21 @@
           ]);
 
           loader.retryCount = 0;
-          console.log('[DataLoader] Success:', name);
+          // Only log if not in interval mode to reduce noise
+          if (!this.intervals.has(name)) {
+          }
           if (loader.onSuccess) loader.onSuccess(result);
           return result;
         } catch (error) {
           loader.lastError = error;
-          console.error('[DataLoader] Error loading', name + ':', error.message || error);
           if (loader.onError) loader.onError(error);
           
           // Retry logic
           if (loader.retryCount < this.retryDelays.length) {
             const delay = this.retryDelays[loader.retryCount];
             loader.retryCount++;
-            console.log('[DataLoader] Retrying', name, 'in', delay, 'ms (attempt', loader.retryCount + ')');
             setTimeout(() => this.load(name), delay);
           } else {
-            console.error('[DataLoader] Max retries reached for', name);
           }
         } finally {
           loader.loading = false;
@@ -300,15 +296,30 @@
 
       startInterval(name) {
         const loader = this.loaders.get(name);
-        if (!loader || !loader.interval) return;
+        if (!loader) {
+          return;
+        }
+        if (!loader.interval) {
+          return;
+        }
         
         if (this.intervals.has(name)) {
           clearInterval(this.intervals.get(name));
+          this.intervals.delete(name);
         }
+        
+        // Store reference to this for use in interval callback
+        const self = this;
+        const intervalMs = loader.interval;
+        const intervalSeconds = intervalMs / 1000;
         
         // Load immediately, then set interval
         this.load(name);
-        const intervalId = setInterval(() => this.load(name), loader.interval);
+        
+        const intervalId = setInterval(function() {
+          self.load(name);
+        }, intervalMs);
+        
         this.intervals.set(name, intervalId);
       }
 
@@ -412,6 +423,7 @@
     }
 
     // Status loader (hoge prioriteit, interval)
+    // Interval will be set dynamically based on branch (dev: 5min, others: 30sec)
     dataLoader.register('status', async () => {
       setLoadingState('statusIndicator', true);
       const res = await fetch('/status');
@@ -419,7 +431,7 @@
       return res.text();
     }, {
       priority: 10,
-      interval: 2000,
+      interval: 30000, // Default, will be updated based on branch
       onSuccess: (status) => {
         setLoadingState('statusIndicator', false);
         clearErrorState('statusText');
@@ -735,7 +747,6 @@
         const cfg = await res.json();
         applyNightModeConfig(cfg);
       } catch (err) {
-        console.error('Nightmode update failed', err);
         setNightModeError();
         setTimeout(() => { loadNightMode(); }, 1500);
       }
@@ -748,7 +759,6 @@
         const cfg = await res.json();
         applyNightModeConfig(cfg);
       } catch (err) {
-        console.error('Nightmode config fetch failed', err);
         setNightModeError();
       }
     };
@@ -864,6 +874,7 @@
         }
       });
     }
+    
     if (autoUpdCb) {
       autoUpdCb.addEventListener('change', async () => {
         const desired = autoUpdCb.checked;
@@ -1031,7 +1042,6 @@
         }
       },
       onError: (error) => {
-        console.warn('Failed to load color:', error);
       }
     });
 
@@ -1055,10 +1065,6 @@
 
     // Animation loaders (normale prioriteit)
     const animateCb = document.getElementById('animateWords');
-    const animModeSel = document.getElementById('animMode');
-    const updateAnimModeDisabled = () => {
-      if (animModeSel && animateCb) animModeSel.disabled = !animateCb.checked;
-    };
 
     if (animateCb) {
       dataLoader.register('animate', async () => {
@@ -1069,33 +1075,13 @@
         priority: 5,
         onSuccess: (v) => {
           animateCb.checked = (v.trim() === 'on');
-          updateAnimModeDisabled();
         },
         onError: (error) => {
           animateCb.checked = false;
-          updateAnimModeDisabled();
         }
       });
     }
 
-    if (animModeSel) {
-      dataLoader.register('animMode', async () => {
-        const res = await fetch('/getAnimMode');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.text();
-      }, {
-        priority: 5,
-        onSuccess: (v) => {
-        const mode = (v || '').trim().toLowerCase();
-        animModeSel.value = (mode === 'smart' || mode === '1') ? 'smart' : 'classic';
-        updateAnimModeDisabled();
-        },
-        onError: (error) => {
-          animModeSel.value = 'classic';
-          updateAnimModeDisabled();
-        }
-      });
-    }
 
     // HET IS Duration loader (normale prioriteit)
     const durSlider2 = document.getElementById('hetIsDuration2');
@@ -1143,7 +1129,6 @@
           if (logLevelStatus) logLevelStatus.textContent = `Current log level: ${lvl || 'INFO'}`;
         },
         onError: (error) => {
-          console.warn('Failed to load log level:', error);
         }
       });
     }
@@ -1242,43 +1227,97 @@
           }
         }
       } catch (error) {
-        console.warn('Failed to load logs:', error);
       }
     };
 
+    // Logs loader (interval will be set dynamically based on branch)
     dataLoader.register('logs', loadLog, {
       priority: 2,
-      interval: 5000,
+      interval: 30000, // Default, will be updated based on branch
       onError: (error) => {
-        console.warn('Log loading error:', error);
       }
     });
 
     // Initialize all data loaders when DOM is ready
-    function initializeDashboard() {
+    async function initializeDashboard() {
       try {
-        console.log('[Dashboard] Initializing data loaders...');
-        console.log('[Dashboard] Registered loaders:', Array.from(dataLoader.loaders.keys()));
-        console.log('[Dashboard] Total loaders:', dataLoader.loaders.size);
         
         if (dataLoader.loaders.size === 0) {
-          console.error('[Dashboard] No loaders registered!');
           return;
+        }
+        
+        // Get build info to determine branch and set intervals accordingly
+        let buildBranch = 'unknown';
+        let statusInterval = 30000; // Default: 30 seconds
+        let logsInterval = 30000;   // Default: 30 seconds
+        
+        try {
+          const buildRes = await fetch('/buildinfo');
+          if (buildRes.ok) {
+            const buildInfo = await buildRes.json();
+            buildBranch = buildInfo.git_branch || 'unknown';
+            
+            // Set intervals based on branch
+            // dev branch: logs every 5 seconds, status every 30 seconds
+            // other branches: both every 30 seconds
+            if (buildBranch === 'dev') {
+              statusInterval = 30000;  // 30 seconds
+              logsInterval = 5000;     // 5 seconds
+            } else {
+              statusInterval = 30000;  // 30 seconds
+              logsInterval = 30000;    // 30 seconds
+            }
+            
+          } else {
+          }
+        } catch (err) {
+        }
+        
+        // Update loader intervals BEFORE starting them
+        const statusLoader = dataLoader.loaders.get('status');
+        const logsLoader = dataLoader.loaders.get('logs');
+        
+        if (statusLoader) {
+          statusLoader.interval = statusInterval;
+        } else {
+        }
+        
+        if (logsLoader) {
+          logsLoader.interval = logsInterval;
+        } else {
         }
         
         // Initialize all data loaders
         dataLoader.loadAll().catch(err => {
-          console.error('[Dashboard] Error loading data:', err);
         });
         
-        // Start interval loaders
-        dataLoader.startInterval('status');
-        dataLoader.startInterval('logs');
+        // Start interval loaders (will use updated intervals)
+        if (statusLoader) {
+          if (statusLoader.interval) {
+            dataLoader.startInterval('status');
+          } else {
+          }
+        } else {
+        }
         
-        console.log('[Dashboard] Initialization complete');
+        if (logsLoader) {
+          if (logsLoader.interval) {
+            dataLoader.startInterval('logs');
+          } else {
+          }
+        } else {
+        }
+        
+        // Verify intervals are running
+        if (dataLoader.intervals.has('status')) {
+        } else {
+        }
+        
+        if (dataLoader.intervals.has('logs')) {
+        } else {
+        }
+        
       } catch (error) {
-        console.error('[Dashboard] Initialization error:', error);
-        console.error('[Dashboard] Stack:', error.stack);
       }
     }
     
@@ -1286,32 +1325,22 @@
     try {
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initializeDashboard);
-        console.log('[Dashboard] Waiting for DOMContentLoaded...');
       } else {
         // DOM is already ready
-        console.log('[Dashboard] DOM already ready, initializing...');
         initializeDashboard();
       }
     } catch (error) {
-      console.error('[Dashboard] Setup error:', error);
-      console.error('[Dashboard] Stack:', error.stack);
     }
 
     // HET IS controls event listeners
     const hetIsDec = document.getElementById('hetIsDec');
     const hetIsInc = document.getElementById('hetIsInc');
     if (animateCb) {
-      animateCb.addEventListener('change', () => {
-        fetch('/setAnimate?state=' + (animateCb.checked ? 'on' : 'off'));
-        updateAnimModeDisabled();
-      });
+    animateCb.addEventListener('change', () => {
+      fetch('/setAnimate?state=' + (animateCb.checked ? 'on' : 'off'));
+    });
     }
-    if (animModeSel) {
-      animModeSel.addEventListener('change', () => {
-        const val = animModeSel.value || 'classic';
-        fetch('/setAnimMode?mode=' + encodeURIComponent(val));
-      });
-    }
+
     if (durSlider2) {
       durSlider2.addEventListener('input', () => {
         const sec = parseInt(durSlider2.value, 10);
