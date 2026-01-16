@@ -1,5 +1,6 @@
 {
   "product_id": "wordclock-nextgen",
   "display_name": "Wordclock Nextgen",
-  "default_channel": "stable"
+  "default_channel": "stable",
+  "grids": ["nl_50x50_v3"]
 }

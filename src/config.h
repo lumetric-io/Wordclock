@@ -10,6 +10,10 @@
 
 #ifdef PRODUCT_CONFIG_HEADER
 #include PRODUCT_CONFIG_HEADER
+#elif defined(__has_include)
+#if __has_include("product_config.h")
+#include "product_config.h"
+#endif
 #endif
 
 #ifndef FIRMWARE_VERSION

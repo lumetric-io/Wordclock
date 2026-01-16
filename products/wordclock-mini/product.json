@@ -1,5 +1,6 @@
 {
   "product_id": "wordclock-mini",
   "display_name": "Wordclock Mini",
-  "default_channel": "stable"
+  "default_channel": "stable",
+  "grids": ["nl_v1", "nl_v2", "nl_v3", "nl_v4", "nl_50x50_v1", "nl_50x50_v2", "nl_50x50_v3"]
 }
