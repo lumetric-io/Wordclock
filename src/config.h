@@ -1,10 +1,26 @@
-// Log buffer and default log level
-#define DEFAULT_LOG_LEVEL LOG_LEVEL_ERROR
-#define LOG_BUFFER_SIZE 50  // Reduced from 150 to save flash space
 #pragma once
 
+// Log buffer and default log level
+#ifndef DEFAULT_LOG_LEVEL
+#define DEFAULT_LOG_LEVEL LOG_LEVEL_ERROR
+#endif
+#ifndef LOG_BUFFER_SIZE
+#define LOG_BUFFER_SIZE 50  // Reduced from 150 to save flash space
+#endif
+
+#ifdef PRODUCT_CONFIG_HEADER
+#include PRODUCT_CONFIG_HEADER
+#endif
+
+#ifndef FIRMWARE_VERSION
 #define FIRMWARE_VERSION "26.2.2"
+#endif
+#ifndef UI_VERSION
 #define UI_VERSION "26.2.2"
+#endif
+#ifndef PRODUCT_ID
+#define PRODUCT_ID "wordclock-logo"
+#endif
 
 #define DATA_PIN 4
 #define DEFAULT_BRIGHTNESS 5
