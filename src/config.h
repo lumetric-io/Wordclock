@@ -3,8 +3,8 @@
 #define LOG_BUFFER_SIZE 50  // Reduced from 150 to save flash space
 #pragma once
 
-#define FIRMWARE_VERSION "26.1.5-logo"
-#define UI_VERSION "26.1.5-logo"
+#define FIRMWARE_VERSION "26.1.4-logo"
+#define UI_VERSION "26.1.4-logo"
 #define PRODUCT_ID "wordclock-logo"
 
 #define DATA_PIN 4
