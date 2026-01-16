@@ -115,7 +115,6 @@ void setup() {
     g_serverInitialized = true;
     initMqtt();
     g_mqttInitialized = true;
-    syncUiFilesFromConfiguredVersion();
     g_uiSyncHandled = true;
     bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
     if (autoAllowed) {
@@ -155,7 +154,6 @@ void loop() {
     g_mqttInitialized = true;
   }
   if (isWiFiConnected() && !g_uiSyncHandled) {
-    syncUiFilesFromConfiguredVersion();
     g_uiSyncHandled = true;
   }
   if (isWiFiConnected() && !g_autoUpdateHandled) {

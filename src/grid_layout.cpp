@@ -57,7 +57,7 @@ uint16_t computeExtraLedCount(const GridVariantData* data) {
 }
 
 static const GridVariantData GRID_VARIANTS[] = {
-  { GridVariant::NL_50x50, "NL_50x50", "Nederlands 50x50", "nl", "v3", LED_COUNT_GRID_NL_50x50_V3, LED_COUNT_EXTRA_NL_50x50_V3, LED_COUNT_TOTAL_NL_50x50_V3, LETTER_GRID_NL_50x50_V3, WORDS_NL_50x50_V3, WORDS_NL_50x50_V3_COUNT, EXTRA_MINUTES_NL_50x50_V3, EXTRA_MINUTES_NL_50x50_V3_COUNT, MinuteLayout::AfterGrid }
+  { GridVariant::NL_50x50, "NL_50x50", "Nederlands 50x50", "nl", "", LED_COUNT_GRID_NL_50x50_V3, LED_COUNT_EXTRA_NL_50x50_V3, LED_COUNT_TOTAL_NL_50x50_V3, LETTER_GRID_NL_50x50_V3, WORDS_NL_50x50_V3, WORDS_NL_50x50_V3_COUNT, EXTRA_MINUTES_NL_50x50_V3, EXTRA_MINUTES_NL_50x50_V3_COUNT, MinuteLayout::AfterGrid }
 };
 
 static const GridVariantData* activeVariant = &GRID_VARIANTS[0];
