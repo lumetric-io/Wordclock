@@ -623,6 +623,19 @@
     const logoBrightnessInc = document.getElementById('logoBrightnessInc');
     const logoBrightnessValue = document.getElementById('logoBrightnessValue');
     const logoStatus = document.getElementById('logoStatus');
+    let logoBrightnessTimer = null;
+    const sendLogoBrightnessDebounced = (val) => {
+      if (logoBrightnessTimer) clearTimeout(logoBrightnessTimer);
+      logoBrightnessTimer = setTimeout(() => {
+        const level = parseInt(val, 10) || 0;
+        fetch('/logo/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brightness: Math.max(0, Math.min(255, level)) })
+        });
+        logoBrightnessTimer = null;
+      }, 200);
+    };
     const setLogoStatus = (msg, error) => {
       if (!logoStatus) return;
       logoStatus.textContent = msg;
@@ -647,6 +660,7 @@
       logoBrightness.addEventListener('input', () => {
         if (logoBrightnessValue) logoBrightnessValue.textContent = logoBrightness.value;
         if (logoBrightnessInput) logoBrightnessInput.value = logoBrightness.value;
+        sendLogoBrightnessDebounced(logoBrightness.value);
       });
     }
     if (logoBrightnessInput) {
@@ -656,6 +670,7 @@
         logoBrightnessInput.value = v;
         if (logoBrightness) logoBrightness.value = v;
         if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+        sendLogoBrightnessDebounced(v);
       });
     }
     if (logoBrightnessDec) {
@@ -665,6 +680,7 @@
         if (logoBrightness) logoBrightness.value = v;
         if (logoBrightnessInput) logoBrightnessInput.value = v;
         if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+        sendLogoBrightnessDebounced(v);
       });
     }
     if (logoBrightnessInc) {
@@ -674,6 +690,7 @@
         if (logoBrightness) logoBrightness.value = v;
         if (logoBrightnessInput) logoBrightnessInput.value = v;
         if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+        sendLogoBrightnessDebounced(v);
       });
     }
     const loadLogoState = async () => {
