@@ -1225,13 +1225,6 @@ void setupWebRoutes() {
     server.send(200, "text/plain", "UI sync started");
   });
 
-  server.on("/testBlink", []() {
-    if (!ensureUiAuth()) return;
-    server.send(200, "text/plain", "Blinking...");
-    blinkAllLeds();
-    refreshCurrentTimeDisplay();
-  });
-
   server.on("/getBrightness", []() {
     if (!ensureUiAuth()) {
       logWarn("[API] /getBrightness: Auth failed");

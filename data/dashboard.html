@@ -113,7 +113,6 @@
         <button id="restartBtn" class="py-2 rounded bg-yellow-500 text-white hover:bg-yellow-600">🔁 Restart</button>
         <button id="resetWifiBtn" class="py-2 rounded bg-blue-500 text-white hover:bg-blue-600">📶 Reset WiFi</button>
         <button id="startSequenceBtn" class="py-2 rounded bg-purple-500 text-white hover:bg-purple-600">✨ Start Sequence</button>
-        <button id="testBlinkBtn" class="py-2 rounded bg-green-600 text-white hover:bg-green-700">💡 Test blink</button>
       </div>
       
     </section>
@@ -841,21 +840,6 @@
       if (confirm('Reset WiFi?')) fetch('/resetwifi');
     };
     document.getElementById('startSequenceBtn').onclick = () => fetch('/startSequence');
-    const testBlinkBtn = document.getElementById('testBlinkBtn');
-    if (testBlinkBtn) {
-      const originalText = testBlinkBtn.textContent;
-      testBlinkBtn.addEventListener('click', async () => {
-        testBlinkBtn.disabled = true;
-        testBlinkBtn.textContent = 'Knipperen…';
-        try {
-          await fetch('/testBlink');
-        } catch (e) {
-          // ignore
-        }
-        testBlinkBtn.textContent = originalText;
-        testBlinkBtn.disabled = false;
-      });
-    }
     const checkBtn = document.getElementById('checkUpdateBtn');
     const updateStatusEl = document.getElementById('updateStatus');
     if (checkBtn) {
