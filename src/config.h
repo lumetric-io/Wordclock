@@ -5,6 +5,7 @@
 
 #define FIRMWARE_VERSION "26.1.5_logo"
 #define UI_VERSION "26.1.5_logo"
+#define PRODUCT_ID "wordclock-logo"
 
 #define DATA_PIN 4
 #define DEFAULT_BRIGHTNESS 5
