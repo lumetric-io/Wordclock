@@ -4,7 +4,7 @@
 #include "grid_layout.h"
 #include "log.h"
 
-constexpr GridVariant FIRMWARE_DEFAULT_GRID_VARIANT = GridVariant::NL_V4;
+constexpr GridVariant FIRMWARE_DEFAULT_GRID_VARIANT = GridVariant::NL_50x50;
 enum class WordAnimationMode : uint8_t { Classic = 0 };
 
 class DisplaySettings {

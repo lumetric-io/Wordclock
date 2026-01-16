@@ -2,13 +2,11 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <Update.h>
 #include <vector>
 #include <algorithm>
 #include <cstring>
 #include <cctype>
-#include <esp_https_ota.h>
-#include <esp_http_client.h>
-#include <esp_crt_bundle.h>
 #include "fs_compat.h"
 #include "config.h"
 #include "log.h"
@@ -18,6 +16,7 @@
 #include "system_utils.h"
 
 static const char* FS_VERSION_FILE = "/.fs_version"; // marker
+static const char* FS_IMAGE_VERSION_FILE = "/.fs_image_version";
 static const char* UI_FILES[] = {
   "admin.html",
   "changepw.html",
@@ -28,12 +27,6 @@ static const char* UI_FILES[] = {
   "update.html",
 };
 
-struct FileEntry {
-  String path;
-  String url;
-  String sha256; // optioneel
-};
-
 static bool ensureDirs(const String& path) {
   for (size_t i = 1; i < path.length(); ++i) {
     if (path[i] == '/') {
@@ -42,10 +35,6 @@ static bool ensureDirs(const String& path) {
       }
     }
   }
-  return true;
-}
-
-static bool verifySha256(const String& /*expected*/, File& /*f*/) {
   return true;
 }
 
@@ -130,19 +119,28 @@ static void writeFsVersion(const String& v) {
   f.close();
 }
 
+static String readFsImageVersion() {
+  File f = FS_IMPL.open(FS_IMAGE_VERSION_FILE, "r");
+  if (!f) return "";
+  String v = f.readString();
+  f.close();
+  v.trim();
+  return v;
+}
+
+static void writeFsImageVersion(const String& v) {
+  File f = FS_IMPL.open(FS_IMAGE_VERSION_FILE, "w");
+  if (!f) return;
+  f.print(v);
+  f.close();
+}
+
 static String normalizeChannel(String ch) {
   ch.toLowerCase();
   if (ch != "stable" && ch != "early" && ch != "develop") {
     ch = "stable";
   }
   return ch;
-}
-
-static String buildManifestUrl(const String& channel) {
-  String url = String(VERSION_URL_BASE);
-  url += (url.indexOf('?') >= 0) ? "&channel=" : "?channel=";
-  url += channel;
-  return url;
 }
 
 static String buildOta2ChannelUrl(const String& productId, const String& channel) {
@@ -155,40 +153,7 @@ static String buildOta2ChannelUrl(const String& productId, const String& channel
   return url;
 }
 
-static bool fetchManifest(JsonDocument& doc, WiFiClientSecure& client, const String& channel) {
-  HTTPClient http;
-  http.setTimeout(15000);
-  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-  http.addHeader("Accept-Encoding", "identity");
-  const String url = buildManifestUrl(channel);
-  logDebug("OTA manifest URL: " + url);
-  http.begin(client, url);
-  int code = http.GET();
-  if (code != 200) {
-    logError("Failed to GET manifest: HTTP " + String(code));
-    logError("Manifest URL: " + url);
-    http.end();
-    return false;
-  }
-  String payload = http.getString();
-  http.end();
-  if (payload.length() == 0) {
-    logError("Manifest body is empty");
-    return false;
-  }
-  DeserializationError err = deserializeJson(doc, payload);
-  if (err) {
-    logError(String("JSON parse error: ") + err.c_str());
-    logError("Manifest size: " + String(payload.length()));
-    // Log first 200 chars of payload for debugging
-    String preview = payload.substring(0, 200);
-    logError("Payload preview: " + preview);
-    return false;
-  }
-  return true;
-}
-
-static bool fetchJsonByUrl(JsonDocument& doc, WiFiClientSecure& client, const String& url, const char* label) {
+static bool fetchJsonByUrl(JsonDocument& doc, WiFiClient& client, const String& url, const char* label) {
   HTTPClient http;
   http.setTimeout(15000);
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
@@ -221,13 +186,13 @@ static bool fetchJsonByUrl(JsonDocument& doc, WiFiClientSecure& client, const St
   return true;
 }
 
-static bool fetchOta2Channel(JsonDocument& doc, WiFiClientSecure& client, const String& channel) {
+static bool fetchOta2Channel(JsonDocument& doc, WiFiClient& client, const String& channel) {
   const String url = buildOta2ChannelUrl(PRODUCT_ID, channel);
   logDebug("OTA channel URL: " + url);
   return fetchJsonByUrl(doc, client, url, "channel info");
 }
 
-static bool fetchOta2Artifact(JsonDocument& doc, WiFiClientSecure& client, const String& url) {
+static bool fetchOta2Artifact(JsonDocument& doc, WiFiClient& client, const String& url) {
   logDebug("OTA artifact URL: " + url);
   return fetchJsonByUrl(doc, client, url, "artifact manifest");
 }
@@ -271,51 +236,101 @@ static bool isVersionNewer(const String& remote, const String& current) {
   return true;
 }
 
-static bool performHttpsOta(const String& firmwareUrl) {
-  esp_http_client_config_t http_config = {};
-  http_config.url = firmwareUrl.c_str();
-  http_config.crt_bundle_attach = esp_crt_bundle_attach;
-  http_config.timeout_ms = 15000;
-  http_config.keep_alive_enable = true;
-  http_config.skip_cert_common_name_check = true;
+static bool performHttpOta(const String& firmwareUrl, WiFiClient& client) {
+  HTTPClient http;
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  http.setTimeout(15000);
+  if (!http.begin(client, firmwareUrl)) {
+    logError("❌ http.begin failed");
+    return false;
+  }
+  int code = http.GET();
+  if (code != 200) {
+    logError("❌ Firmware download failed: HTTP " + String(code));
+    http.end();
+    return false;
+  }
 
-  esp_https_ota_config_t ota_config = {};
-  ota_config.http_config = &http_config;
+  int contentLength = http.getSize();
+  if (contentLength <= 0) {
+    logError("❌ Invalid firmware size");
+    http.end();
+    return false;
+  }
 
-  esp_err_t ret = esp_https_ota(&ota_config);
-  if (ret != ESP_OK) {
-    logError(String("❌ esp_https_ota failed: ") + esp_err_to_name(ret));
+  if (!Update.begin(contentLength)) {
+    logError("❌ Update.begin() failed");
+    http.end();
+    return false;
+  }
+
+  WiFiClient& stream = http.getStream();
+  size_t written = Update.writeStream(stream);
+  http.end();
+
+  if (written != (size_t)contentLength) {
+    logError("❌ Incomplete write: " + String(written) + "/" + String(contentLength));
+    Update.abort();
+    return false;
+  }
+  if (!Update.end()) {
+    logError("❌ Update.end() failed");
+    return false;
+  }
+  if (!Update.isFinished()) {
+    logError("❌ Update not finished");
     return false;
   }
   return true;
 }
 
-static JsonVariant selectChannelBlock(JsonDocument& doc, const String& requested, String& selected) {
-  selected = requested;
-  JsonVariant channels = doc["channels"];
-  if (channels.is<JsonObject>()) {
-    JsonVariant blk = channels[requested];
-    if (!blk.isNull()) return blk;
-    blk = channels["stable"];
-    if (!blk.isNull()) {
-      selected = "stable";
-      return blk;
-    }
+static bool performFilesystemUpdate(const String& fsUrl, int expectedSize, WiFiClient& client) {
+  HTTPClient http;
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  http.setTimeout(15000);
+  if (!http.begin(client, fsUrl)) {
+    logError("❌ http.begin failed for filesystem update");
+    return false;
   }
-  return JsonVariant(); // empty -> legacy/top-level (keep selected as requested)
-}
+  int code = http.GET();
+  if (code != 200) {
+    logError("❌ Filesystem download failed: HTTP " + String(code));
+    http.end();
+    return false;
+  }
 
-static bool parseFiles(JsonVariantConst jfiles, std::vector<FileEntry>& out) {
-  JsonArrayConst arr = jfiles.as<JsonArrayConst>();
-  if (arr.isNull()) return false;
-  for (JsonObjectConst v : arr) {
-    FileEntry e;
-    e.path = v["path"] | "";
-    e.url  = v["url"]  | "";
-    e.sha256 = v["sha256"] | "";
-    if (e.path.length() && e.url.length()) out.push_back(e);
+  int contentLength = http.getSize();
+  if (expectedSize > 0 && contentLength != expectedSize) {
+    logError("❌ Filesystem size mismatch: " + String(contentLength) + "/" + String(expectedSize));
+    http.end();
+    return false;
   }
-  return true;
+  if (contentLength <= 0) {
+    logError("❌ Invalid filesystem size");
+    http.end();
+    return false;
+  }
+
+  if (!Update.begin(contentLength, U_SPIFFS)) {
+    logError("❌ Update.begin(U_SPIFFS) failed");
+    http.end();
+    return false;
+  }
+
+  WiFiClient& stream = http.getStream();
+  size_t written = Update.writeStream(stream);
+  http.end();
+
+  if (written != (size_t)contentLength) {
+    logError("❌ Filesystem write incomplete: " + String(written) + "/" + String(contentLength));
+    Update.abort();
+    return false;
+  }
+  if (!Update.end(true)) {
+    logError("❌ Filesystem Update.end() failed");
+    return false;
+  }
+  return Update.isFinished();
 }
 
 static bool isHtmlFileHealthy(const char* path) {
@@ -395,75 +410,10 @@ void syncUiFilesFromConfiguredVersion() {
   }
 }
 
-void syncFilesFromManifest() {
-  logInfo("🔍 Checking UI files…");
-  if (!FS_IMPL.begin(true)) {
-    logError("FS mount failed");
-    return;
-  }
-
-  std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure());
-  client->setInsecure();
-
-  String requestedChannel = normalizeChannel(displaySettings.getUpdateChannel());
-
-  JsonDocument doc;
-  if (!fetchManifest(doc, *client, requestedChannel)) return;
-  String selectedChannel;
-  JsonVariant channelBlock = selectChannelBlock(doc, requestedChannel, selectedChannel);
-  if (requestedChannel != selectedChannel) {
-    logDebug(String("Manifest channel fallback: requested ") + requestedChannel + " -> using " + selectedChannel);
-  } else {
-    logDebug(String("Manifest channel: ") + selectedChannel);
-  }
-  if (!channelBlock.isNull() && channelBlock["release_notes"].is<const char*>()) {
-    logDebug(String("Release notes (") + selectedChannel + "): " + channelBlock["release_notes"].as<const char*>());
-  }
-
-  String manifestVersion;
-  if (!channelBlock.isNull()) {
-    if (channelBlock["ui_version"].is<const char*>()) manifestVersion = channelBlock["ui_version"].as<const char*>();
-    else if (channelBlock["version"].is<const char*>()) manifestVersion = channelBlock["version"].as<const char*>();
-  }
-  if (manifestVersion.isEmpty()) {
-    manifestVersion = doc["ui_version"].is<const char*>() ? String(doc["ui_version"].as<const char*>())
-                       : (doc["version"].is<const char*>() ? String(doc["version"].as<const char*>()) : String(""));
-  }
-  const String currentFsVer = readFsVersion();
-
-  if (manifestVersion.length() && manifestVersion == currentFsVer) {
-    if (areUiFilesHealthy()) {
-      logInfo("UI up-to-date (version match).");
-      return;
-    }
-    logWarn("UI version matches but files look invalid; re-syncing.");
-  }
-
-  std::vector<FileEntry> files;
-  JsonVariantConst fileList;
-  if (!channelBlock.isNull() && channelBlock["files"].is<JsonArray>()) {
-    fileList = channelBlock["files"];
-  } else if (doc["files"].is<JsonArray>()) {
-    fileList = doc["files"];
-  }
-
-  if (!fileList.isNull() && parseFiles(fileList, files) && !files.empty()) {
-    bool ok = true;
-    for (const auto& e : files) {
-      if (!downloadToFs(e.url, e.path, *client)) { ok = false; }
-    }
-    if (ok && manifestVersion.length()) writeFsVersion(manifestVersion);
-    logInfo(ok ? "✅ UI files synced." : "⚠️ Some UI files failed.");
-  } else {
-    logInfo("No file list in manifest; skipping UI sync.");
-  }
-}
-
 void checkForFirmwareUpdate() {
   logInfo("🔍 Checking for new firmware...");
 
-  std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure());
-  client->setInsecure();
+  std::unique_ptr<WiFiClient> client(new WiFiClient());
 
   String requestedChannel = normalizeChannel(displaySettings.getUpdateChannel());
 
@@ -473,21 +423,58 @@ void checkForFirmwareUpdate() {
   JsonVariant target = channelDoc["target"];
   if (target.isNull()) {
     logInfo("✅ No firmware update available.");
-    syncFilesFromManifest();
     return;
   }
 
   const String remoteVersion = target["version"] | "";
   const String manifestUrl = target["manifest_url"] | "";
+  const String fsManifestUrl = target["fs_manifest_url"] | "";
   if (manifestUrl.isEmpty()) {
     logError("❌ OTA manifest_url missing");
     return;
   }
 
+  bool fsUpdated = false;
+  if (!fsManifestUrl.isEmpty()) {
+    JsonDocument fsDoc;
+    if (fetchOta2Artifact(fsDoc, *client, fsManifestUrl)) {
+      const String fsType = fsDoc["fs"] | "";
+      const String fsVersion = fsDoc["version"] | "";
+      const int fsSize = fsDoc["filesize"] | 0;
+      const String fsUrl = fsDoc["url"] | "";
+
+      if (fsType != "littlefs") {
+        logWarn("⚠️ FS manifest fs type not supported: " + fsType);
+      } else if (fsUrl.isEmpty()) {
+        logError("❌ FS manifest URL missing");
+      } else {
+        const String currentFsVersion = readFsImageVersion();
+        if (!fsVersion.isEmpty() && fsVersion == currentFsVersion) {
+          logInfo("✅ Filesystem already latest (" + fsVersion + ")");
+        } else {
+          logInfo("⬇️ Updating filesystem (" + fsVersion + ")...");
+          if (performFilesystemUpdate(fsUrl, fsSize, *client)) {
+            if (fsVersion.length()) {
+              writeFsImageVersion(fsVersion);
+            }
+            fsUpdated = true;
+            logInfo("✅ Filesystem updated");
+          } else {
+            logError("❌ Filesystem update failed");
+          }
+        }
+      }
+    }
+  }
+
   logInfo("ℹ️ Remote version: " + remoteVersion);
   if (!isVersionNewer(remoteVersion, FIRMWARE_VERSION)) {
     logInfo("✅ Firmware already latest (" + String(FIRMWARE_VERSION) + ")");
-    syncFilesFromManifest();
+    if (fsUpdated) {
+      logInfo("🔁 Restarting to apply filesystem update...");
+      delay(500);
+      safeRestart();
+    }
     return;
   }
 
@@ -505,7 +492,7 @@ void checkForFirmwareUpdate() {
   }
 
   logInfo("⬇️ Starting firmware update...");
-  if (!performHttpsOta(fwUrl)) {
+  if (!performHttpOta(fwUrl, *client)) {
     return;
   }
 

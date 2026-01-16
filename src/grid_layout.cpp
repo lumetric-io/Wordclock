@@ -3,12 +3,6 @@
 #include <Arduino.h>
 #include <string.h>
 
-#include "grid_variants/nl_v1.h"
-#include "grid_variants/nl_v2.h"
-#include "grid_variants/nl_v3.h"
-#include "grid_variants/nl_v4.h"
-#include "grid_variants/nl_50x50_v1.h"
-#include "grid_variants/nl_50x50_v2.h"
 #include "grid_variants/nl_50x50_v3.h"
 
 namespace {
@@ -63,13 +57,7 @@ uint16_t computeExtraLedCount(const GridVariantData* data) {
 }
 
 static const GridVariantData GRID_VARIANTS[] = {
-  { GridVariant::NL_V1, "NL_V1", "Nederlands V1", "nl", "v1", LED_COUNT_GRID_NL_V1, LED_COUNT_EXTRA_NL_V1, LED_COUNT_TOTAL_NL_V1, LETTER_GRID_NL_V1, WORDS_NL_V1, WORDS_NL_V1_COUNT, EXTRA_MINUTES_NL_V1, EXTRA_MINUTES_NL_V1_COUNT, MinuteLayout::AfterGrid },
-  { GridVariant::NL_V2, "NL_V2", "Nederlands V2", "nl", "v2", LED_COUNT_GRID_NL_V2, LED_COUNT_EXTRA_NL_V2, LED_COUNT_TOTAL_NL_V2, LETTER_GRID_NL_V2, WORDS_NL_V2, WORDS_NL_V2_COUNT, EXTRA_MINUTES_NL_V2, EXTRA_MINUTES_NL_V2_COUNT, MinuteLayout::AfterGrid },
-  { GridVariant::NL_V3, "NL_V3", "Nederlands V3", "nl", "v3", LED_COUNT_GRID_NL_V3, LED_COUNT_EXTRA_NL_V3, LED_COUNT_TOTAL_NL_V3, LETTER_GRID_NL_V3, WORDS_NL_V3, WORDS_NL_V3_COUNT, EXTRA_MINUTES_NL_V3, EXTRA_MINUTES_NL_V3_COUNT, MinuteLayout::AfterGrid },
-  { GridVariant::NL_V4, "NL_V4", "Nederlands V4", "nl", "v4", LED_COUNT_GRID_NL_V4, LED_COUNT_EXTRA_NL_V4, LED_COUNT_TOTAL_NL_V4, LETTER_GRID_NL_V4, WORDS_NL_V4, WORDS_NL_V4_COUNT, EXTRA_MINUTES_NL_V4, EXTRA_MINUTES_NL_V4_COUNT, MinuteLayout::AfterGrid },
-  { GridVariant::NL_50x50_V1, "NL_50x50_V1", "Nederlands 50x50 V1", "nl", "v1", LED_COUNT_GRID_NL_50x50_V1, LED_COUNT_EXTRA_NL_50x50_V1, LED_COUNT_TOTAL_NL_50x50_V1, LETTER_GRID_NL_50x50_V1, WORDS_NL_50x50_V1, WORDS_NL_50x50_V1_COUNT, EXTRA_MINUTES_NL_50x50_V1, EXTRA_MINUTES_NL_50x50_V1_COUNT, MinuteLayout::MixedIntoGrid },
-  { GridVariant::NL_50x50_V2, "NL_50x50_V2", "Nederlands 50x50 V2", "nl", "v2", LED_COUNT_GRID_NL_50x50_V2, LED_COUNT_EXTRA_NL_50x50_V2, LED_COUNT_TOTAL_NL_50x50_V2, LETTER_GRID_NL_50x50_V2, WORDS_NL_50x50_V2, WORDS_NL_50x50_V2_COUNT, EXTRA_MINUTES_NL_50x50_V2, EXTRA_MINUTES_NL_50x50_V2_COUNT, MinuteLayout::AfterGrid },
-  { GridVariant::NL_50x50_V3, "NL_50x50_V3", "Nederlands 50x50 V3", "nl", "v3", LED_COUNT_GRID_NL_50x50_V3, LED_COUNT_EXTRA_NL_50x50_V3, LED_COUNT_TOTAL_NL_50x50_V3, LETTER_GRID_NL_50x50_V3, WORDS_NL_50x50_V3, WORDS_NL_50x50_V3_COUNT, EXTRA_MINUTES_NL_50x50_V3, EXTRA_MINUTES_NL_50x50_V3_COUNT, MinuteLayout::AfterGrid }
+  { GridVariant::NL_50x50, "NL_50x50", "Nederlands 50x50", "nl", "v3", LED_COUNT_GRID_NL_50x50_V3, LED_COUNT_EXTRA_NL_50x50_V3, LED_COUNT_TOTAL_NL_50x50_V3, LETTER_GRID_NL_50x50_V3, WORDS_NL_50x50_V3, WORDS_NL_50x50_V3_COUNT, EXTRA_MINUTES_NL_50x50_V3, EXTRA_MINUTES_NL_50x50_V3_COUNT, MinuteLayout::AfterGrid }
 };
 
 static const GridVariantData* activeVariant = &GRID_VARIANTS[0];
@@ -107,11 +95,11 @@ const GridVariantData* findVariantByKey(const char* key) {
 } // namespace
 
 // Public state
-const char* const* LETTER_GRID = LETTER_GRID_NL_V1;
-const WordPosition* ACTIVE_WORDS = WORDS_NL_V1;
-size_t ACTIVE_WORD_COUNT = WORDS_NL_V1_COUNT;
-const uint16_t* EXTRA_MINUTE_LEDS = EXTRA_MINUTES_NL_V1;
-size_t EXTRA_MINUTE_LED_COUNT = EXTRA_MINUTES_NL_V1_COUNT;
+const char* const* LETTER_GRID = LETTER_GRID_NL_50x50_V3;
+const WordPosition* ACTIVE_WORDS = WORDS_NL_50x50_V3;
+size_t ACTIVE_WORD_COUNT = WORDS_NL_50x50_V3_COUNT;
+const uint16_t* EXTRA_MINUTE_LEDS = EXTRA_MINUTES_NL_50x50_V3;
+size_t EXTRA_MINUTE_LED_COUNT = EXTRA_MINUTES_NL_50x50_V3_COUNT;
 
 GridVariant getActiveGridVariant() {
   return activeVariant->variant;

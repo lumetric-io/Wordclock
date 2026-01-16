@@ -8,18 +8,12 @@ const int GRID_WIDTH = 11;
 const int GRID_HEIGHT = 11;
 
 enum class GridVariant : uint8_t {
-  NL_V1 = 0,
-  NL_V2,
-  NL_V3,
-  NL_V4,
-  NL_50x50_V1,
-  NL_50x50_V2,
-  NL_50x50_V3,
+  NL_50x50 = 0,
 };
 
 struct GridVariantInfo {
   GridVariant variant;
-  const char* key;       // identifier like "NL_V1"
+  const char* key;       // identifier like "NL_50x50"
   const char* label;     // human-readable name for UI
   const char* language;  // ISO language code, e.g. "nl"
   const char* version;   // version string, e.g. "v1"

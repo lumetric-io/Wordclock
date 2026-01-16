@@ -1218,13 +1218,6 @@ void setupWebRoutes() {
     checkForFirmwareUpdate();
   });
 
-  server.on("/syncUI", HTTP_POST, []() {
-    if (!ensureAdminAuth()) return;
-    logInfo("🗂️ UI sync requested by admin");
-    syncFilesFromManifest();
-    server.send(200, "text/plain", "UI sync started");
-  });
-
   server.on("/getBrightness", []() {
     if (!ensureUiAuth()) {
       logWarn("[API] /getBrightness: Auth failed");
