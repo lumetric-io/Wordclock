@@ -23,7 +23,11 @@
 #define UI_VERSION "26.2.2"
 #endif
 #ifndef PRODUCT_ID
-#define PRODUCT_ID "wordclock-logo"
+#define PRODUCT_ID "wordclock-legacy"
+#endif
+
+#ifndef SUPPORT_OTA_V2
+#define SUPPORT_OTA_V2 0
 #endif
 
 #ifndef SUPPORT_MINUTE_LEDS

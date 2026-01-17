@@ -5,3 +5,4 @@
 #define UI_VERSION "ui-26.2.3-logo"
 #define PRODUCT_VARIANT_LOGO 1
 #define DATA_PIN 4
+#define SUPPORT_OTA_V2 1
