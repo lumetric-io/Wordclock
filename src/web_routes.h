@@ -1215,16 +1215,14 @@ void setupWebRoutes() {
     checkForFirmwareUpdate();
   });
 
+#if SUPPORT_OTA_V2 == 0
   server.on("/syncUI", HTTP_POST, []() {
     if (!ensureAdminAuth()) return;
-#if SUPPORT_OTA_V2
-    server.send(400, "text/plain", "UI sync is legacy-only");
-    return;
-#endif
     logInfo("🗂️ UI sync requested by admin");
     syncFilesFromManifest();
     server.send(200, "text/plain", "UI sync started");
   });
+#endif
 
   server.on("/getBrightness", []() {
     if (!ensureUiAuth()) {
