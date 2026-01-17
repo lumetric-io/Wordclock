@@ -301,7 +301,8 @@ void mqtt_publish_state(bool force) {
   mqtt.publish(tUpdateAvailable.c_str(), "unknown", true); // placeholder until a remote check runs
 
   mqtt.publish(tVersion.c_str(), FIRMWARE_VERSION, true);
-  mqtt.publish(tUiVersion.c_str(), UI_VERSION, true);
+  String uiVersion = getUiVersion();
+  mqtt.publish(tUiVersion.c_str(), uiVersion.c_str(), true);
   mqtt.publish(tIp.c_str(), WiFi.localIP().toString().c_str(), true);
   char rssi[16]; snprintf(rssi, sizeof(rssi), "%d", WiFi.RSSI()); mqtt.publish(tRssi.c_str(), rssi, true);
   char heap[24]; snprintf(heap, sizeof(heap), "%u", (unsigned)esp_get_free_heap_size()); mqtt.publish(tHeap.c_str(), heap, true);

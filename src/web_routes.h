@@ -871,11 +871,12 @@ void setupWebRoutes() {
     if (!ensureUiAuth()) return;
     JsonDocument doc;
     doc["firmware"] = FIRMWARE_VERSION;
-    doc["ui"] = UI_VERSION;
+    doc["ui"] = getUiVersion();
     doc["git_sha"] = BUILD_GIT_SHA;
     doc["git_branch"] = BUILD_GIT_BRANCH;
     doc["build_time_utc"] = BUILD_TIME_UTC;
     doc["environment"] = BUILD_ENV_NAME;
+    doc["ui_sync_supported"] = (SUPPORT_OTA_V2 == 0);
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);
@@ -1216,6 +1217,10 @@ void setupWebRoutes() {
 
   server.on("/syncUI", HTTP_POST, []() {
     if (!ensureAdminAuth()) return;
+#if SUPPORT_OTA_V2
+    server.send(400, "text/plain", "UI sync is legacy-only");
+    return;
+#endif
     logInfo("🗂️ UI sync requested by admin");
     syncFilesFromManifest();
     server.send(200, "text/plain", "UI sync started");
@@ -1266,7 +1271,7 @@ void setupWebRoutes() {
       logWarn("[API] /uiversion: Auth failed");
       return;
     }
-    server.send(200, "text/plain", UI_VERSION);
+    server.send(200, "text/plain", getUiVersion());
   });
 
   // Sell mode endpoints (force 10:47 display)

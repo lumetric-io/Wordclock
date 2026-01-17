@@ -32,7 +32,7 @@
         <a class="py-2 rounded bg-gray-200 text-gray-800 text-center hover:bg-gray-300" href="/update.html">🧰 Update page</a>
       </div>
 
-      <div class="mt-4">
+      <div class="mt-4" id="syncUiSection">
         <button id="syncUiBtn" class="py-2 px-3 rounded bg-indigo-600 text-white hover:bg-indigo-700">🗂️ Sync UI files</button>
         <p id="syncUiMsg" class="text-xs text-gray-600 mt-2"></p>
       </div>
@@ -274,6 +274,10 @@
         set('buildBranch', info.git_branch);
         set('buildTime', info.build_time_utc);
         set('buildEnv', info.environment);
+        const syncSection = document.getElementById('syncUiSection');
+        if (syncSection && info.ui_sync_supported === false) {
+          syncSection.classList.add('hidden');
+        }
         if (buildStatus) buildStatus.textContent = 'Last updated just now.';
       } catch (err) {
         if (buildStatus) buildStatus.textContent = 'Failed to load build info (' + err.message + ')';

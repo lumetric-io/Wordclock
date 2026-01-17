@@ -15,8 +15,10 @@
 #include "display_settings.h"
 #include "system_utils.h"
 
-static const char* FS_VERSION_FILE = "/.fs_version"; // UI sync marker
 static const char* FS_IMAGE_VERSION_FILE = "/.fs_image_version";
+
+#if SUPPORT_OTA_V2 == 0
+static const char* FS_VERSION_FILE = "/.fs_version"; // UI sync marker
 static const char* UI_FILES[] = {
   "admin.html",
   "changepw.html",
@@ -128,6 +130,7 @@ static void writeFsVersion(const String& v) {
   f.print(v);
   f.close();
 }
+#endif
 
 static String readFsImageVersion() {
   File f = FS_IMPL.open(FS_IMAGE_VERSION_FILE, "r");
@@ -145,6 +148,22 @@ static void writeFsImageVersion(const String& v) {
   f.close();
 }
 
+String getUiVersion() {
+#if SUPPORT_OTA_V2
+  if (FS_IMPL.begin(false)) {
+    String v = readFsImageVersion();
+    if (v.length()) return v;
+  }
+  return UI_VERSION;
+#else
+  if (FS_IMPL.begin(false)) {
+    String v = readFsVersion();
+    if (v.length()) return v;
+  }
+  return UI_VERSION;
+#endif
+}
+
 static String normalizeChannel(String ch) {
   ch.toLowerCase();
   if (ch != "stable" && ch != "early" && ch != "develop") {
@@ -153,6 +172,7 @@ static String normalizeChannel(String ch) {
   return ch;
 }
 
+#if SUPPORT_OTA_V2 == 0
 static String buildManifestUrl(const String& channel) {
   String url = String(VERSION_URL_BASE);
   url += (url.indexOf('?') >= 0) ? "&channel=" : "?channel=";
@@ -192,6 +212,8 @@ static bool fetchManifest(JsonDocument& doc, WiFiClientSecure& client, const Str
   }
   return true;
 }
+
+#endif
 
 static String buildOta2ChannelUrl(const String& productId, const String& channel) {
   String url = String(OTA_BASE_URL);
@@ -383,6 +405,7 @@ static bool performFilesystemUpdate(const String& fsUrl, int expectedSize, WiFiC
   return Update.isFinished();
 }
 
+#if SUPPORT_OTA_V2 == 0
 static JsonVariant selectChannelBlock(JsonDocument& doc, const String& requested, String& selected) {
   selected = requested;
   JsonVariant channels = doc["channels"];
@@ -448,6 +471,10 @@ static bool areUiFilesHealthy() {
 }
 
 void syncUiFilesFromConfiguredVersion() {
+#if SUPPORT_OTA_V2
+  logInfo("UI sync is legacy-only; skipping (OTA2 enabled).");
+  return;
+#endif
   logInfo("🔍 Checking UI files (configured version)...");
   if (!FS_IMPL.begin(true)) {
     logError("FS mount failed");
@@ -489,6 +516,10 @@ void syncUiFilesFromConfiguredVersion() {
 }
 
 void syncFilesFromManifest() {
+#if SUPPORT_OTA_V2
+  logInfo("UI sync is legacy-only; skipping (OTA2 enabled).");
+  return;
+#endif
   logInfo("🔍 Checking UI files…");
   if (!FS_IMPL.begin(true)) {
     logError("FS mount failed");
@@ -661,6 +692,8 @@ static void checkForFirmwareUpdateLegacy() {
   }
 }
 
+#endif
+
 static void checkForFirmwareUpdateV2() {
   logInfo("🔍 Checking for new firmware...");
 
@@ -674,7 +707,9 @@ static void checkForFirmwareUpdateV2() {
   JsonVariant target = channelDoc["target"];
   if (target.isNull()) {
     logInfo("✅ No firmware update available.");
+#if SUPPORT_OTA_V2 == 0
     syncFilesFromManifest();
+#endif
     return;
   }
 
@@ -727,7 +762,9 @@ static void checkForFirmwareUpdateV2() {
       delay(500);
       safeRestart();
     } else {
+#if SUPPORT_OTA_V2 == 0
       syncFilesFromManifest();
+#endif
     }
     return;
   }
