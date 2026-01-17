@@ -50,6 +50,17 @@
         </div>
       </div>
       <input type="range" min="0" max="255" id="brightnessSlider" class="w-full">
+      <div class="mt-3 hidden" id="logoBrightnessSection">
+        <div class="flex items-center gap-3 mb-2">
+          <label class="text-sm">Logo brightness: <span id="logoBrightnessValue" class="font-mono">-</span></label>
+          <input type="number" id="logoBrightnessInput" min="0" max="255" step="1" class="w-20 border rounded p-1 text-sm" />
+          <div class="flex items-center gap-1">
+            <button id="logoBrightnessDec" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">−10</button>
+            <button id="logoBrightnessInc" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+10</button>
+          </div>
+        </div>
+        <input type="range" min="0" max="255" id="logoBrightness" class="w-full">
+      </div>
     </section>
 
     <section class="bg-white p-4 rounded-2xl shadow mb-4">
@@ -173,6 +184,19 @@
       <h2 class="text-xl font-semibold mb-2">Grid layout</h2>
       <select id="gridVariantPublic" class="w-full border rounded p-2 text-sm"></select>
       <p class="text-xs text-gray-600 mt-2" id="gridVariantStatusPublic"></p>
+    </section>
+
+    <section class="bg-white p-4 rounded-2xl shadow mb-4 hidden" id="logoLedsSection">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xl font-semibold">Logo LEDs</h2>
+        <span id="logoStatus" class="text-xs text-gray-500">-</span>
+      </div>
+      <div id="logoGrid" class="grid gap-2 mb-3"></div>
+      <div class="flex items-center gap-3">
+        <input type="color" id="logoAllColor" class="h-10 w-16 p-0 border rounded">
+        <button id="logoFillAll" class="px-3 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 text-sm">Vul alles</button>
+        <button id="logoApply" class="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm">Opslaan</button>
+      </div>
     </section>
 
     <section class="bg-white p-4 rounded-2xl shadow">
@@ -347,6 +371,17 @@
 
     // Initialize DataLoader
     const dataLoader = new DataLoader();
+    let isLogoProduct = false;
+    const logoBrightnessSection = document.getElementById('logoBrightnessSection');
+    const logoLedsSection = document.getElementById('logoLedsSection');
+    const setLogoSectionsVisible = (visible) => {
+      if (logoBrightnessSection) {
+        logoBrightnessSection.classList.toggle('hidden', !visible);
+      }
+      if (logoLedsSection) {
+        logoLedsSection.classList.toggle('hidden', !visible);
+      }
+    };
 
     const formatVariantLabel = (variant) => {
       if (!variant) return '';
@@ -566,6 +601,165 @@
         sendBrightnessDebounced(v);
       });
     }
+
+    let logoControlsInitialized = false;
+    const initLogoControls = () => {
+      if (logoControlsInitialized || !isLogoProduct) return;
+      logoControlsInitialized = true;
+
+      const DEFAULT_LOGO_COUNT = 50;
+      const logoGrid = document.getElementById('logoGrid');
+      const logoPickers = [];
+      const syncLogoGrid = (count) => {
+        if (!logoGrid) return;
+        const target = Math.max(1, Math.min(500, parseInt(count, 10) || DEFAULT_LOGO_COUNT));
+        while (logoPickers.length < target) {
+          const input = document.createElement('input');
+          input.type = 'color';
+          input.className = 'w-full h-10 p-0 border rounded';
+          input.value = '#000000';
+          logoGrid.appendChild(input);
+          logoPickers.push(input);
+        }
+        while (logoPickers.length > target) {
+          const input = logoPickers.pop();
+          if (input && input.parentElement === logoGrid) {
+            logoGrid.removeChild(input);
+          }
+        }
+        const cols = Math.max(1, Math.min(10, Math.ceil(target / 5)));
+        logoGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+      };
+      if (logoGrid) {
+        syncLogoGrid(DEFAULT_LOGO_COUNT);
+      }
+      const logoBrightness = document.getElementById('logoBrightness');
+      const logoBrightnessInput = document.getElementById('logoBrightnessInput');
+      const logoBrightnessDec = document.getElementById('logoBrightnessDec');
+      const logoBrightnessInc = document.getElementById('logoBrightnessInc');
+      const logoBrightnessValue = document.getElementById('logoBrightnessValue');
+      const logoStatus = document.getElementById('logoStatus');
+      let logoBrightnessTimer = null;
+      const sendLogoBrightnessDebounced = (val) => {
+        if (logoBrightnessTimer) clearTimeout(logoBrightnessTimer);
+        logoBrightnessTimer = setTimeout(() => {
+          const level = parseInt(val, 10) || 0;
+          fetch('/logo/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ brightness: Math.max(0, Math.min(255, level)) })
+          });
+          logoBrightnessTimer = null;
+        }, 200);
+      };
+      const setLogoStatus = (msg, error) => {
+        if (!logoStatus) return;
+        logoStatus.textContent = msg;
+        logoStatus.className = 'text-xs ' + (error ? 'text-red-600' : 'text-gray-600');
+      };
+      const renderLogoState = (data) => {
+        syncLogoGrid(data && data.count);
+        if (logoBrightness && data.brightness !== undefined) {
+          logoBrightness.value = data.brightness;
+          if (logoBrightnessValue) logoBrightnessValue.textContent = data.brightness;
+          if (logoBrightnessInput) logoBrightnessInput.value = data.brightness;
+        }
+        if (Array.isArray(data.colors)) {
+          data.colors.forEach((hex, idx) => {
+            if (idx < logoPickers.length && typeof hex === 'string' && hex.length === 6) {
+              logoPickers[idx].value = '#' + hex;
+            }
+          });
+        }
+      };
+      if (logoBrightness) {
+        logoBrightness.addEventListener('input', () => {
+          if (logoBrightnessValue) logoBrightnessValue.textContent = logoBrightness.value;
+          if (logoBrightnessInput) logoBrightnessInput.value = logoBrightness.value;
+          sendLogoBrightnessDebounced(logoBrightness.value);
+        });
+      }
+      if (logoBrightnessInput) {
+        logoBrightnessInput.addEventListener('change', () => {
+          let v = parseInt(logoBrightnessInput.value, 10);
+          if (isNaN(v)) v = 0; v = Math.max(0, Math.min(255, v));
+          logoBrightnessInput.value = v;
+          if (logoBrightness) logoBrightness.value = v;
+          if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+          sendLogoBrightnessDebounced(v);
+        });
+      }
+      if (logoBrightnessDec) {
+        logoBrightnessDec.addEventListener('click', () => {
+          let v = parseInt(logoBrightness ? logoBrightness.value : '0', 10) - 10;
+          v = Math.max(0, v);
+          if (logoBrightness) logoBrightness.value = v;
+          if (logoBrightnessInput) logoBrightnessInput.value = v;
+          if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+          sendLogoBrightnessDebounced(v);
+        });
+      }
+      if (logoBrightnessInc) {
+        logoBrightnessInc.addEventListener('click', () => {
+          let v = parseInt(logoBrightness ? logoBrightness.value : '0', 10) + 10;
+          v = Math.min(255, v);
+          if (logoBrightness) logoBrightness.value = v;
+          if (logoBrightnessInput) logoBrightnessInput.value = v;
+          if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+          sendLogoBrightnessDebounced(v);
+        });
+      }
+      const loadLogoState = async () => {
+        if (!logoGrid) return;
+        setLogoStatus('Laden…');
+        try {
+          const res = await fetch('/logo/state');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          renderLogoState(data);
+          setLogoStatus('Opgeslagen');
+        } catch (err) {
+          setLogoStatus('Laden mislukt', true);
+        }
+      };
+      if (logoGrid) {
+        dataLoader.register('logoState', loadLogoState, { priority: 5 });
+      }
+      const saveLogoState = async () => {
+        if (!logoGrid) return;
+        setLogoStatus('Opslaan…');
+        const payload = {
+          brightness: parseInt(logoBrightness ? logoBrightness.value : '0', 10) || 0,
+          colors: logoPickers.map((p) => (p.value || '#000000').replace('#', '').toUpperCase())
+        };
+        try {
+          const res = await fetch('/logo/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          renderLogoState(data);
+          setLogoStatus('Opgeslagen');
+        } catch (err) {
+          setLogoStatus('Opslaan mislukt', true);
+        }
+      };
+      const logoApplyBtn = document.getElementById('logoApply');
+      if (logoApplyBtn) {
+        logoApplyBtn.addEventListener('click', saveLogoState);
+      }
+      const logoFillAll = document.getElementById('logoFillAll');
+      const logoAllColor = document.getElementById('logoAllColor');
+      if (logoFillAll) {
+        logoFillAll.addEventListener('click', () => {
+          if (!logoAllColor) return;
+          const val = logoAllColor.value || '#000000';
+          logoPickers.forEach((p) => { p.value = val; });
+        });
+      }
+    };
 
     const nightModeEnabled = document.getElementById('nightModeEnabled');
     const nightModeEffect = document.getElementById('nightModeEffect');
@@ -1119,6 +1313,12 @@
           if (buildRes.ok) {
             const buildInfo = await buildRes.json();
             buildBranch = buildInfo.git_branch || 'unknown';
+            const env = (buildInfo.environment || '').toLowerCase();
+            isLogoProduct = env.indexOf('wordclock-logo') !== -1;
+            setLogoSectionsVisible(isLogoProduct);
+            if (isLogoProduct) {
+              initLogoControls();
+            }
             
             // Set intervals based on branch
             // dev branch: logs every 5 seconds, status every 30 seconds

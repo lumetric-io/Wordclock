@@ -14,6 +14,9 @@
 #include "secrets.h"
 #include "sequence_controller.h"
 #include "led_state.h"
+#if defined(PRODUCT_VARIANT_LOGO)
+#include "logo_leds.h"
+#endif
 #include "log.h"
 #include "time_mapper.h"
 #include "ota_updater.h"
@@ -138,6 +141,50 @@ static void sendNightModeConfig() {
   serializeJson(doc, out);
   server.send(200, "application/json", out);
 }
+
+#if defined(PRODUCT_VARIANT_LOGO)
+static bool parseHexColor(String hex, uint8_t& r, uint8_t& g, uint8_t& b) {
+  String filtered;
+  filtered.reserve(hex.length());
+  for (size_t i = 0; i < hex.length(); ++i) {
+    char c = hex.charAt(i);
+    if (isxdigit(static_cast<unsigned char>(c))) {
+      filtered += static_cast<char>(toupper(static_cast<unsigned char>(c)));
+    }
+  }
+  if (filtered.length() != 6) return false;
+  long val = strtol(filtered.c_str(), nullptr, 16);
+  r = (val >> 16) & 0xFF;
+  g = (val >> 8) & 0xFF;
+  b =  val       & 0xFF;
+  return true;
+}
+
+static void refreshCurrentTimeDisplay() {
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    std::vector<uint16_t> indices = get_led_indices_for_time(&timeinfo);
+    showLeds(indices);
+  }
+}
+
+static void sendLogoState() {
+  JsonDocument doc;
+  doc["brightness"] = logoLeds.getBrightness();
+  doc["count"] = LOGO_LED_COUNT;
+  doc["start"] = getLogoStartIndex();
+  JsonArray arr = doc["colors"].to<JsonArray>();
+  const LogoLedColor* colors = logoLeds.getColors();
+  for (uint16_t i = 0; i < LOGO_LED_COUNT; ++i) {
+    char buf[7];
+    snprintf(buf, sizeof(buf), "%02X%02X%02X", colors[i].r, colors[i].g, colors[i].b);
+    arr.add(String(buf));
+  }
+  String out;
+  serializeJson(doc, out);
+  server.send(200, "application/json", out);
+}
+#endif
 
 // Clear persistent settings (factory reset helper)
 static void performFactoryReset() {
@@ -1253,6 +1300,69 @@ void setupWebRoutes() {
   
     server.send(200, "text/plain", "OK");
   });
+
+#if defined(PRODUCT_VARIANT_LOGO)
+  server.on("/logo/state", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    sendLogoState();
+  });
+
+  server.on("/logo/state", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    if (!server.hasArg("plain")) {
+      server.send(400, "text/plain", "Missing body");
+      return;
+    }
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, server.arg("plain"));
+    if (err) {
+      server.send(400, "text/plain", "Invalid JSON");
+      return;
+    }
+
+    bool updated = false;
+    if (doc["brightness"].is<int>()) {
+      int br = doc["brightness"].as<int>();
+      br = constrain(br, 0, 255);
+      logoLeds.setBrightness(static_cast<uint8_t>(br));
+      updated = true;
+    }
+
+    if (doc["all"].is<const char*>() || doc["all"].is<String>()) {
+      String hex = doc["all"].as<String>();
+      uint8_t r = 0, g = 0, b = 0;
+      if (!parseHexColor(hex, r, g, b)) {
+        server.send(400, "text/plain", "Invalid all-color value");
+        return;
+      }
+      logoLeds.setAll(r, g, b);
+      updated = true;
+    }
+
+    if (doc["colors"].is<JsonArray>()) {
+      JsonArray arr = doc["colors"].as<JsonArray>();
+      if (!arr || arr.size() != LOGO_LED_COUNT) {
+        server.send(400, "text/plain", String("colors array must contain ") + LOGO_LED_COUNT + " hex strings");
+        return;
+      }
+      for (uint16_t i = 0; i < LOGO_LED_COUNT; ++i) {
+        uint8_t r = 0, g = 0, b = 0;
+        if (!parseHexColor(arr[i].as<String>(), r, g, b)) {
+          server.send(400, "text/plain", "Invalid color entry");
+          return;
+        }
+        logoLeds.setColor(i, r, g, b, false);
+      }
+      logoLeds.flushColors();
+      updated = true;
+    }
+
+    if (updated) {
+      refreshCurrentTimeDisplay();
+    }
+    sendLogoState();
+  });
+#endif
 
   // Expose firmware version
   server.on("/version", []() {
