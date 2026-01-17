@@ -204,10 +204,12 @@ void ClockDisplay::buildAnimationFrames(const DisplayTime& dt, unsigned long now
         
         // Add extra minute LEDs to final frame
         if (!animation_.frames.empty() && dt.extra > 0) {
+#if SUPPORT_MINUTE_LEDS
             auto& finalFrame = animation_.frames.back();
-            for (int i = 0; i < dt.extra && i < 4; ++i) {
+            for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(EXTRA_MINUTE_LED_COUNT); ++i) {
                 finalFrame.push_back(EXTRA_MINUTE_LEDS[i]);
             }
+#endif
         }
         
         if (!animation_.frames.empty()) {
@@ -305,9 +307,11 @@ void ClockDisplay::displayStaticTime(const DisplayTime& dt) {
     }
     
     // Add extra minute LEDs
-    for (int i = 0; i < dt.extra && i < 4; ++i) {
+#if SUPPORT_MINUTE_LEDS
+    for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(EXTRA_MINUTE_LED_COUNT); ++i) {
         indices.push_back(EXTRA_MINUTE_LEDS[i]);
     }
+#endif
     
     showLeds(indices);
     
@@ -396,5 +400,4 @@ void ClockDisplay::buildClassicFrames(const std::vector<WordSegment>& segs,
         frames.push_back(cumulative);
     }
 }
-
 

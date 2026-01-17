@@ -26,7 +26,13 @@
 #define PRODUCT_ID "wordclock-logo"
 #endif
 
+#ifndef SUPPORT_MINUTE_LEDS
+#define SUPPORT_MINUTE_LEDS 1
+#endif
+
+#ifndef DATA_PIN
 #define DATA_PIN 4
+#endif
 #define DEFAULT_BRIGHTNESS 5
 
 #define CLOCK_NAME "Wordclock"

@@ -1127,13 +1127,13 @@ void setupWebRoutes() {
     }
   );  
 
-  // Separate endpoint for SPIFFS (UI) updates
+  // Separate endpoint for filesystem (UI) updates
   server.on(
-    "/uploadSpiffs",
+    "/uploadFs",
     HTTP_POST,
     []() {
       if (!ensureUiAuth()) return;
-      server.send(200, "text/plain", Update.hasError() ? "SPIFFS update failed" : "SPIFFS update successful. Rebooting...");
+      server.send(200, "text/plain", Update.hasError() ? "Filesystem update failed" : "Filesystem update successful. Rebooting...");
       if (!Update.hasError()) {
         delay(1000);
         safeRestart();
@@ -1143,7 +1143,7 @@ void setupWebRoutes() {
       if (!ensureUiAuth()) return;
       HTTPUpload& upload = server.upload();
       if (upload.status == UPLOAD_FILE_START) {
-        logInfo("📂 SPIFFS upload started: " + upload.filename);
+        logInfo("📂 Filesystem upload started: " + upload.filename);
         if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
           logError("❌ Update.begin(U_SPIFFS) failed");
           Update.printError(Serial);
@@ -1151,14 +1151,53 @@ void setupWebRoutes() {
       } else if (upload.status == UPLOAD_FILE_WRITE) {
         size_t written = Update.write(upload.buf, upload.currentSize);
         if (written != upload.currentSize) {
-          logError("❌ Error writing chunk (SPIFFS)");
+          logError("❌ Error writing chunk (filesystem)");
           Update.printError(Serial);
         } else {
-          logDebug("✏️ SPIFFS written: " + String(written) + " bytes");
+          logDebug("✏️ Filesystem written: " + String(written) + " bytes");
         }
       } else if (upload.status == UPLOAD_FILE_END) {
-        logInfo("📥 SPIFFS upload completed");
-        logDebug("SPIFFS total " + String(Update.size()) + " bytes");
+        logInfo("📥 Filesystem upload completed");
+        logDebug("Filesystem total " + String(Update.size()) + " bytes");
+        if (!Update.end(true)) {
+          logError("❌ Update.end(U_SPIFFS) failed");
+          Update.printError(Serial);
+        }
+      }
+    }
+  );
+
+  server.on(
+    "/uploadSpiffs",
+    HTTP_POST,
+    []() {
+      if (!ensureUiAuth()) return;
+      server.send(200, "text/plain", Update.hasError() ? "Filesystem update failed" : "Filesystem update successful. Rebooting...");
+      if (!Update.hasError()) {
+        delay(1000);
+        safeRestart();
+      }
+    },
+    []() {
+      if (!ensureUiAuth()) return;
+      HTTPUpload& upload = server.upload();
+      if (upload.status == UPLOAD_FILE_START) {
+        logInfo("📂 Filesystem upload started: " + upload.filename);
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
+          logError("❌ Update.begin(U_SPIFFS) failed");
+          Update.printError(Serial);
+        }
+      } else if (upload.status == UPLOAD_FILE_WRITE) {
+        size_t written = Update.write(upload.buf, upload.currentSize);
+        if (written != upload.currentSize) {
+          logError("❌ Error writing chunk (filesystem)");
+          Update.printError(Serial);
+        } else {
+          logDebug("✏️ Filesystem written: " + String(written) + " bytes");
+        }
+      } else if (upload.status == UPLOAD_FILE_END) {
+        logInfo("📥 Filesystem upload completed");
+        logDebug("Filesystem total " + String(Update.size()) + " bytes");
         if (!Update.end(true)) {
           logError("❌ Update.end(U_SPIFFS) failed");
           Update.printError(Serial);

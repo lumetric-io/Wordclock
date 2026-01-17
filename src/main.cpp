@@ -101,12 +101,12 @@ void setup() {
   setupState.begin(hasLegacyConfig);
   nightMode.begin();
 
-  // Mount SPIFFS filesystem
+  // Mount filesystem (LittleFS)
   if (!FS_IMPL.begin(true)) {
-  logError("SPIFFS mount failed.");
+    logError("LittleFS mount failed.");
   } else {
-  logDebug("SPIFFS loaded successfully.");
-  logEnableFileSink();
+    logDebug("LittleFS loaded successfully.");
+    logEnableFileSink();
   }
 
   bool wifiConnected = isWiFiConnected();
