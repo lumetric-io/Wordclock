@@ -116,7 +116,7 @@ void setup() {
     initMqtt();
     g_mqttInitialized = true;
 #if SUPPORT_OTA_V2 == 0
-  syncUiFilesFromConfiguredVersion();
+    syncFilesFromManifest();
 #endif
     g_uiSyncHandled = true;
     bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
@@ -158,7 +158,7 @@ void loop() {
   }
   if (isWiFiConnected() && !g_uiSyncHandled) {
 #if SUPPORT_OTA_V2 == 0
-  syncUiFilesFromConfiguredVersion();
+    syncFilesFromManifest();
 #endif
     g_uiSyncHandled = true;
   }
