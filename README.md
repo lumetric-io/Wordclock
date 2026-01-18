@@ -111,7 +111,7 @@ See [LED_MAPPING.md](docs/LED_MAPPING.md) for detailed grid layouts.
 
 ## Firmware Options
 
-- **Pre-built binary**: Each tagged release publishes `wordclock-vX.Y.bin` plus a `firmware.json` manifest that OTA clients consume.
+- **Pre-built binary**: Each tagged release publishes `wordclock-<product>-<version>.bin` plus a `firmware.json` manifest that OTA clients consume.
 - **Local build**: Use PlatformIO (`platformio run -t upload`) after cloning the repository and configuring secrets (see below).
 - **OTA bundles**: Static dashboard assets live under `data/`; they are uploaded with `platformio run -t uploadfs` or via the web-based upgrader.
 
