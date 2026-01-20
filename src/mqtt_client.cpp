@@ -57,9 +57,11 @@ static unsigned long lastStateAt = 0;
 static const unsigned long STATE_INTERVAL_MS = 30000; // 30s
 static const unsigned long RECONNECT_DELAY_MIN_MS = 2000;
 static const unsigned long RECONNECT_DELAY_MAX_MS = 60000;
+static const unsigned long RECONNECT_PAUSED_RETRY_MS = 300000;
 static unsigned long reconnectDelayMs = RECONNECT_DELAY_MIN_MS;
 static uint8_t reconnectAttempts = 0;
 static bool reconnectAborted = false;
+static unsigned long lastPausedRetryMs = 0;
 
 static void buildTopics() {
   base = g_mqttCfg.baseTopic;
@@ -586,7 +588,19 @@ void mqtt_loop() {
     return;
   }
   mqttConfiguredLogged = false;
-  if (reconnectAborted) return;
+  if (reconnectAborted) {
+    unsigned long now = millis();
+    if (lastPausedRetryMs == 0 || now - lastPausedRetryMs >= RECONNECT_PAUSED_RETRY_MS) {
+      logInfo("🔄 MQTT retry after paused backoff");
+      reconnectAborted = false;
+      reconnectDelayMs = RECONNECT_DELAY_MIN_MS;
+      reconnectAttempts = 0;
+      lastReconnectAttempt = 0;
+      lastPausedRetryMs = now;
+    } else {
+      return;
+    }
+  }
 
   if (!mqtt.connected()) {
     unsigned long now = millis();
@@ -609,6 +623,7 @@ void mqtt_loop() {
                           String(". Will retry on network recovery, config change, or manual reconnect.");
           logWarn(errMsg);
           reconnectAborted = true;
+          lastPausedRetryMs = millis();
           // Note: reconnectAborted will be cleared on:
           // 1. Successful connection (mqtt_connect success path)
           // 2. Configuration change (mqtt_apply_settings)
