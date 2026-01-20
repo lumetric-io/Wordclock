@@ -51,7 +51,9 @@ static volatile bool g_otaTaskRunning = false;
 static void otaUpdateTask(void* params) {
   (void)params;
   logInfo("🧵 OTA update task started");
+  setLedsSuspended(true);
   checkForFirmwareUpdate();
+  setLedsSuspended(false);
   g_otaTaskRunning = false;
   g_otaTaskHandle = nullptr;
   logInfo("🧵 OTA update task finished");

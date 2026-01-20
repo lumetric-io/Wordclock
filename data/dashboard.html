@@ -932,6 +932,32 @@
     const updateStatusEl = document.getElementById('updateStatus');
     const updateSpinner = document.getElementById('updateSpinner');
     if (checkBtn) {
+      const waitForReboot = async () => {
+        const start = Date.now();
+        const maxMs = 120000;
+        const noRebootMaxMs = 15000;
+        let sawOffline = false;
+        while (Date.now() - start < maxMs) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          try {
+            const res = await fetch('/version', { cache: 'no-store' });
+            if (res.ok) {
+              if (sawOffline) {
+                location.reload();
+                return true;
+              }
+              if (!sawOffline && Date.now() - start > noRebootMaxMs) {
+                return false;
+              }
+            } else {
+              sawOffline = true;
+            }
+          } catch (e) {
+            sawOffline = true;
+          }
+        }
+        return false;
+      };
       checkBtn.addEventListener('click', async () => {
         updateStatusEl.textContent = 'Checking for updates...';
         if (updateSpinner) updateSpinner.classList.remove('hidden');
@@ -941,7 +967,11 @@
           const r = await fetch('/checkForUpdate');
           if (r.ok) {
             updateStatusEl.textContent = 'Update started (if available).';
-            setTimeout(() => location.reload(), 10000);
+            const rebooted = await waitForReboot();
+            if (!rebooted) {
+              updateStatusEl.textContent = 'No reboot detected; update may not be available.';
+              if (updateSpinner) updateSpinner.classList.add('hidden');
+            }
           } else {
             updateStatusEl.textContent = 'Update check failed';
             if (updateSpinner) updateSpinner.classList.add('hidden');

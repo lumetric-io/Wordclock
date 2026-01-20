@@ -13,6 +13,7 @@
 // Instance of the NeoPixel strip; length is synchronized with the active grid variant.
 static Adafruit_NeoPixel strip;
 static uint16_t activeStripLength = 0;
+static bool g_ledsSuspended = false;
 
 static void ensureStripLength() {
   uint16_t required = getActiveLedCountTotal();
@@ -78,9 +79,29 @@ void initLeds() {
 #endif
 }
 
+void setLedsSuspended(bool suspended) {
+#ifndef PIO_UNIT_TESTING
+  g_ledsSuspended = suspended;
+  if (g_ledsSuspended) {
+    ensureStripLength();
+    strip.clear();
+    strip.setBrightness(0);
+    strip.show();
+  }
+#else
+  (void)suspended;
+#endif
+}
+
 void showLeds(const std::vector<uint16_t> &ledIndices) {
 #ifndef PIO_UNIT_TESTING
   ensureStripLength();
+  if (g_ledsSuspended) {
+    strip.clear();
+    strip.setBrightness(0);
+    strip.show();
+    return;
+  }
   strip.clear();
 #if defined(PRODUCT_VARIANT_LOGO)
   uint8_t clockBrightness = nightMode.applyToBrightness(ledState.getBrightness());
@@ -123,6 +144,12 @@ void showLedsWithBrightness(const std::vector<uint16_t> &ledIndices,
                             const std::vector<uint8_t> &brightnessMultipliers) {
 #ifndef PIO_UNIT_TESTING
   ensureStripLength();
+  if (g_ledsSuspended) {
+    strip.clear();
+    strip.setBrightness(0);
+    strip.show();
+    return;
+  }
   strip.clear();
   uint8_t r, g, b, w;
   ledState.getRGBW(r, g, b, w);
