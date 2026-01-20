@@ -175,23 +175,25 @@
         <input type="checkbox" id="animateWords" class="form-checkbox">
         <span>Word-by-word animation</span>
       </label>
-      <label class="inline-flex items-center space-x-2 mb-2">
-        <input type="checkbox" id="hetIsAlways2" class="form-checkbox">
-        <span>Always show 'HET IS'</span>
-      </label>
-      <div>
-        <label for="hetIsDuration2" class="block text-sm mb-1">Show 'HET IS' (seconds):
-          <span id="hetIsDurationValue2" class="font-mono">30</span>
+      <div id="hetIsSection">
+        <label class="inline-flex items-center space-x-2 mb-2">
+          <input type="checkbox" id="hetIsAlways2" class="form-checkbox">
+          <span>Always show 'HET IS'</span>
         </label>
-        <div class="flex items-center gap-3 mb-2">
-          <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="w-24 border rounded p-1 text-sm" />
-          <div class="flex items-center gap-1">
-            <button id="hetIsDec" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">−5s</button>
-            <button id="hetIsInc" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+5s</button>
+        <div>
+          <label for="hetIsDuration2" class="block text-sm mb-1">Show 'HET IS' (seconds):
+            <span id="hetIsDurationValue2" class="font-mono">30</span>
+          </label>
+          <div class="flex items-center gap-3 mb-2">
+            <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="w-24 border rounded p-1 text-sm" />
+            <div class="flex items-center gap-1">
+              <button id="hetIsDec" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">−5s</button>
+              <button id="hetIsInc" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+5s</button>
+            </div>
+            <input type="range" min="0" max="360" value="360" id="hetIsDuration2" class="flex-1">
           </div>
-          <input type="range" min="0" max="360" value="360" id="hetIsDuration2" class="flex-1">
+          <p class="text-xs text-gray-500 mt-1">0 = nooit, 360 = altijd</p>
         </div>
-        <p class="text-xs text-gray-500 mt-1">0 = nooit, 360 = altijd</p>
       </div>
     </section>
 
@@ -389,12 +391,19 @@
     let isLogoProduct = false;
     const logoBrightnessSection = document.getElementById('logoBrightnessSection');
     const logoLedsSection = document.getElementById('logoLedsSection');
+    const hetIsSection = document.getElementById('hetIsSection');
+    let isMiniProduct = false;
     const setLogoSectionsVisible = (visible) => {
       if (logoBrightnessSection) {
         logoBrightnessSection.classList.toggle('hidden', !visible);
       }
       if (logoLedsSection) {
         logoLedsSection.classList.toggle('hidden', !visible);
+      }
+    };
+    const setHetIsSectionVisible = (visible) => {
+      if (hetIsSection) {
+        hetIsSection.classList.toggle('hidden', !visible);
       }
     };
 
@@ -1367,9 +1376,14 @@
             const buildInfo = await buildRes.json();
             const env = (buildInfo.environment || '').toLowerCase();
             isLogoProduct = env.indexOf('wordclock-logo') !== -1;
+            isMiniProduct = env.indexOf('wordclock-mini') !== -1;
             setLogoSectionsVisible(isLogoProduct);
+            setHetIsSectionVisible(!isMiniProduct);
             if (isLogoProduct) {
               initLogoControls();
+            }
+            if (isMiniProduct) {
+              dataLoader.loaders.delete('hetIsDuration');
             }
           } else {
           }

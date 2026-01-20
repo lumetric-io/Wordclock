@@ -1609,12 +1609,20 @@ void setupWebRoutes() {
       logWarn("[API] /getHetIsDuration: Auth failed");
       return;
     }
+#if defined(PRODUCT_VARIANT_MINI)
+    server.send(404, "text/plain", "HET IS not supported on this product");
+    return;
+#endif
     uint16_t duration = displaySettings.getHetIsDurationSec();
     server.send(200, "text/plain", String(duration));
   });
 
   server.on("/setHetIsDuration", []() {
     if (!ensureUiAuth()) return;
+#if defined(PRODUCT_VARIANT_MINI)
+    server.send(404, "text/plain", "HET IS not supported on this product");
+    return;
+#endif
     if (!server.hasArg("seconds")) {
       server.send(400, "text/plain", "Missing seconds");
       return;

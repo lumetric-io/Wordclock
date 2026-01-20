@@ -39,16 +39,23 @@ public:
 private:
     static void migrateLogDeleteOnBootDefault() {
         Preferences prefs;
+        Preferences logPrefs;
+        logPrefs.begin("wc_log", true);
+        bool hasSetting = logPrefs.isKey("delOnBoot");
+        logPrefs.end();
         prefs.begin("wc_system", false);
         bool done = prefs.getBool("log_del_on_boot_default_v1", false);
-        if (done) {
+        if (done || hasSetting) {
+            if (hasSetting && !done) {
+                prefs.putBool("log_del_on_boot_default_v1", true);
+            }
             prefs.end();
             return;
         }
-        setLogDeleteOnBoot(true);
+        setLogDeleteOnBoot(false);
         prefs.putBool("log_del_on_boot_default_v1", true);
         prefs.end();
-        logInfo("  ✓ Log delete-on-boot default enabled");
+        logInfo("  ✓ Log delete-on-boot default set");
     }
 
     static void migrateLedState() {

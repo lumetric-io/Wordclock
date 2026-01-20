@@ -140,9 +140,11 @@ static void publishDiscovery() {
   builder.addNumber("Night mode dim %", nodeId + "_night_dim",
                    tNightDimState, tNightDimSet,
                    0, 100, 1, "%");
+#if !defined(PRODUCT_VARIANT_MINI)
   builder.addNumber("'HET IS' seconds", nodeId + "_hetis",
                    tHetIsState, tHetIsSet,
                    0, 360, 1, "s");
+#endif
   
   // Binary sensor
   builder.addBinarySensor("Night mode active", nodeId + "_night_active",
@@ -284,7 +286,9 @@ void mqtt_publish_state(bool force) {
   publishLightState();
   publishSwitch(tAnimState, displaySettings.getAnimateWords());
   publishSwitch(tAutoUpdState, displaySettings.getAutoUpdate());
+#if !defined(PRODUCT_VARIANT_MINI)
   publishNumber(tHetIsState, displaySettings.getHetIsDurationSec());
+#endif
   publishSwitch(tNightEnabledState, nightMode.isEnabled());
   publishNightEffectState();
   publishNightDimState();
@@ -375,11 +379,13 @@ static void initCommandHandlers() {
   ));
   
   // Number handlers
+#if !defined(PRODUCT_VARIANT_MINI)
   registry.registerHandler(tHetIsSet, new NumberCommandHandler(
     0, 360,
     [](int v) { displaySettings.setHetIsDurationSec((uint16_t)v); },
     []() { publishNumber(tHetIsState, displaySettings.getHetIsDurationSec()); }
   ));
+#endif
   
   registry.registerHandler(tNightDimSet, new NumberCommandHandler(
     0, 100,
@@ -511,7 +517,9 @@ static bool mqtt_connect() {
   mqtt.subscribe(tClockSet.c_str());
   mqtt.subscribe(tAnimSet.c_str());
   mqtt.subscribe(tAutoUpdSet.c_str());
+#if !defined(PRODUCT_VARIANT_MINI)
   mqtt.subscribe(tHetIsSet.c_str());
+#endif
   mqtt.subscribe(tNightEnabledSet.c_str());
   mqtt.subscribe(tNightOverrideSet.c_str());
   mqtt.subscribe(tNightEffectSet.c_str());
