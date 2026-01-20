@@ -174,7 +174,17 @@
     const updateBtnMsg = document.getElementById('updateBtnMsg');
     const updateSpinnerAdm = document.getElementById('updateSpinnerAdm');
     if (updateBtn) {
-      const waitForUpdateCompletion = async () => {
+      const getDeviceInfo = async () => {
+        const res = await fetch('/api/device/info', { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      };
+      const getVersion = async () => {
+        const res = await fetch('/version', { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      };
+      const waitForUpdateCompletion = async (preUptime, preVersion) => {
         const start = Date.now();
         const maxMs = 180000;
         let sawOffline = false;
@@ -184,18 +194,35 @@
             const res = await fetch('/api/update/status', { cache: 'no-store' });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const body = await res.json();
-            if (!body.running) {
-              if (sawOffline) {
-                location.reload();
-                return true;
-              }
-              return false;
+            if (body.running) {
+              continue;
             }
+            let uptime = null;
+            let version = null;
+            try {
+              const info = await getDeviceInfo();
+              uptime = info.uptime_ms;
+            } catch (e) {
+            }
+            try {
+              version = await getVersion();
+            } catch (e) {
+            }
+            if (preUptime !== null && uptime !== null && uptime < preUptime) {
+              return 'reboot';
+            }
+            if (preVersion && version && version.trim() !== preVersion.trim()) {
+              return 'version';
+            }
+            if (sawOffline) {
+              return 'reboot';
+            }
+            return 'no-update';
           } catch (e) {
             sawOffline = true;
           }
         }
-        return false;
+        return 'timeout';
       };
       updateBtn.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -206,15 +233,32 @@
         updateBtn.disabled = true;
         updateBtn.classList.add('opacity-50', 'cursor-not-allowed');
         try {
+          let preUptime = null;
+          let preVersion = null;
+          try {
+            const info = await getDeviceInfo();
+            preUptime = info.uptime_ms;
+          } catch (e) {
+          }
+          try {
+            preVersion = await getVersion();
+          } catch (e) {
+          }
           const r = await fetch('/checkForUpdate');
           if (r.ok) {
             if (updateStatusEl) updateStatusEl.textContent = 'Update started. Device will reboot shortly…';
             if (updateBtnMsg) updateBtnMsg.textContent = 'Running…';
-            const rebooted = await waitForUpdateCompletion();
-            if (!rebooted) {
-              if (updateStatusEl) updateStatusEl.textContent = 'No update applied.';
-              if (updateSpinnerAdm) updateSpinnerAdm.classList.add('hidden');
+            const result = await waitForUpdateCompletion(preUptime, preVersion);
+            if (result === 'reboot' || result === 'version') {
+              location.reload();
+              return;
             }
+            if (result === 'no-update') {
+              if (updateStatusEl) updateStatusEl.textContent = 'No update applied.';
+            } else {
+              if (updateStatusEl) updateStatusEl.textContent = 'Update may still be running.';
+            }
+            if (updateSpinnerAdm) updateSpinnerAdm.classList.add('hidden');
           } else {
             const msg = 'Update failed (HTTP ' + r.status + ')';
             if (updateStatusEl) updateStatusEl.textContent = msg;
