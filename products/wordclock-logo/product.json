@@ -2,5 +2,5 @@
   "product_id": "wordclock-logo",
   "display_name": "Wordclock Logo",
   "default_channel": "stable",
-  "grids": ["nl_50x50_v3"]
+  "grids": ["nl_60x50_logo_v1"]
 }

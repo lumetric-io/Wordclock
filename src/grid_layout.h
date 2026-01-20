@@ -15,6 +15,7 @@ enum class GridVariant : uint8_t {
   NL_50x50_V1,
   NL_50x50_V2,
   NL_50x50_V3,
+  NL_60x50_LOGO_V1,
   NL_20x20_V1,
 };
 
