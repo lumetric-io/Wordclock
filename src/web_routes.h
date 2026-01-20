@@ -34,6 +34,8 @@
 #include "system_utils.h"
 #include <WiFi.h>
 #include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 
 // References to global variables
@@ -42,6 +44,19 @@ extern String logBuffer[];
 extern int logIndex;
 extern bool clockEnabled;
 extern bool g_wifiHadCredentialsAtBoot;
+
+static TaskHandle_t g_otaTaskHandle = nullptr;
+static volatile bool g_otaTaskRunning = false;
+
+static void otaUpdateTask(void* params) {
+  (void)params;
+  logInfo("🧵 OTA update task started");
+  checkForFirmwareUpdate();
+  g_otaTaskRunning = false;
+  g_otaTaskHandle = nullptr;
+  logInfo("🧵 OTA update task finished");
+  vTaskDelete(nullptr);
+}
 
 // Serve file, preferring a .gz variant if client accepts gzip
 static void serveFile(const char* path, const char* mime) {
@@ -1256,10 +1271,29 @@ void setupWebRoutes() {
 
   server.on("/checkForUpdate", HTTP_ANY, []() {
     if (!ensureUiAuth()) return;
-    logInfo("Firmware update manually started via UI");
+    if (g_otaTaskRunning) {
+      server.send(409, "text/plain", "Firmware update already running");
+      return;
+    }
+    g_otaTaskRunning = true;
+    logInfo("Firmware update manually started via UI (background task)");
+    BaseType_t ok = xTaskCreatePinnedToCore(
+      otaUpdateTask,
+      "otaUpdate",
+      12288,
+      nullptr,
+      1,
+      &g_otaTaskHandle,
+      tskNO_AFFINITY
+    );
+    if (ok != pdPASS) {
+      g_otaTaskRunning = false;
+      g_otaTaskHandle = nullptr;
+      logError("Failed to start OTA update task");
+      server.send(500, "text/plain", "Failed to start firmware update");
+      return;
+    }
     server.send(200, "text/plain", "Firmware update started");
-    delay(100);
-    checkForFirmwareUpdate();
   });
 
 #if SUPPORT_OTA_V2 == 0

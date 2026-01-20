@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Wordclock Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .spinner {
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid #cbd5e1;
+      border-top-color: #1f2937;
+      border-radius: 9999px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .spinner.hidden {
+      display: none;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans">
   <div class="max-w-xl mx-auto p-4">
@@ -136,6 +154,7 @@
       <div class="flex items-center gap-2 mb-3">
         <button id="checkUpdateBtn" class="py-2 px-3 rounded bg-gray-700 text-white hover:bg-gray-800">🔎 Check for update</button>
         <span id="updateStatus" class="text-xs text-gray-600"></span>
+        <span id="updateSpinner" class="spinner hidden" aria-label="Update in progress"></span>
       </div>
       <h3 class="text-sm font-semibold text-gray-700 mt-2 mb-1">Manual upload</h3>
       <form id="firmwareUploadForm" action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="space-y-2">
@@ -911,9 +930,13 @@
     document.getElementById('startSequenceBtn').onclick = () => fetch('/startSequence');
     const checkBtn = document.getElementById('checkUpdateBtn');
     const updateStatusEl = document.getElementById('updateStatus');
+    const updateSpinner = document.getElementById('updateSpinner');
     if (checkBtn) {
       checkBtn.addEventListener('click', async () => {
         updateStatusEl.textContent = 'Checking for updates...';
+        if (updateSpinner) updateSpinner.classList.remove('hidden');
+        checkBtn.disabled = true;
+        checkBtn.classList.add('opacity-50', 'cursor-not-allowed');
         try {
           const r = await fetch('/checkForUpdate');
           if (r.ok) {
@@ -921,9 +944,14 @@
             setTimeout(() => location.reload(), 10000);
           } else {
             updateStatusEl.textContent = 'Update check failed';
+            if (updateSpinner) updateSpinner.classList.add('hidden');
           }
         } catch (e) {
           updateStatusEl.textContent = 'Network error during update check';
+          if (updateSpinner) updateSpinner.classList.add('hidden');
+        } finally {
+          checkBtn.disabled = false;
+          checkBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
       });
     }
