@@ -512,6 +512,16 @@
       r.addEventListener('change', async () => {
         if (!r.checked) return;
         const ch = r.value;
+        if (ch === 'develop') {
+          const ok = window.confirm('Weet je zeker dat je het ontwikkelkanaal wilt gebruiken? Dit kan de klok onbruikbaar maken en herstel is niet gegarandeerd.');
+          if (!ok) {
+            r.checked = false;
+            const stable = Array.from(channelRadios).find(x => x.value === 'stable');
+            if (stable) stable.checked = true;
+            applyChannelGuard('stable');
+            return;
+          }
+        }
         if (channelStatus) channelStatus.textContent = 'Saving…';
         try {
           const res = await fetch('/api/update/channel', {
