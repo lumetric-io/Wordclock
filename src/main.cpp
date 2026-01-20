@@ -124,11 +124,7 @@ void setup() {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
       checkForFirmwareUpdate();
     } else {
-      if (displaySettings.getUpdateChannel() == "develop") {
-        logInfo("ℹ️ Automatic updates disabled on develop channel. Skipping check.");
-      } else {
-        logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
-      }
+      logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
     }
     g_autoUpdateHandled = true;
   } else {
@@ -168,11 +164,7 @@ void loop() {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
       checkForFirmwareUpdate();
     } else {
-      if (displaySettings.getUpdateChannel() == "develop") {
-        logInfo("ℹ️ Automatic updates disabled on develop channel. Skipping check.");
-      } else {
-        logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
-      }
+      logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
     }
     g_autoUpdateHandled = true;
   }
@@ -215,11 +207,7 @@ void loop() {
           logInfo("🛠️ Daily firmware check started...");
           checkForFirmwareUpdate();
         } else {
-          if (displaySettings.getUpdateChannel() == "develop") {
-            logInfo("ℹ️ Automatic updates disabled on develop channel (02:00 check skipped)");
-          } else {
-            logInfo("ℹ️ Automatic firmware updates disabled (02:00 check skipped)");
-          }
+          logInfo("ℹ️ Automatic firmware updates disabled (02:00 check skipped)");
         }
         lastFirmwareCheck = nowEpoch;
       }

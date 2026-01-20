@@ -470,7 +470,7 @@
 
     const autoUpdCb = document.getElementById('autoUpdate');
 
-    // Release channel selection (stable/early)
+    // Release channel selection (stable/early/develop)
     const channelRadios = document.querySelectorAll('input[name="updateChannel"]');
     const channelStatus = document.getElementById('updateChannelStatus');
     const applyChannelGuard = (ch) => {
@@ -512,16 +512,6 @@
       r.addEventListener('change', async () => {
         if (!r.checked) return;
         const ch = r.value;
-        if (ch === 'develop') {
-          const ok = window.confirm('Weet je zeker dat je het ontwikkelkanaal wilt gebruiken? Dit kan de klok onbruikbaar maken en herstel is niet gegarandeerd.');
-          if (!ok) {
-            r.checked = false;
-            const stable = Array.from(channelRadios).find(x => x.value === 'stable');
-            if (stable) stable.checked = true;
-            applyChannelGuard('stable');
-            return;
-          }
-        }
         if (channelStatus) channelStatus.textContent = 'Saving…';
         try {
           const res = await fetch('/api/update/channel', {
@@ -1304,33 +1294,19 @@
         }
         
         // Get build info to determine branch and set intervals accordingly
-        let buildBranch = 'unknown';
-        let statusInterval = 30000; // Default: 30 seconds
-        let logsInterval = 30000;   // Default: 30 seconds
+        let statusInterval = 30000; // 30 seconds
+        let logsInterval = 30000;   // 30 seconds
         
         try {
           const buildRes = await fetch('/buildinfo');
           if (buildRes.ok) {
             const buildInfo = await buildRes.json();
-            buildBranch = buildInfo.git_branch || 'unknown';
             const env = (buildInfo.environment || '').toLowerCase();
             isLogoProduct = env.indexOf('wordclock-logo') !== -1;
             setLogoSectionsVisible(isLogoProduct);
             if (isLogoProduct) {
               initLogoControls();
             }
-            
-            // Set intervals based on branch
-            // dev branch: logs every 5 seconds, status every 30 seconds
-            // other branches: both every 30 seconds
-            if (buildBranch === 'dev') {
-              statusInterval = 30000;  // 30 seconds
-              logsInterval = 5000;     // 5 seconds
-            } else {
-              statusInterval = 30000;  // 30 seconds
-              logsInterval = 30000;    // 30 seconds
-            }
-            
           } else {
           }
         } catch (err) {
