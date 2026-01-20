@@ -1,7 +1,7 @@
 #include "grid_variants/nl_20x20_v1.h"
 
 // Dutch 20x20 V1 layout - no HET/IS words
-const uint16_t LED_COUNT_GRID_NL_20x20_V1 = 105;
+const uint16_t LED_COUNT_GRID_NL_20x20_V1 = 106;
 const uint16_t LED_COUNT_EXTRA_NL_20x20_V1 = 0;
 const uint16_t LED_COUNT_TOTAL_NL_20x20_V1 = LED_COUNT_GRID_NL_20x20_V1 + LED_COUNT_EXTRA_NL_20x20_V1;
 
