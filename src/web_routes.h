@@ -1052,11 +1052,15 @@ void setupWebRoutes() {
   server.on("/restart", []() {
     if (!ensureUiAuth()) return;
     logInfo("⚠️ Restart requested via dashboard");
-    // Clear all log files before restart
-    logInfo("🗑️ Clearing all log files before restart");
-    clearAllLogFiles();
-    // Give filesystem time to complete the deletion operations
-    delay(500);
+    if (getLogDeleteOnBoot()) {
+      // Clear all log files before restart (if enabled in settings)
+      logInfo("🗑️ Clearing all log files before restart");
+      clearAllLogFiles();
+      // Give filesystem time to complete the deletion operations
+      delay(500);
+    } else {
+      logInfo("🧾 Log delete-on-boot disabled; preserving logs on restart");
+    }
     server.send(200, "text/html", R"rawliteral(
       <html>
         <head>
@@ -1064,7 +1068,7 @@ void setupWebRoutes() {
         </head>
         <body>
           <h1>Wordclock is restarting...</h1>
-          <p>All logs have been cleared. You will be redirected to the dashboard in 5 seconds.</p>
+          <p>Device will restart shortly. You will be redirected to the dashboard in 5 seconds.</p>
         </body>
       </html>
     )rawliteral");
