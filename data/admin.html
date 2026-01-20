@@ -32,6 +32,25 @@
         <a class="py-2 rounded bg-gray-200 text-gray-800 text-center hover:bg-gray-300" href="/update.html">🧰 Update page</a>
       </div>
 
+      <div class="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <h2 class="text-lg font-semibold mb-2">Release channel</h2>
+        <div class="space-y-1 mb-2">
+          <label class="inline-flex items-center space-x-2">
+            <input type="radio" name="updateChannelAdmin" value="stable" class="form-radio">
+            <span>Stable (recommended)</span>
+          </label><br>
+          <label class="inline-flex items-center space-x-2">
+            <input type="radio" name="updateChannelAdmin" value="early" class="form-radio">
+            <span>Early (experimental)</span>
+          </label><br>
+          <label class="inline-flex items-center space-x-2 text-red-600">
+            <input type="radio" name="updateChannelAdmin" value="develop" class="form-radio">
+            <span>Develop (kan de klok onbruikbaar maken; herstel niet gegarandeerd)</span>
+          </label>
+          <p id="updateChannelStatusAdmin" class="text-xs text-gray-500">Default: stable. Early/Develop kunnen instabiel zijn.</p>
+        </div>
+      </div>
+
       <div class="mt-4" id="syncUiSection">
         <button id="syncUiBtn" class="py-2 px-3 rounded bg-indigo-600 text-white hover:bg-indigo-700">🗂️ Sync UI files</button>
         <p id="syncUiMsg" class="text-xs text-gray-600 mt-2"></p>
@@ -155,6 +174,65 @@
           if (updateStatusEl) updateStatusEl.textContent = 'Update request failed';
           if (updateBtnMsg) updateBtnMsg.textContent = 'Request failed';
         }
+      });
+    }
+
+    const channelRadiosAdmin = document.querySelectorAll('input[name="updateChannelAdmin"]');
+    const channelStatusAdmin = document.getElementById('updateChannelStatusAdmin');
+    let lastAdminChannel = 'stable';
+    const applyChannelGuardAdmin = (ch) => {
+      if (channelStatusAdmin) {
+        channelStatusAdmin.textContent = `Current channel: ${ch}${ch === 'develop' ? ' (automatic updates disabled)' : ''}`;
+      }
+    };
+    const loadChannelAdmin = async () => {
+      if (channelStatusAdmin) channelStatusAdmin.textContent = 'Loading channel…';
+      try {
+        const res = await fetch('/api/update/channel');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const body = await res.json();
+        const ch = (body && body.channel) ? body.channel : 'stable';
+        lastAdminChannel = ch;
+        channelRadiosAdmin.forEach(r => { r.checked = (r.value === ch); });
+        applyChannelGuardAdmin(ch);
+      } catch (err) {
+        channelRadiosAdmin.forEach(r => { if (r.value === 'stable') r.checked = true; });
+        lastAdminChannel = 'stable';
+        applyChannelGuardAdmin('stable');
+      }
+    };
+    if (channelRadiosAdmin.length) {
+      loadChannelAdmin();
+      channelRadiosAdmin.forEach(r => {
+        r.addEventListener('change', async () => {
+          if (!r.checked) return;
+          const ch = r.value;
+          if (ch === 'develop') {
+            const ok = window.confirm('Weet je zeker dat je het ontwikkelkanaal wilt gebruiken? Dit kan de klok onbruikbaar maken en herstel is niet gegarandeerd.');
+            if (!ok) {
+              r.checked = false;
+              const prev = Array.from(channelRadiosAdmin).find(x => x.value === lastAdminChannel);
+              if (prev) prev.checked = true;
+              applyChannelGuardAdmin(lastAdminChannel);
+              return;
+            }
+          }
+          if (channelStatusAdmin) channelStatusAdmin.textContent = 'Saving…';
+          try {
+            const res = await fetch('/api/update/channel', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ channel: ch })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            lastAdminChannel = ch;
+            applyChannelGuardAdmin(ch);
+          } catch (err) {
+            if (channelStatusAdmin) channelStatusAdmin.textContent = 'Save failed; keeping previous value';
+            channelRadiosAdmin.forEach(radio => { radio.checked = (radio.value === lastAdminChannel); });
+            applyChannelGuardAdmin(lastAdminChannel);
+          }
+        });
       });
     }
 
