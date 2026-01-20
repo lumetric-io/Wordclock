@@ -174,13 +174,23 @@
     const updateBtnMsg = document.getElementById('updateBtnMsg');
     const updateSpinnerAdm = document.getElementById('updateSpinnerAdm');
     if (updateBtn) {
+      const fetchWithTimeout = async (url, options = {}, timeoutMs = 5000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, { ...options, signal: controller.signal, cache: 'no-store' });
+          return res;
+        } finally {
+          clearTimeout(id);
+        }
+      };
       const getDeviceInfo = async () => {
-        const res = await fetch('/api/device/info', { cache: 'no-store' });
+        const res = await fetchWithTimeout('/api/device/info');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       };
       const getVersion = async () => {
-        const res = await fetch('/version', { cache: 'no-store' });
+        const res = await fetchWithTimeout('/version');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.text();
       };
@@ -191,7 +201,7 @@
         while (Date.now() - start < maxMs) {
           await new Promise((resolve) => setTimeout(resolve, 3000));
           try {
-            const res = await fetch('/api/update/status', { cache: 'no-store' });
+            const res = await fetchWithTimeout('/api/update/status');
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const body = await res.json();
             if (body.running) {
