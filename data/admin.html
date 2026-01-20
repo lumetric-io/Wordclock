@@ -174,25 +174,22 @@
     const updateBtnMsg = document.getElementById('updateBtnMsg');
     const updateSpinnerAdm = document.getElementById('updateSpinnerAdm');
     if (updateBtn) {
-      const waitForReboot = async () => {
+      const waitForUpdateCompletion = async () => {
         const start = Date.now();
-        const maxMs = 120000;
-        const noRebootMaxMs = 15000;
+        const maxMs = 180000;
         let sawOffline = false;
         while (Date.now() - start < maxMs) {
           await new Promise((resolve) => setTimeout(resolve, 3000));
           try {
-            const res = await fetch('/version', { cache: 'no-store' });
-            if (res.ok) {
+            const res = await fetch('/api/update/status', { cache: 'no-store' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const body = await res.json();
+            if (!body.running) {
               if (sawOffline) {
                 location.reload();
                 return true;
               }
-              if (!sawOffline && Date.now() - start > noRebootMaxMs) {
-                return false;
-              }
-            } else {
-              sawOffline = true;
+              return false;
             }
           } catch (e) {
             sawOffline = true;
@@ -213,9 +210,9 @@
           if (r.ok) {
             if (updateStatusEl) updateStatusEl.textContent = 'Update started. Device will reboot shortly…';
             if (updateBtnMsg) updateBtnMsg.textContent = 'Running…';
-            const rebooted = await waitForReboot();
+            const rebooted = await waitForUpdateCompletion();
             if (!rebooted) {
-              if (updateStatusEl) updateStatusEl.textContent = 'No reboot detected; update may not be available.';
+              if (updateStatusEl) updateStatusEl.textContent = 'No update applied.';
               if (updateSpinnerAdm) updateSpinnerAdm.classList.add('hidden');
             }
           } else {

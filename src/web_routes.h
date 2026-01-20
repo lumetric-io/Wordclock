@@ -980,6 +980,15 @@ void setupWebRoutes() {
     server.send(200, "application/json", out);
   });
 
+  server.on("/api/update/status", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    JsonDocument doc;
+    doc["running"] = g_otaTaskRunning;
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
   server.on("/log/download", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     logFlushFile();
