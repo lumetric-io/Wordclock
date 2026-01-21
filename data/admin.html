@@ -152,6 +152,10 @@
           <dd id="buildTime" class="text-gray-800">-</dd>
           <dt class="text-gray-500">Environment</dt>
           <dd id="buildEnv" class="text-gray-800">-</dd>
+          <dt class="text-gray-500">Device ID</dt>
+          <dd id="buildDeviceId" class="text-gray-800">-</dd>
+          <dt class="text-gray-500">Hardware ID</dt>
+          <dd id="buildHardwareId" class="text-gray-800">-</dd>
         </dl>
         <p id="buildInfoStatus" class="text-xs text-gray-500 mt-2"></p>
       </div>
@@ -448,9 +452,16 @@
     const buildStatus = document.getElementById('buildInfoStatus');
     async function loadBuildInfo() {
       try {
-        const res = await fetch('/buildinfo');
+        const [res, devRes] = await Promise.all([
+          fetch('/buildinfo'),
+          fetch('/api/device/info')
+        ]);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const info = await res.json();
+        let devInfo = {};
+        if (devRes.ok) {
+          devInfo = await devRes.json();
+        }
         const set = (id, val) => {
           const el = document.getElementById(id);
           if (el) el.textContent = val || '-';
@@ -461,6 +472,8 @@
         set('buildBranch', info.git_branch);
         set('buildTime', info.build_time_utc);
         set('buildEnv', info.environment);
+        set('buildDeviceId', devInfo.device_id);
+        set('buildHardwareId', devInfo.hardware_id);
         const syncSection = document.getElementById('syncUiSection');
         if (syncSection && info.ui_sync_supported === false) {
           syncSection.classList.add('hidden');
