@@ -82,6 +82,7 @@
       <div class="flex gap-2 items-center">
         <button id="saveBtn" class="py-2 px-3 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
         <button id="testBtn" class="py-2 px-3 rounded bg-gray-200 text-gray-800 hover:bg-gray-300">Test connection</button>
+        <button id="clearBtn" class="py-2 px-3 rounded bg-red-600 text-white hover:bg-red-700">Clear</button>
         <span id="saveMsg" class="text-sm text-gray-600"></span>
         <a href="/dashboard.html" class="ml-auto py-2 px-3 rounded bg-white border hover:bg-gray-50">Cancel</a>
       </div>
@@ -173,6 +174,31 @@
     }
     qs('saveBtn').addEventListener('click', saveCfg);
     qs('noauth').addEventListener('change', applyAuthState);
+    qs('clearBtn').addEventListener('click', async () => {
+      if (!confirm('Clear MQTT settings and disable MQTT?')) return;
+      const msg = qs('saveMsg');
+      msg.textContent = 'Clearing...';
+      try {
+        const r = await fetch('/api/mqtt/clear', { method: 'POST' });
+        if (r.ok) {
+          msg.textContent = 'Cleared. MQTT disabled.';
+          qs('host').value = '';
+          qs('port').value = 1883;
+          qs('user').value = '';
+          qs('pass').value = '';
+          qs('discovery').value = 'homeassistant';
+          qs('basetopic').value = 'wordclock';
+          qs('noauth').checked = false;
+          applyAuthState();
+          setStatus(false, 'MQTT not configured');
+        } else {
+          const t = await r.text();
+          msg.textContent = 'Failed: ' + t;
+        }
+      } catch (e) {
+        msg.textContent = 'Network error';
+      }
+    });
     qs('testBtn').addEventListener('click', async () => {
       const msg = qs('saveMsg');
       msg.textContent = 'Testing...';

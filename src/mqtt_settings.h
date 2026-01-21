@@ -18,3 +18,6 @@ bool mqtt_settings_load(MqttSettings& out);
 
 // Save to Preferences (persist across reboots)
 bool mqtt_settings_save(const MqttSettings& in);
+
+// Clear persisted settings
+void mqtt_settings_clear();

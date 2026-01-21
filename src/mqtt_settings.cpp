@@ -51,3 +51,10 @@ bool mqtt_settings_save(const MqttSettings& in) {
   p.end();
   return ok;
 }
+
+void mqtt_settings_clear() {
+  Preferences p;
+  if (!p.begin(NS, /*readOnly*/ false)) return;
+  p.clear();
+  p.end();
+}

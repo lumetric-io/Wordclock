@@ -565,6 +565,22 @@ void setupWebRoutes() {
     server.send(200, "text/plain", "OK");
   });
 
+  // Clear MQTT settings (disable without factory reset)
+  server.on("/api/mqtt/clear", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    mqtt_settings_clear();
+    MqttSettings empty;
+    empty.host = "";
+    empty.port = 1883;
+    empty.user = "";
+    empty.pass = "";
+    empty.discoveryPrefix = "homeassistant";
+    empty.baseTopic = "wordclock";
+    empty.allowAnonymous = false;
+    mqtt_apply_settings(empty);
+    server.send(200, "text/plain", "OK");
+  });
+
   // MQTT runtime status
   server.on("/api/mqtt/status", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
