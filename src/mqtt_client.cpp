@@ -13,6 +13,7 @@
 #include "time_mapper.h"
 #include "sequence_controller.h"
 #include "mqtt_settings.h"
+#include "update_status.h"
 #include <esp_system.h>
 #include <Preferences.h>
 #include "night_mode.h"
@@ -51,6 +52,7 @@ static String tNightEndState, tNightEndSet;
 static String tVersion, tUiVersion, tIp, tRssi, tUptime;
 static String tHeap, tWifiChan, tBootReason, tResetCount;
 static String tUpdateChannelState, tUpdateAutoAllowed, tUpdateAvailable;
+static String tUpdateRunning;
 
 static unsigned long lastReconnectAttempt = 0;
 static unsigned long lastStateAt = 0;
@@ -107,6 +109,7 @@ static void buildTopics() {
   tUpdateChannelState = base + "/update/channel";
   tUpdateAutoAllowed  = base + "/update/auto_allowed";
   tUpdateAvailable    = base + "/update/available";
+  tUpdateRunning      = base + "/update/running";
 }
 
 static void publishDiscovery() {
@@ -151,6 +154,8 @@ static void publishDiscovery() {
   // Binary sensor
   builder.addBinarySensor("Night mode active", nodeId + "_night_active",
                          tNightActiveState);
+  builder.addBinarySensor("Update running", nodeId + "_update_running",
+                         tUpdateRunning);
   
   // Buttons
   builder.addButton("Restart", nodeId + "_restart", tRestartCmd, "restart");
@@ -305,6 +310,7 @@ void mqtt_publish_state(bool force) {
   bool autoAllowed = displaySettings.getAutoUpdate() && updCh != "develop";
   mqtt.publish(tUpdateAutoAllowed.c_str(), autoAllowed ? "ON" : "OFF", true);
   mqtt.publish(tUpdateAvailable.c_str(), "unknown", true); // placeholder until a remote check runs
+  mqtt.publish(tUpdateRunning.c_str(), is_update_running() ? "ON" : "OFF", true);
 
   mqtt.publish(tVersion.c_str(), FIRMWARE_VERSION, true);
   String uiVersion = getUiVersion();
@@ -332,6 +338,11 @@ void mqtt_publish_state(bool force) {
   }
   const char* bootOut = g_bootTimeSet ? g_bootTimeStr.c_str() : "unknown";
   mqtt.publish(tUptime.c_str(), bootOut, true);
+}
+
+void mqtt_publish_update_status(bool running) {
+  if (!mqtt.connected()) return;
+  mqtt.publish(tUpdateRunning.c_str(), running ? "ON" : "OFF", true);
 }
 
 static void publishBirth() {
@@ -454,7 +465,11 @@ static void initCommandHandlers() {
   });
   
   registry.registerLambda(tUpdateCmd, [](const String&) {
+    set_update_running(true);
+    mqtt_publish_update_status(true);
     checkForFirmwareUpdate();
+    set_update_running(false);
+    mqtt_publish_update_status(false);
   });
 }
 

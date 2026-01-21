@@ -1145,13 +1145,13 @@
       }
     });
 
-    // Versions loader (lage prioriteit, één keer)
+    // Versions loader (lage prioriteit, interval)
     dataLoader.register('versions', async () => {
       setLoadingState('version', true);
       setLoadingState('uiVersion', true);
       const [fwRes, uiRes] = await Promise.all([
-        fetch('/version'),
-        fetch('/uiversion')
+        fetch('/version', { cache: 'no-store' }),
+        fetch('/uiversion', { cache: 'no-store' })
       ]);
       if (!fwRes.ok || !uiRes.ok) throw new Error('Version fetch failed');
       return {
@@ -1160,6 +1160,7 @@
       };
     }, {
       priority: 1,
+      interval: 30000,
       onSuccess: ({firmware, ui}) => {
         setLoadingState('version', false);
         setLoadingState('uiVersion', false);
@@ -1444,6 +1445,7 @@
         // Update loader intervals BEFORE starting them
         const statusLoader = dataLoader.loaders.get('status');
         const logsLoader = dataLoader.loaders.get('logs');
+        const versionsLoader = dataLoader.loaders.get('versions');
         
         if (statusLoader) {
           statusLoader.interval = statusInterval;
@@ -1471,6 +1473,14 @@
         if (logsLoader) {
           if (logsLoader.interval) {
             dataLoader.startInterval('logs');
+          } else {
+          }
+        } else {
+        }
+
+        if (versionsLoader) {
+          if (versionsLoader.interval) {
+            dataLoader.startInterval('versions');
           } else {
           }
         } else {

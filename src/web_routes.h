@@ -32,6 +32,7 @@
 #include "build_info.h"
 #include "setup_state.h"
 #include "system_utils.h"
+#include "update_status.h"
 #include <WiFi.h>
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
@@ -46,15 +47,17 @@ extern bool clockEnabled;
 extern bool g_wifiHadCredentialsAtBoot;
 
 static TaskHandle_t g_otaTaskHandle = nullptr;
-static volatile bool g_otaTaskRunning = false;
 
 static void otaUpdateTask(void* params) {
   (void)params;
   logInfo("🧵 OTA update task started");
+  set_update_running(true);
+  mqtt_publish_update_status(true);
   setLedsSuspended(true);
   checkForFirmwareUpdate();
   setLedsSuspended(false);
-  g_otaTaskRunning = false;
+  set_update_running(false);
+  mqtt_publish_update_status(false);
   g_otaTaskHandle = nullptr;
   logInfo("🧵 OTA update task finished");
   vTaskDelete(nullptr);
@@ -983,7 +986,7 @@ void setupWebRoutes() {
   server.on("/api/update/status", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     JsonDocument doc;
-    doc["running"] = g_otaTaskRunning;
+    doc["running"] = is_update_running();
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);
@@ -1286,11 +1289,10 @@ void setupWebRoutes() {
 
   server.on("/checkForUpdate", HTTP_ANY, []() {
     if (!ensureUiAuth()) return;
-    if (g_otaTaskRunning) {
+    if (is_update_running()) {
       server.send(409, "text/plain", "Firmware update already running");
       return;
     }
-    g_otaTaskRunning = true;
     logInfo("Firmware update manually started via UI (background task)");
     BaseType_t ok = xTaskCreatePinnedToCore(
       otaUpdateTask,
@@ -1302,12 +1304,15 @@ void setupWebRoutes() {
       tskNO_AFFINITY
     );
     if (ok != pdPASS) {
-      g_otaTaskRunning = false;
+      set_update_running(false);
+      mqtt_publish_update_status(false);
       g_otaTaskHandle = nullptr;
       logError("Failed to start OTA update task");
       server.send(500, "text/plain", "Failed to start firmware update");
       return;
     }
+    set_update_running(true);
+    mqtt_publish_update_status(true);
     server.send(200, "text/plain", "Firmware update started");
   });
 
