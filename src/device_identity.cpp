@@ -5,6 +5,7 @@
 
 static const char* NS = "wc_system";
 static const char* KEY_DEVICE_ID = "device_id";
+static const char* KEY_DEVICE_TOKEN = "device_token";
 
 String get_device_id() {
   Preferences prefs;
@@ -33,4 +34,20 @@ String get_hardware_id() {
            (uint8_t)(mac >> 8),
            (uint8_t)(mac));
   return String(buf);
+}
+
+String get_device_token() {
+  Preferences prefs;
+  prefs.begin(NS, true);
+  String token = prefs.getString(KEY_DEVICE_TOKEN, "");
+  prefs.end();
+  return token;
+}
+
+bool set_device_token(const String& token) {
+  Preferences prefs;
+  if (!prefs.begin(NS, false)) return false;
+  prefs.putString(KEY_DEVICE_TOKEN, token);
+  prefs.end();
+  return true;
 }

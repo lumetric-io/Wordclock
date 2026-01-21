@@ -34,6 +34,7 @@
 #include "system_utils.h"
 #include "update_status.h"
 #include "device_identity.h"
+#include "device_registration.h"
 #include <WiFi.h>
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
@@ -995,10 +996,28 @@ void setupWebRoutes() {
 #if defined(ARDUINO_ARCH_ESP32)
     doc["hardware_id"] = get_hardware_id();
     doc["device_id"] = get_device_id();
+    doc["has_device_token"] = get_device_token().length() > 0;
 #endif
 #if defined(ARDUINO_ARCH_ESP32)
     doc["temp_c"] = temperatureRead();
 #endif
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  server.on("/api/device/register", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    String deviceId;
+    String token;
+    String err;
+    if (!register_device_with_fleet(deviceId, token, err)) {
+      server.send(502, "text/plain", err);
+      return;
+    }
+    JsonDocument doc;
+    doc["deviceId"] = deviceId;
+    doc["token"] = token;
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);
