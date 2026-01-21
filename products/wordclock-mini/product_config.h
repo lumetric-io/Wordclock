@@ -1,8 +1,8 @@
 #pragma once
 
 #define PRODUCT_ID "wordclock-mini"
-#define FIRMWARE_VERSION "mini-26.2.4-rc.7"
-#define UI_VERSION "ui-mini-26.2.4-rc.7"
+#define FIRMWARE_VERSION "mini-26.2.4-rc.8"
+#define UI_VERSION "ui-mini-26.2.4-rc.8"
 #define PRODUCT_VARIANT_MINI 1
 #define DATA_PIN 7
 #define SUPPORT_MINUTE_LEDS 0
