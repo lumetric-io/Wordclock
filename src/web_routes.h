@@ -33,6 +33,7 @@
 #include "setup_state.h"
 #include "system_utils.h"
 #include "update_status.h"
+#include "device_identity.h"
 #include <WiFi.h>
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
@@ -991,6 +992,10 @@ void setupWebRoutes() {
     doc["chip_rev"] = ESP.getChipRevision();
     doc["sdk"] = ESP.getSdkVersion();
     doc["rssi"] = WiFi.RSSI();
+#if defined(ARDUINO_ARCH_ESP32)
+    doc["hardware_id"] = get_hardware_id();
+    doc["device_id"] = get_device_id();
+#endif
 #if defined(ARDUINO_ARCH_ESP32)
     doc["temp_c"] = temperatureRead();
 #endif
