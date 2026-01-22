@@ -101,11 +101,6 @@ bool register_device_with_fleet(String& outDeviceId, String& outToken, String& o
   }
 
   String existingId = get_device_id();
-  if (!existingId.isEmpty() && existingId != outDeviceId) {
-    outError = "Device ID already set";
-    return false;
-  }
-
   if (!set_device_token(outToken)) {
     outError = "Failed to store device token";
     return false;
@@ -115,6 +110,9 @@ bool register_device_with_fleet(String& outDeviceId, String& outToken, String& o
       outError = "Failed to store device id";
       return false;
     }
+  } else if (existingId != outDeviceId) {
+    logWarn(String("⚠️ Device ID already set; keeping stored ID (") + existingId + ")");
+    outDeviceId = existingId;
   }
 
   logInfo("✅ Device registered with fleet");
