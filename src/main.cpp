@@ -31,6 +31,8 @@
 #include "display_settings.h"
 #include "ui_auth.h"
 #include "mqtt_client.h"
+#include "device_registration.h"
+#include "device_identity.h"
 #include "night_mode.h"
 #include "setup_state.h"
 #include "led_state.h"
@@ -47,6 +49,7 @@ static bool g_mqttInitialized = false;
 static bool g_autoUpdateHandled = false;
 static bool g_uiSyncHandled = false;
 static bool g_serverInitialized = false;
+static bool g_autoRegistrationHandled = false;
 
 
 // Webserver
@@ -69,6 +72,24 @@ void safeRestart() {
   flushAllSettings();
   delay(100);  // Allow flash write to complete
   ESP.restart();
+}
+
+static void attemptAutoRegistration() {
+  if (g_autoRegistrationHandled || !isWiFiConnected()) return;
+  if (get_registration_blocked()) {
+    logInfo("ℹ️ Device registration blocked (already registered). Skipping.");
+    g_autoRegistrationHandled = true;
+    return;
+  }
+  String deviceId;
+  String token;
+  String err;
+  if (register_device_with_fleet(deviceId, token, err)) {
+    logInfo("✅ Auto-registered device on startup.");
+  } else {
+    logWarn(String("⚠️ Auto-registration failed: ") + err);
+  }
+  g_autoRegistrationHandled = true;
 }
 
 // Setup: initialiseert hardware, netwerk, OTA, filesystem en start de hoofdservices
@@ -127,6 +148,7 @@ void setup() {
       logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
     }
     g_autoUpdateHandled = true;
+    attemptAutoRegistration();
   } else {
     logInfo("⚠️ No WiFi. Waiting for connection or config portal.");
     bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
@@ -167,6 +189,9 @@ void loop() {
       logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
     }
     g_autoUpdateHandled = true;
+  }
+  if (isWiFiConnected() && !g_autoRegistrationHandled) {
+    attemptAutoRegistration();
   }
   if (g_serverInitialized) {
     server.handleClient();
