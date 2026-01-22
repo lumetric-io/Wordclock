@@ -16,6 +16,11 @@ bool register_device_with_fleet(String& outDeviceId, String& outToken, String& o
   outToken = "";
   outError = "";
 
+  if (get_registration_blocked()) {
+    outError = "Registration disabled (device already registered)";
+    return false;
+  }
+
   if (WiFi.status() != WL_CONNECTED) {
     outError = "WiFi not connected";
     return false;
@@ -55,7 +60,22 @@ bool register_device_with_fleet(String& outDeviceId, String& outToken, String& o
   http.end();
 
   if (code < 200 || code >= 300) {
-    outError = String("HTTP ") + code + ": " + body;
+    String apiError;
+    JsonDocument errDoc;
+    if (deserializeJson(errDoc, body) == DeserializationError::Ok &&
+        errDoc["error"].is<const char*>()) {
+      apiError = errDoc["error"].as<const char*>();
+    }
+    if (code == 409) {
+      set_registration_blocked(true);
+      outError = apiError.length() > 0 ? apiError : "Device already registered";
+      return false;
+    }
+    if (apiError.length() > 0) {
+      outError = apiError;
+    } else {
+      outError = String("HTTP ") + code + ": " + body;
+    }
     return false;
   }
 
@@ -66,7 +86,9 @@ bool register_device_with_fleet(String& outDeviceId, String& outToken, String& o
     return false;
   }
 
-  if (resDoc["token"].is<const char*>()) {
+  if (resDoc["deviceToken"].is<const char*>()) {
+    outToken = resDoc["deviceToken"].as<const char*>();
+  } else if (resDoc["token"].is<const char*>()) {
     outToken = resDoc["token"].as<const char*>();
   }
   if (resDoc["deviceId"].is<const char*>()) {
@@ -78,13 +100,21 @@ bool register_device_with_fleet(String& outDeviceId, String& outToken, String& o
     return false;
   }
 
+  String existingId = get_device_id();
+  if (!existingId.isEmpty() && existingId != outDeviceId) {
+    outError = "Device ID already set";
+    return false;
+  }
+
   if (!set_device_token(outToken)) {
     outError = "Failed to store device token";
     return false;
   }
-  if (!set_device_id(outDeviceId)) {
-    outError = "Failed to store device id";
-    return false;
+  if (existingId.isEmpty()) {
+    if (!set_device_id(outDeviceId)) {
+      outError = "Failed to store device id";
+      return false;
+    }
   }
 
   logInfo("✅ Device registered with fleet");

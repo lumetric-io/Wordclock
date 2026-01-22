@@ -6,6 +6,7 @@
 static const char* NS = "wc_system";
 static const char* KEY_DEVICE_ID = "device_id";
 static const char* KEY_DEVICE_TOKEN = "device_token";
+static const char* KEY_REGISTRATION_BLOCKED = "reg_blocked";
 
 String get_device_id() {
   Preferences prefs;
@@ -48,6 +49,22 @@ bool set_device_token(const String& token) {
   Preferences prefs;
   if (!prefs.begin(NS, false)) return false;
   prefs.putString(KEY_DEVICE_TOKEN, token);
+  prefs.end();
+  return true;
+}
+
+bool get_registration_blocked() {
+  Preferences prefs;
+  prefs.begin(NS, true);
+  bool blocked = prefs.getBool(KEY_REGISTRATION_BLOCKED, false);
+  prefs.end();
+  return blocked;
+}
+
+bool set_registration_blocked(bool blocked) {
+  Preferences prefs;
+  if (!prefs.begin(NS, false)) return false;
+  prefs.putBool(KEY_REGISTRATION_BLOCKED, blocked);
   prefs.end();
   return true;
 }
