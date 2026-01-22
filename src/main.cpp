@@ -32,7 +32,6 @@
 #include "ui_auth.h"
 #include "mqtt_client.h"
 #include "device_registration.h"
-#include "device_identity.h"
 #include "night_mode.h"
 #include "setup_state.h"
 #include "led_state.h"
@@ -76,11 +75,6 @@ void safeRestart() {
 
 static void attemptAutoRegistration() {
   if (g_autoRegistrationHandled || !isWiFiConnected()) return;
-  if (get_registration_blocked()) {
-    logInfo("ℹ️ Device registration blocked (already registered). Skipping.");
-    g_autoRegistrationHandled = true;
-    return;
-  }
   String deviceId;
   String token;
   String err;

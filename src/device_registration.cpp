@@ -16,11 +16,6 @@ bool register_device_with_fleet(String& outDeviceId, String& outToken, String& o
   outToken = "";
   outError = "";
 
-  if (get_registration_blocked()) {
-    outError = "Registration disabled (device already registered)";
-    return false;
-  }
-
   if (WiFi.status() != WL_CONNECTED) {
     outError = "WiFi not connected";
     return false;
@@ -67,7 +62,6 @@ bool register_device_with_fleet(String& outDeviceId, String& outToken, String& o
       apiError = errDoc["error"].as<const char*>();
     }
     if (code == 409) {
-      set_registration_blocked(true);
       outError = apiError.length() > 0 ? apiError : "Device already registered";
       return false;
     }
