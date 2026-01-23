@@ -37,8 +37,8 @@ def write_build_info(*args, **kwargs):
     build_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     env_name = env.get("PIOENV", "unknown")
     
-    # Enable debug logging only for 'dev' branch
-    enable_debug = "1" if branch == "dev" else "0"
+    # Enable debug logging only when explicitly requested.
+    enable_debug = "1" if os.getenv("ENABLE_DEBUG_LOGGING") == "1" else "0"
 
     content = f"""#pragma once
 

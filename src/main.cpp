@@ -31,6 +31,7 @@
 #include "display_settings.h"
 #include "ui_auth.h"
 #include "mqtt_client.h"
+#include "device_registration.h"
 #include "night_mode.h"
 #include "setup_state.h"
 #include "led_state.h"
@@ -47,6 +48,7 @@ static bool g_mqttInitialized = false;
 static bool g_autoUpdateHandled = false;
 static bool g_uiSyncHandled = false;
 static bool g_serverInitialized = false;
+static bool g_autoRegistrationHandled = false;
 
 
 // Webserver
@@ -69,6 +71,19 @@ void safeRestart() {
   flushAllSettings();
   delay(100);  // Allow flash write to complete
   ESP.restart();
+}
+
+static void attemptAutoRegistration() {
+  if (g_autoRegistrationHandled || !isWiFiConnected()) return;
+  String deviceId;
+  String token;
+  String err;
+  if (register_device_with_fleet(deviceId, token, err)) {
+    logInfo("✅ Auto-registered device on startup.");
+  } else {
+    logWarn(String("⚠️ Auto-registration failed: ") + err);
+  }
+  g_autoRegistrationHandled = true;
 }
 
 // Setup: initialiseert hardware, netwerk, OTA, filesystem en start de hoofdservices
@@ -101,12 +116,12 @@ void setup() {
   setupState.begin(hasLegacyConfig);
   nightMode.begin();
 
-  // Mount SPIFFS filesystem
+  // Mount filesystem (LittleFS)
   if (!FS_IMPL.begin(true)) {
-  logError("SPIFFS mount failed.");
+    logError("LittleFS mount failed.");
   } else {
-  logDebug("SPIFFS loaded successfully.");
-  logEnableFileSink();
+    logDebug("LittleFS loaded successfully.");
+    logEnableFileSink();
   }
 
   bool wifiConnected = isWiFiConnected();
@@ -115,20 +130,19 @@ void setup() {
     g_serverInitialized = true;
     initMqtt();
     g_mqttInitialized = true;
-    syncUiFilesFromConfiguredVersion();
+#if SUPPORT_OTA_V2 == 0
+    syncFilesFromManifest();
+#endif
     g_uiSyncHandled = true;
     bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
     if (autoAllowed) {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
       checkForFirmwareUpdate();
     } else {
-      if (displaySettings.getUpdateChannel() == "develop") {
-        logInfo("ℹ️ Automatic updates disabled on develop channel. Skipping check.");
-      } else {
-        logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
-      }
+      logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
     }
     g_autoUpdateHandled = true;
+    attemptAutoRegistration();
   } else {
     logInfo("⚠️ No WiFi. Waiting for connection or config portal.");
     bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
@@ -155,7 +169,9 @@ void loop() {
     g_mqttInitialized = true;
   }
   if (isWiFiConnected() && !g_uiSyncHandled) {
-    syncUiFilesFromConfiguredVersion();
+#if SUPPORT_OTA_V2 == 0
+    syncFilesFromManifest();
+#endif
     g_uiSyncHandled = true;
   }
   if (isWiFiConnected() && !g_autoUpdateHandled) {
@@ -164,13 +180,12 @@ void loop() {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
       checkForFirmwareUpdate();
     } else {
-      if (displaySettings.getUpdateChannel() == "develop") {
-        logInfo("ℹ️ Automatic updates disabled on develop channel. Skipping check.");
-      } else {
-        logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
-      }
+      logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
     }
     g_autoUpdateHandled = true;
+  }
+  if (isWiFiConnected() && !g_autoRegistrationHandled) {
+    attemptAutoRegistration();
   }
   if (g_serverInitialized) {
     server.handleClient();
@@ -211,11 +226,7 @@ void loop() {
           logInfo("🛠️ Daily firmware check started...");
           checkForFirmwareUpdate();
         } else {
-          if (displaySettings.getUpdateChannel() == "develop") {
-            logInfo("ℹ️ Automatic updates disabled on develop channel (02:00 check skipped)");
-          } else {
-            logInfo("ℹ️ Automatic firmware updates disabled (02:00 check skipped)");
-          }
+          logInfo("ℹ️ Automatic firmware updates disabled (02:00 check skipped)");
         }
         lastFirmwareCheck = nowEpoch;
       }

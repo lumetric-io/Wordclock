@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Wordclock Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .spinner {
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid #cbd5e1;
+      border-top-color: #1f2937;
+      border-radius: 9999px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .spinner.hidden {
+      display: none;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans">
   <div class="max-w-xl mx-auto p-4">
@@ -50,6 +68,17 @@
         </div>
       </div>
       <input type="range" min="0" max="255" id="brightnessSlider" class="w-full">
+      <div class="mt-3 hidden" id="logoBrightnessSection">
+        <div class="flex items-center gap-3 mb-2">
+          <label class="text-sm">Logo brightness: <span id="logoBrightnessValue" class="font-mono">-</span></label>
+          <input type="number" id="logoBrightnessInput" min="0" max="255" step="1" class="w-20 border rounded p-1 text-sm" />
+          <div class="flex items-center gap-1">
+            <button id="logoBrightnessDec" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">−10</button>
+            <button id="logoBrightnessInc" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+10</button>
+          </div>
+        </div>
+        <input type="range" min="0" max="255" id="logoBrightness" class="w-full">
+      </div>
     </section>
 
     <section class="bg-white p-4 rounded-2xl shadow mb-4">
@@ -111,12 +140,8 @@
         <label class="inline-flex items-center space-x-2">
           <input type="radio" name="updateChannel" value="early" class="form-radio">
           <span>Early (experimental)</span>
-        </label><br>
-        <label class="inline-flex items-center space-x-2 text-red-600">
-          <input type="radio" name="updateChannel" value="develop" class="form-radio">
-          <span>Develop (kan de klok onbruikbaar maken; herstel niet gegarandeerd)</span>
         </label>
-        <p id="updateChannelStatus" class="text-xs text-gray-500">Default: stable. Early/Develop kunnen instabiel zijn.</p>
+        <p id="updateChannelStatus" class="text-xs text-gray-500">Default: stable. Early kan instabiel zijn.</p>
       </div>
       <h3 class="text-sm font-semibold text-gray-700 mt-1 mb-1">Automatic</h3>
       <div class="mb-3">
@@ -129,6 +154,7 @@
       <div class="flex items-center gap-2 mb-3">
         <button id="checkUpdateBtn" class="py-2 px-3 rounded bg-gray-700 text-white hover:bg-gray-800">🔎 Check for update</button>
         <span id="updateStatus" class="text-xs text-gray-600"></span>
+        <span id="updateSpinner" class="spinner hidden" aria-label="Update in progress"></span>
       </div>
       <h3 class="text-sm font-semibold text-gray-700 mt-2 mb-1">Manual upload</h3>
       <form id="firmwareUploadForm" action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="space-y-2">
@@ -149,23 +175,25 @@
         <input type="checkbox" id="animateWords" class="form-checkbox">
         <span>Word-by-word animation</span>
       </label>
-      <label class="inline-flex items-center space-x-2 mb-2">
-        <input type="checkbox" id="hetIsAlways2" class="form-checkbox">
-        <span>Always show 'HET IS'</span>
-      </label>
-      <div>
-        <label for="hetIsDuration2" class="block text-sm mb-1">Show 'HET IS' (seconds):
-          <span id="hetIsDurationValue2" class="font-mono">30</span>
+      <div id="hetIsSection">
+        <label class="inline-flex items-center space-x-2 mb-2">
+          <input type="checkbox" id="hetIsAlways2" class="form-checkbox">
+          <span>Always show 'HET IS'</span>
         </label>
-        <div class="flex items-center gap-3 mb-2">
-          <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="w-24 border rounded p-1 text-sm" />
-          <div class="flex items-center gap-1">
-            <button id="hetIsDec" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">−5s</button>
-            <button id="hetIsInc" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+5s</button>
+        <div>
+          <label for="hetIsDuration2" class="block text-sm mb-1">Show 'HET IS' (seconds):
+            <span id="hetIsDurationValue2" class="font-mono">30</span>
+          </label>
+          <div class="flex items-center gap-3 mb-2">
+            <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="w-24 border rounded p-1 text-sm" />
+            <div class="flex items-center gap-1">
+              <button id="hetIsDec" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">−5s</button>
+              <button id="hetIsInc" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+5s</button>
+            </div>
+            <input type="range" min="0" max="360" value="360" id="hetIsDuration2" class="flex-1">
           </div>
-          <input type="range" min="0" max="360" value="360" id="hetIsDuration2" class="flex-1">
+          <p class="text-xs text-gray-500 mt-1">0 = nooit, 360 = altijd</p>
         </div>
-        <p class="text-xs text-gray-500 mt-1">0 = nooit, 360 = altijd</p>
       </div>
     </section>
 
@@ -173,6 +201,19 @@
       <h2 class="text-xl font-semibold mb-2">Grid layout</h2>
       <select id="gridVariantPublic" class="w-full border rounded p-2 text-sm"></select>
       <p class="text-xs text-gray-600 mt-2" id="gridVariantStatusPublic"></p>
+    </section>
+
+    <section class="bg-white p-4 rounded-2xl shadow mb-4 hidden" id="logoLedsSection">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-xl font-semibold">Logo LEDs</h2>
+        <span id="logoStatus" class="text-xs text-gray-500">-</span>
+      </div>
+      <div id="logoGrid" class="grid gap-2 mb-3"></div>
+      <div class="flex items-center gap-3">
+        <input type="color" id="logoAllColor" class="h-10 w-16 p-0 border rounded">
+        <button id="logoFillAll" class="px-3 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 text-sm">Vul alles</button>
+        <button id="logoApply" class="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm">Opslaan</button>
+      </div>
     </section>
 
     <section class="bg-white p-4 rounded-2xl shadow">
@@ -347,6 +388,24 @@
 
     // Initialize DataLoader
     const dataLoader = new DataLoader();
+    let isLogoProduct = false;
+    const logoBrightnessSection = document.getElementById('logoBrightnessSection');
+    const logoLedsSection = document.getElementById('logoLedsSection');
+    const hetIsSection = document.getElementById('hetIsSection');
+    let isMiniProduct = false;
+    const setLogoSectionsVisible = (visible) => {
+      if (logoBrightnessSection) {
+        logoBrightnessSection.classList.toggle('hidden', !visible);
+      }
+      if (logoLedsSection) {
+        logoLedsSection.classList.toggle('hidden', !visible);
+      }
+    };
+    const setHetIsSectionVisible = (visible) => {
+      if (hetIsSection) {
+        hetIsSection.classList.toggle('hidden', !visible);
+      }
+    };
 
     const formatVariantLabel = (variant) => {
       if (!variant) return '';
@@ -435,7 +494,7 @@
 
     const autoUpdCb = document.getElementById('autoUpdate');
 
-    // Release channel selection (stable/early)
+    // Release channel selection (stable/early/develop)
     const channelRadios = document.querySelectorAll('input[name="updateChannel"]');
     const channelStatus = document.getElementById('updateChannelStatus');
     const applyChannelGuard = (ch) => {
@@ -566,6 +625,165 @@
         sendBrightnessDebounced(v);
       });
     }
+
+    let logoControlsInitialized = false;
+    const initLogoControls = () => {
+      if (logoControlsInitialized || !isLogoProduct) return;
+      logoControlsInitialized = true;
+
+      const DEFAULT_LOGO_COUNT = 50;
+      const logoGrid = document.getElementById('logoGrid');
+      const logoPickers = [];
+      const syncLogoGrid = (count) => {
+        if (!logoGrid) return;
+        const target = Math.max(1, Math.min(500, parseInt(count, 10) || DEFAULT_LOGO_COUNT));
+        while (logoPickers.length < target) {
+          const input = document.createElement('input');
+          input.type = 'color';
+          input.className = 'w-full h-10 p-0 border rounded';
+          input.value = '#000000';
+          logoGrid.appendChild(input);
+          logoPickers.push(input);
+        }
+        while (logoPickers.length > target) {
+          const input = logoPickers.pop();
+          if (input && input.parentElement === logoGrid) {
+            logoGrid.removeChild(input);
+          }
+        }
+        const cols = Math.max(1, Math.min(10, Math.ceil(target / 5)));
+        logoGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+      };
+      if (logoGrid) {
+        syncLogoGrid(DEFAULT_LOGO_COUNT);
+      }
+      const logoBrightness = document.getElementById('logoBrightness');
+      const logoBrightnessInput = document.getElementById('logoBrightnessInput');
+      const logoBrightnessDec = document.getElementById('logoBrightnessDec');
+      const logoBrightnessInc = document.getElementById('logoBrightnessInc');
+      const logoBrightnessValue = document.getElementById('logoBrightnessValue');
+      const logoStatus = document.getElementById('logoStatus');
+      let logoBrightnessTimer = null;
+      const sendLogoBrightnessDebounced = (val) => {
+        if (logoBrightnessTimer) clearTimeout(logoBrightnessTimer);
+        logoBrightnessTimer = setTimeout(() => {
+          const level = parseInt(val, 10) || 0;
+          fetch('/logo/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ brightness: Math.max(0, Math.min(255, level)) })
+          });
+          logoBrightnessTimer = null;
+        }, 200);
+      };
+      const setLogoStatus = (msg, error) => {
+        if (!logoStatus) return;
+        logoStatus.textContent = msg;
+        logoStatus.className = 'text-xs ' + (error ? 'text-red-600' : 'text-gray-600');
+      };
+      const renderLogoState = (data) => {
+        syncLogoGrid(data && data.count);
+        if (logoBrightness && data.brightness !== undefined) {
+          logoBrightness.value = data.brightness;
+          if (logoBrightnessValue) logoBrightnessValue.textContent = data.brightness;
+          if (logoBrightnessInput) logoBrightnessInput.value = data.brightness;
+        }
+        if (Array.isArray(data.colors)) {
+          data.colors.forEach((hex, idx) => {
+            if (idx < logoPickers.length && typeof hex === 'string' && hex.length === 6) {
+              logoPickers[idx].value = '#' + hex;
+            }
+          });
+        }
+      };
+      if (logoBrightness) {
+        logoBrightness.addEventListener('input', () => {
+          if (logoBrightnessValue) logoBrightnessValue.textContent = logoBrightness.value;
+          if (logoBrightnessInput) logoBrightnessInput.value = logoBrightness.value;
+          sendLogoBrightnessDebounced(logoBrightness.value);
+        });
+      }
+      if (logoBrightnessInput) {
+        logoBrightnessInput.addEventListener('change', () => {
+          let v = parseInt(logoBrightnessInput.value, 10);
+          if (isNaN(v)) v = 0; v = Math.max(0, Math.min(255, v));
+          logoBrightnessInput.value = v;
+          if (logoBrightness) logoBrightness.value = v;
+          if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+          sendLogoBrightnessDebounced(v);
+        });
+      }
+      if (logoBrightnessDec) {
+        logoBrightnessDec.addEventListener('click', () => {
+          let v = parseInt(logoBrightness ? logoBrightness.value : '0', 10) - 10;
+          v = Math.max(0, v);
+          if (logoBrightness) logoBrightness.value = v;
+          if (logoBrightnessInput) logoBrightnessInput.value = v;
+          if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+          sendLogoBrightnessDebounced(v);
+        });
+      }
+      if (logoBrightnessInc) {
+        logoBrightnessInc.addEventListener('click', () => {
+          let v = parseInt(logoBrightness ? logoBrightness.value : '0', 10) + 10;
+          v = Math.min(255, v);
+          if (logoBrightness) logoBrightness.value = v;
+          if (logoBrightnessInput) logoBrightnessInput.value = v;
+          if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+          sendLogoBrightnessDebounced(v);
+        });
+      }
+      const loadLogoState = async () => {
+        if (!logoGrid) return;
+        setLogoStatus('Laden…');
+        try {
+          const res = await fetch('/logo/state');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          renderLogoState(data);
+          setLogoStatus('Opgeslagen');
+        } catch (err) {
+          setLogoStatus('Laden mislukt', true);
+        }
+      };
+      if (logoGrid) {
+        dataLoader.register('logoState', loadLogoState, { priority: 5 });
+      }
+      const saveLogoState = async () => {
+        if (!logoGrid) return;
+        setLogoStatus('Opslaan…');
+        const payload = {
+          brightness: parseInt(logoBrightness ? logoBrightness.value : '0', 10) || 0,
+          colors: logoPickers.map((p) => (p.value || '#000000').replace('#', '').toUpperCase())
+        };
+        try {
+          const res = await fetch('/logo/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          renderLogoState(data);
+          setLogoStatus('Opgeslagen');
+        } catch (err) {
+          setLogoStatus('Opslaan mislukt', true);
+        }
+      };
+      const logoApplyBtn = document.getElementById('logoApply');
+      if (logoApplyBtn) {
+        logoApplyBtn.addEventListener('click', saveLogoState);
+      }
+      const logoFillAll = document.getElementById('logoFillAll');
+      const logoAllColor = document.getElementById('logoAllColor');
+      if (logoFillAll) {
+        logoFillAll.addEventListener('click', () => {
+          if (!logoAllColor) return;
+          const val = logoAllColor.value || '#000000';
+          logoPickers.forEach((p) => { p.value = val; });
+        });
+      }
+    };
 
     const nightModeEnabled = document.getElementById('nightModeEnabled');
     const nightModeEffect = document.getElementById('nightModeEffect');
@@ -721,19 +939,109 @@
     document.getElementById('startSequenceBtn').onclick = () => fetch('/startSequence');
     const checkBtn = document.getElementById('checkUpdateBtn');
     const updateStatusEl = document.getElementById('updateStatus');
+    const updateSpinner = document.getElementById('updateSpinner');
     if (checkBtn) {
+      const fetchWithTimeout = async (url, options = {}, timeoutMs = 5000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, { ...options, signal: controller.signal, cache: 'no-store' });
+          return res;
+        } finally {
+          clearTimeout(id);
+        }
+      };
+      const getDeviceInfo = async () => {
+        const res = await fetchWithTimeout('/api/device/info');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      };
+      const getVersion = async () => {
+        const res = await fetchWithTimeout('/version');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      };
+      const waitForUpdateCompletion = async (preUptime, preVersion) => {
+        const start = Date.now();
+        const maxMs = 180000;
+        let sawOffline = false;
+        while (Date.now() - start < maxMs) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          try {
+            const res = await fetchWithTimeout('/api/update/status');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const body = await res.json();
+            if (body.running) {
+              continue;
+            }
+            let uptime = null;
+            let version = null;
+            try {
+              const info = await getDeviceInfo();
+              uptime = info.uptime_ms;
+            } catch (e) {
+            }
+            try {
+              version = await getVersion();
+            } catch (e) {
+            }
+            if (preUptime !== null && uptime !== null && uptime < preUptime) {
+              return 'reboot';
+            }
+            if (preVersion && version && version.trim() !== preVersion.trim()) {
+              return 'version';
+            }
+            if (sawOffline) {
+              return 'reboot';
+            }
+            return 'no-update';
+          } catch (e) {
+            sawOffline = true;
+          }
+        }
+        return 'timeout';
+      };
       checkBtn.addEventListener('click', async () => {
         updateStatusEl.textContent = 'Checking for updates...';
+        if (updateSpinner) updateSpinner.classList.remove('hidden');
+        checkBtn.disabled = true;
+        checkBtn.classList.add('opacity-50', 'cursor-not-allowed');
         try {
+          let preUptime = null;
+          let preVersion = null;
+          try {
+            const info = await getDeviceInfo();
+            preUptime = info.uptime_ms;
+          } catch (e) {
+          }
+          try {
+            preVersion = await getVersion();
+          } catch (e) {
+          }
           const r = await fetch('/checkForUpdate');
           if (r.ok) {
             updateStatusEl.textContent = 'Update started (if available).';
-            setTimeout(() => location.reload(), 10000);
+            const result = await waitForUpdateCompletion(preUptime, preVersion);
+            if (result === 'reboot' || result === 'version') {
+              location.reload();
+              return;
+            }
+            if (result === 'no-update') {
+              updateStatusEl.textContent = 'No update applied.';
+            } else {
+              updateStatusEl.textContent = 'Update may still be running.';
+            }
+            if (updateSpinner) updateSpinner.classList.add('hidden');
           } else {
             updateStatusEl.textContent = 'Update check failed';
+            if (updateSpinner) updateSpinner.classList.add('hidden');
           }
         } catch (e) {
           updateStatusEl.textContent = 'Network error during update check';
+          if (updateSpinner) updateSpinner.classList.add('hidden');
+        } finally {
+          checkBtn.disabled = false;
+          checkBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
       });
     }
@@ -837,13 +1145,13 @@
       }
     });
 
-    // Versions loader (lage prioriteit, één keer)
+    // Versions loader (lage prioriteit, interval)
     dataLoader.register('versions', async () => {
       setLoadingState('version', true);
       setLoadingState('uiVersion', true);
       const [fwRes, uiRes] = await Promise.all([
-        fetch('/version'),
-        fetch('/uiversion')
+        fetch('/version', { cache: 'no-store' }),
+        fetch('/uiversion', { cache: 'no-store' })
       ]);
       if (!fwRes.ok || !uiRes.ok) throw new Error('Version fetch failed');
       return {
@@ -852,6 +1160,7 @@
       };
     }, {
       priority: 1,
+      interval: 30000,
       onSuccess: ({firmware, ui}) => {
         setLoadingState('version', false);
         setLoadingState('uiVersion', false);
@@ -1110,27 +1419,24 @@
         }
         
         // Get build info to determine branch and set intervals accordingly
-        let buildBranch = 'unknown';
-        let statusInterval = 30000; // Default: 30 seconds
-        let logsInterval = 30000;   // Default: 30 seconds
+        let statusInterval = 30000; // 30 seconds
+        let logsInterval = 30000;   // 30 seconds
         
         try {
           const buildRes = await fetch('/buildinfo');
           if (buildRes.ok) {
             const buildInfo = await buildRes.json();
-            buildBranch = buildInfo.git_branch || 'unknown';
-            
-            // Set intervals based on branch
-            // dev branch: logs every 5 seconds, status every 30 seconds
-            // other branches: both every 30 seconds
-            if (buildBranch === 'dev') {
-              statusInterval = 30000;  // 30 seconds
-              logsInterval = 5000;     // 5 seconds
-            } else {
-              statusInterval = 30000;  // 30 seconds
-              logsInterval = 30000;    // 30 seconds
+            const env = (buildInfo.environment || '').toLowerCase();
+            isLogoProduct = env.indexOf('wordclock-logo') !== -1;
+            isMiniProduct = env.indexOf('wordclock-mini') !== -1;
+            setLogoSectionsVisible(isLogoProduct);
+            setHetIsSectionVisible(!isMiniProduct);
+            if (isLogoProduct) {
+              initLogoControls();
             }
-            
+            if (isMiniProduct) {
+              dataLoader.loaders.delete('hetIsDuration');
+            }
           } else {
           }
         } catch (err) {
@@ -1139,6 +1445,7 @@
         // Update loader intervals BEFORE starting them
         const statusLoader = dataLoader.loaders.get('status');
         const logsLoader = dataLoader.loaders.get('logs');
+        const versionsLoader = dataLoader.loaders.get('versions');
         
         if (statusLoader) {
           statusLoader.interval = statusInterval;
@@ -1166,6 +1473,14 @@
         if (logsLoader) {
           if (logsLoader.interval) {
             dataLoader.startInterval('logs');
+          } else {
+          }
+        } else {
+        }
+
+        if (versionsLoader) {
+          if (versionsLoader.interval) {
+            dataLoader.startInterval('versions');
           } else {
           }
         } else {

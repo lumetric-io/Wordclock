@@ -25,11 +25,11 @@
     </section>
 
     <section id="step2" class="bg-white p-4 rounded-2xl shadow mb-4">
-      <h2 class="text-xl font-semibold mb-2">Step 2: UI (SPIFFS)</h2>
-      <p class="text-sm text-gray-700 mb-2">Upload the UI image (spiffs.bin). The device will reboot automatically after this step as well.</p>
-      <form action="/uploadSpiffs" method="POST" enctype="multipart/form-data" class="space-y-2">
-        <input type="file" name="spiffsFile" accept=".bin" required class="block w-full text-sm" />
-        <button type="submit" class="py-2 px-3 rounded bg-gray-700 text-white hover:bg-gray-800">Upload UI (SPIFFS)</button>
+      <h2 class="text-xl font-semibold mb-2">Step 2: UI (LittleFS)</h2>
+      <p class="text-sm text-gray-700 mb-2">Upload the UI image (littlefs.bin). The device will reboot automatically after this step as well.</p>
+      <form action="/uploadFs" method="POST" enctype="multipart/form-data" class="space-y-2">
+        <input type="file" name="fsFile" accept=".bin" required class="block w-full text-sm" />
+        <button type="submit" class="py-2 px-3 rounded bg-gray-700 text-white hover:bg-gray-800">Upload UI (LittleFS)</button>
       </form>
       <p class="text-xs text-gray-600 mt-2">Note: updates are applied immediately per step; after reboot you will return to the dashboard.</p>
     </section>

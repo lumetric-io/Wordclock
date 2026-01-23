@@ -1,0 +1,6 @@
+{
+  "product_id": "wordclock-mini",
+  "display_name": "Wordclock Mini",
+  "default_channel": "stable",
+  "grids": ["nl_20x20_v1"]
+}

@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Wordclock Admin</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .spinner {
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid #cbd5e1;
+      border-top-color: #1f2937;
+      border-radius: 9999px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .spinner.hidden {
+      display: none;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans">
   <div class="max-w-xl mx-auto p-4">
@@ -32,7 +50,26 @@
         <a class="py-2 rounded bg-gray-200 text-gray-800 text-center hover:bg-gray-300" href="/update.html">🧰 Update page</a>
       </div>
 
-      <div class="mt-4">
+      <div class="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <h2 class="text-lg font-semibold mb-2">Release channel</h2>
+        <div class="space-y-1 mb-2">
+          <label class="inline-flex items-center space-x-2">
+            <input type="radio" name="updateChannelAdmin" value="stable" class="form-radio">
+            <span>Stable (recommended)</span>
+          </label><br>
+          <label class="inline-flex items-center space-x-2">
+            <input type="radio" name="updateChannelAdmin" value="early" class="form-radio">
+            <span>Early (experimental)</span>
+          </label><br>
+          <label class="inline-flex items-center space-x-2 text-red-600">
+            <input type="radio" name="updateChannelAdmin" value="develop" class="form-radio">
+            <span>Develop (kan de klok onbruikbaar maken; herstel niet gegarandeerd)</span>
+          </label>
+          <p id="updateChannelStatusAdmin" class="text-xs text-gray-500">Default: stable. Early/Develop kunnen instabiel zijn.</p>
+        </div>
+      </div>
+
+      <div class="mt-4" id="syncUiSection">
         <button id="syncUiBtn" class="py-2 px-3 rounded bg-indigo-600 text-white hover:bg-indigo-700">🗂️ Sync UI files</button>
         <p id="syncUiMsg" class="text-xs text-gray-600 mt-2"></p>
       </div>
@@ -98,6 +135,15 @@
         <button type="submit" class="py-2 px-3 rounded bg-gray-700 text-white hover:bg-gray-800">Upload</button>
       </form>
       <p id="updateStatus" class="text-xs text-gray-600 mt-2"></p>
+      <span id="updateSpinnerAdm" class="spinner hidden" aria-label="Update in progress"></span>
+
+      <div class="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <h2 class="text-xl font-semibold mb-2">Fleet registration</h2>
+        <p class="text-sm text-gray-600">Register this device with fleet management.</p>
+        <button id="registerBtn" class="mt-3 py-2 px-3 rounded bg-green-600 text-white hover:bg-green-700">🔗 Register device</button>
+        <p id="registerStatus" class="text-xs text-gray-600 mt-2"></p>
+        <pre id="registerResponse" class="text-xs text-gray-700 bg-white border border-gray-200 rounded p-2 mt-2 hidden whitespace-pre-wrap"></pre>
+      </div>
 
       <div class="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
         <h2 class="text-xl font-semibold mb-2">Build info</h2>
@@ -114,6 +160,10 @@
           <dd id="buildTime" class="text-gray-800">-</dd>
           <dt class="text-gray-500">Environment</dt>
           <dd id="buildEnv" class="text-gray-800">-</dd>
+          <dt class="text-gray-500">Device ID</dt>
+          <dd id="buildDeviceId" class="text-gray-800">-</dd>
+          <dt class="text-gray-500">Hardware ID</dt>
+          <dd id="buildHardwareId" class="text-gray-800">-</dd>
         </dl>
         <p id="buildInfoStatus" class="text-xs text-gray-500 mt-2"></p>
       </div>
@@ -134,27 +184,176 @@
     const updateBtn = document.getElementById('updateBtnAdm');
     const updateStatusEl = document.getElementById('updateStatus');
     const updateBtnMsg = document.getElementById('updateBtnMsg');
+    const updateSpinnerAdm = document.getElementById('updateSpinnerAdm');
     if (updateBtn) {
+      const fetchWithTimeout = async (url, options = {}, timeoutMs = 5000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, { ...options, signal: controller.signal, cache: 'no-store' });
+          return res;
+        } finally {
+          clearTimeout(id);
+        }
+      };
+      const getDeviceInfo = async () => {
+        const res = await fetchWithTimeout('/api/device/info');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      };
+      const getVersion = async () => {
+        const res = await fetchWithTimeout('/version');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      };
+      const waitForUpdateCompletion = async (preUptime, preVersion) => {
+        const start = Date.now();
+        const maxMs = 180000;
+        let sawOffline = false;
+        while (Date.now() - start < maxMs) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          try {
+            const res = await fetchWithTimeout('/api/update/status');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const body = await res.json();
+            if (body.running) {
+              continue;
+            }
+            let uptime = null;
+            let version = null;
+            try {
+              const info = await getDeviceInfo();
+              uptime = info.uptime_ms;
+            } catch (e) {
+            }
+            try {
+              version = await getVersion();
+            } catch (e) {
+            }
+            if (preUptime !== null && uptime !== null && uptime < preUptime) {
+              return 'reboot';
+            }
+            if (preVersion && version && version.trim() !== preVersion.trim()) {
+              return 'version';
+            }
+            if (sawOffline) {
+              return 'reboot';
+            }
+            return 'no-update';
+          } catch (e) {
+            sawOffline = true;
+          }
+        }
+        return 'timeout';
+      };
       updateBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         if (!confirm('Check for firmware updates and start OTA?')) return;
         if (updateStatusEl) updateStatusEl.textContent = 'Checking for updates…';
         if (updateBtnMsg) updateBtnMsg.textContent = 'Checking…';
+        if (updateSpinnerAdm) updateSpinnerAdm.classList.remove('hidden');
+        updateBtn.disabled = true;
+        updateBtn.classList.add('opacity-50', 'cursor-not-allowed');
         try {
+          let preUptime = null;
+          let preVersion = null;
+          try {
+            const info = await getDeviceInfo();
+            preUptime = info.uptime_ms;
+          } catch (e) {
+          }
+          try {
+            preVersion = await getVersion();
+          } catch (e) {
+          }
           const r = await fetch('/checkForUpdate');
           if (r.ok) {
             if (updateStatusEl) updateStatusEl.textContent = 'Update started. Device will reboot shortly…';
             if (updateBtnMsg) updateBtnMsg.textContent = 'Running…';
-            setTimeout(() => location.reload(), 10000);
+            const result = await waitForUpdateCompletion(preUptime, preVersion);
+            if (result === 'reboot' || result === 'version') {
+              location.reload();
+              return;
+            }
+            if (result === 'no-update') {
+              if (updateStatusEl) updateStatusEl.textContent = 'No update applied.';
+            } else {
+              if (updateStatusEl) updateStatusEl.textContent = 'Update may still be running.';
+            }
+            if (updateSpinnerAdm) updateSpinnerAdm.classList.add('hidden');
           } else {
             const msg = 'Update failed (HTTP ' + r.status + ')';
             if (updateStatusEl) updateStatusEl.textContent = msg;
             if (updateBtnMsg) updateBtnMsg.textContent = msg;
+            if (updateSpinnerAdm) updateSpinnerAdm.classList.add('hidden');
           }
         } catch (err) {
           if (updateStatusEl) updateStatusEl.textContent = 'Update request failed';
           if (updateBtnMsg) updateBtnMsg.textContent = 'Request failed';
+          if (updateSpinnerAdm) updateSpinnerAdm.classList.add('hidden');
+        } finally {
+          updateBtn.disabled = false;
+          updateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
+      });
+    }
+
+    const channelRadiosAdmin = document.querySelectorAll('input[name="updateChannelAdmin"]');
+    const channelStatusAdmin = document.getElementById('updateChannelStatusAdmin');
+    let lastAdminChannel = 'stable';
+    const applyChannelGuardAdmin = (ch) => {
+      if (channelStatusAdmin) {
+        channelStatusAdmin.textContent = `Current channel: ${ch}${ch === 'develop' ? ' (automatic updates disabled)' : ''}`;
+      }
+    };
+    const loadChannelAdmin = async () => {
+      if (channelStatusAdmin) channelStatusAdmin.textContent = 'Loading channel…';
+      try {
+        const res = await fetch('/api/update/channel');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const body = await res.json();
+        const ch = (body && body.channel) ? body.channel : 'stable';
+        lastAdminChannel = ch;
+        channelRadiosAdmin.forEach(r => { r.checked = (r.value === ch); });
+        applyChannelGuardAdmin(ch);
+      } catch (err) {
+        channelRadiosAdmin.forEach(r => { if (r.value === 'stable') r.checked = true; });
+        lastAdminChannel = 'stable';
+        applyChannelGuardAdmin('stable');
+      }
+    };
+    if (channelRadiosAdmin.length) {
+      loadChannelAdmin();
+      channelRadiosAdmin.forEach(r => {
+        r.addEventListener('change', async () => {
+          if (!r.checked) return;
+          const ch = r.value;
+          if (ch === 'develop') {
+            const ok = window.confirm('Weet je zeker dat je het ontwikkelkanaal wilt gebruiken? Dit kan de klok onbruikbaar maken en herstel is niet gegarandeerd.');
+            if (!ok) {
+              r.checked = false;
+              const prev = Array.from(channelRadiosAdmin).find(x => x.value === lastAdminChannel);
+              if (prev) prev.checked = true;
+              applyChannelGuardAdmin(lastAdminChannel);
+              return;
+            }
+          }
+          if (channelStatusAdmin) channelStatusAdmin.textContent = 'Saving…';
+          try {
+            const res = await fetch('/api/update/channel', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ channel: ch })
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            lastAdminChannel = ch;
+            applyChannelGuardAdmin(ch);
+          } catch (err) {
+            if (channelStatusAdmin) channelStatusAdmin.textContent = 'Save failed; keeping previous value';
+            channelRadiosAdmin.forEach(radio => { radio.checked = (radio.value === lastAdminChannel); });
+            applyChannelGuardAdmin(lastAdminChannel);
+          }
+        });
       });
     }
 
@@ -261,9 +460,16 @@
     const buildStatus = document.getElementById('buildInfoStatus');
     async function loadBuildInfo() {
       try {
-        const res = await fetch('/buildinfo');
+        const [res, devRes] = await Promise.all([
+          fetch('/buildinfo'),
+          fetch('/api/device/info')
+        ]);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const info = await res.json();
+        let devInfo = {};
+        if (devRes.ok) {
+          devInfo = await devRes.json();
+        }
         const set = (id, val) => {
           const el = document.getElementById(id);
           if (el) el.textContent = val || '-';
@@ -274,6 +480,12 @@
         set('buildBranch', info.git_branch);
         set('buildTime', info.build_time_utc);
         set('buildEnv', info.environment);
+        set('buildDeviceId', devInfo.device_id);
+        set('buildHardwareId', devInfo.hardware_id);
+        const syncSection = document.getElementById('syncUiSection');
+        if (syncSection && info.ui_sync_supported === false) {
+          syncSection.classList.add('hidden');
+        }
         if (buildStatus) buildStatus.textContent = 'Last updated just now.';
       } catch (err) {
         if (buildStatus) buildStatus.textContent = 'Failed to load build info (' + err.message + ')';
@@ -341,6 +553,49 @@
     }
 
     loadLogSettings();
+
+    const registerBtn = document.getElementById('registerBtn');
+    const registerStatus = document.getElementById('registerStatus');
+    const registerResponse = document.getElementById('registerResponse');
+    if (registerBtn) {
+      registerBtn.addEventListener('click', async () => {
+        registerBtn.disabled = true;
+        registerBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        if (registerStatus) registerStatus.textContent = 'Registering device...';
+        if (registerResponse) {
+          registerResponse.textContent = '';
+          registerResponse.classList.add('hidden');
+        }
+        try {
+          const res = await fetch('/api/device/register', { method: 'POST' });
+          const text = await res.text();
+          let body = text;
+          try {
+            const parsed = JSON.parse(text);
+            body = JSON.stringify(parsed, null, 2);
+          } catch (err) {
+          }
+          if (registerResponse) {
+            registerResponse.textContent = body || '(empty response)';
+            registerResponse.classList.remove('hidden');
+          }
+          if (registerStatus) {
+            registerStatus.textContent = res.ok
+              ? 'Registration succeeded.'
+              : 'Registration failed (HTTP ' + res.status + ').';
+          }
+        } catch (err) {
+          if (registerStatus) registerStatus.textContent = 'Registration request failed.';
+          if (registerResponse) {
+            registerResponse.textContent = err && err.message ? err.message : String(err);
+            registerResponse.classList.remove('hidden');
+          }
+        } finally {
+          registerBtn.disabled = false;
+          registerBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      });
+    }
   </script>
 </body>
 </html>

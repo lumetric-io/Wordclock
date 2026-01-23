@@ -233,7 +233,7 @@ void initLogSettings() {
   prefs.begin("wc_log", true);
   uint8_t lvl = prefs.getUChar("level", (uint8_t)DEFAULT_LOG_LEVEL);
   LOG_RETENTION_DAYS = prefs.getUInt("retention", 1);
-  LOG_DELETE_ON_BOOT = prefs.getBool("delOnBoot", true);
+  LOG_DELETE_ON_BOOT = prefs.getBool("delOnBoot", false);
   prefs.end();
 
   if (lvl <= LOG_LEVEL_ERROR) {

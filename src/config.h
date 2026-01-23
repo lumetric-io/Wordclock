@@ -1,12 +1,42 @@
-// Log buffer and default log level
-#define DEFAULT_LOG_LEVEL LOG_LEVEL_ERROR
-#define LOG_BUFFER_SIZE 50  // Reduced from 150 to save flash space
 #pragma once
 
-#define FIRMWARE_VERSION "26.2.2"
-#define UI_VERSION "26.2.2"
+// Log buffer and default log level
+#ifndef DEFAULT_LOG_LEVEL
+#define DEFAULT_LOG_LEVEL LOG_LEVEL_ERROR
+#endif
+#ifndef LOG_BUFFER_SIZE
+#define LOG_BUFFER_SIZE 50  // Reduced from 150 to save flash space
+#endif
 
+#ifdef PRODUCT_CONFIG_HEADER
+#include PRODUCT_CONFIG_HEADER
+#elif defined(__has_include)
+#if __has_include("product_config.h")
+#include "product_config.h"
+#endif
+#endif
+
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION "26.2.2"
+#endif
+#ifndef UI_VERSION
+#define UI_VERSION "26.2.2"
+#endif
+#ifndef PRODUCT_ID
+#define PRODUCT_ID "wordclock-legacy"
+#endif
+
+#ifndef SUPPORT_OTA_V2
+#define SUPPORT_OTA_V2 0
+#endif
+
+#ifndef SUPPORT_MINUTE_LEDS
+#define SUPPORT_MINUTE_LEDS 1
+#endif
+
+#ifndef DATA_PIN
 #define DATA_PIN 4
+#endif
 #define DEFAULT_BRIGHTNESS 5
 
 #define CLOCK_NAME "Wordclock"

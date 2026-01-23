@@ -204,10 +204,12 @@ void ClockDisplay::buildAnimationFrames(const DisplayTime& dt, unsigned long now
         
         // Add extra minute LEDs to final frame
         if (!animation_.frames.empty() && dt.extra > 0) {
+#if SUPPORT_MINUTE_LEDS
             auto& finalFrame = animation_.frames.back();
-            for (int i = 0; i < dt.extra && i < 4; ++i) {
+            for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(EXTRA_MINUTE_LED_COUNT); ++i) {
                 finalFrame.push_back(EXTRA_MINUTE_LEDS[i]);
             }
+#endif
         }
         
         if (!animation_.frames.empty()) {
@@ -245,22 +247,20 @@ void ClockDisplay::executeAnimationStep(unsigned long nowMs) {
             int stepIndex = animation_.currentStep; // capture before increment
             animation_.currentStep++;
             
-            String msg = "Anim step ";
-            msg += (stepIndex + 1);
-            msg += "/";
-            msg += animation_.frames.size();
-            msg += " dt=";
-            msg += deltaMs;
-            msg += "ms (Δ";
-            msg += (int)frame.size() - (int)prevSize;
-            msg += " leds)";
             // Warn if actual delay is > 20% longer than configured delay
             uint16_t thresholdMs = frameDelayMs + (frameDelayMs / 5); // frameDelayMs * 1.2
             if (deltaMs > thresholdMs) {
+                String msg = "Anim step ";
+                msg += (stepIndex + 1);
+                msg += "/";
+                msg += animation_.frames.size();
+                msg += " dt=";
+                msg += deltaMs;
+                msg += "ms (Δ";
+                msg += (int)frame.size() - (int)prevSize;
+                msg += " leds)";
                 msg += " ⚠️ slow";
                 logWarn(msg);
-            } else {
-                logDebug(msg);
             }
             
             // Instant display (no fade effects)
@@ -305,9 +305,11 @@ void ClockDisplay::displayStaticTime(const DisplayTime& dt) {
     }
     
     // Add extra minute LEDs
-    for (int i = 0; i < dt.extra && i < 4; ++i) {
+#if SUPPORT_MINUTE_LEDS
+    for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(EXTRA_MINUTE_LED_COUNT); ++i) {
         indices.push_back(EXTRA_MINUTE_LEDS[i]);
     }
+#endif
     
     showLeds(indices);
     
@@ -396,5 +398,3 @@ void ClockDisplay::buildClassicFrames(const std::vector<WordSegment>& segs,
         frames.push_back(cumulative);
     }
 }
-
-

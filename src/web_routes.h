@@ -14,6 +14,9 @@
 #include "secrets.h"
 #include "sequence_controller.h"
 #include "led_state.h"
+#if defined(PRODUCT_VARIANT_LOGO)
+#include "logo_leds.h"
+#endif
 #include "log.h"
 #include "time_mapper.h"
 #include "ota_updater.h"
@@ -29,8 +32,13 @@
 #include "build_info.h"
 #include "setup_state.h"
 #include "system_utils.h"
+#include "update_status.h"
+#include "device_identity.h"
+#include "device_registration.h"
 #include <WiFi.h>
 #include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 
 // References to global variables
@@ -39,6 +47,23 @@ extern String logBuffer[];
 extern int logIndex;
 extern bool clockEnabled;
 extern bool g_wifiHadCredentialsAtBoot;
+
+static TaskHandle_t g_otaTaskHandle = nullptr;
+
+static void otaUpdateTask(void* params) {
+  (void)params;
+  logInfo("🧵 OTA update task started");
+  set_update_running(true);
+  mqtt_publish_update_status(true);
+  setLedsSuspended(true);
+  checkForFirmwareUpdate();
+  setLedsSuspended(false);
+  set_update_running(false);
+  mqtt_publish_update_status(false);
+  g_otaTaskHandle = nullptr;
+  logInfo("🧵 OTA update task finished");
+  vTaskDelete(nullptr);
+}
 
 // Serve file, preferring a .gz variant if client accepts gzip
 static void serveFile(const char* path, const char* mime) {
@@ -138,6 +163,50 @@ static void sendNightModeConfig() {
   serializeJson(doc, out);
   server.send(200, "application/json", out);
 }
+
+#if defined(PRODUCT_VARIANT_LOGO)
+static bool parseHexColor(String hex, uint8_t& r, uint8_t& g, uint8_t& b) {
+  String filtered;
+  filtered.reserve(hex.length());
+  for (size_t i = 0; i < hex.length(); ++i) {
+    char c = hex.charAt(i);
+    if (isxdigit(static_cast<unsigned char>(c))) {
+      filtered += static_cast<char>(toupper(static_cast<unsigned char>(c)));
+    }
+  }
+  if (filtered.length() != 6) return false;
+  long val = strtol(filtered.c_str(), nullptr, 16);
+  r = (val >> 16) & 0xFF;
+  g = (val >> 8) & 0xFF;
+  b =  val       & 0xFF;
+  return true;
+}
+
+static void refreshCurrentTimeDisplay() {
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    std::vector<uint16_t> indices = get_led_indices_for_time(&timeinfo);
+    showLeds(indices);
+  }
+}
+
+static void sendLogoState() {
+  JsonDocument doc;
+  doc["brightness"] = logoLeds.getBrightness();
+  doc["count"] = LOGO_LED_COUNT;
+  doc["start"] = getLogoStartIndex();
+  JsonArray arr = doc["colors"].to<JsonArray>();
+  const LogoLedColor* colors = logoLeds.getColors();
+  for (uint16_t i = 0; i < LOGO_LED_COUNT; ++i) {
+    char buf[7];
+    snprintf(buf, sizeof(buf), "%02X%02X%02X", colors[i].r, colors[i].g, colors[i].b);
+    arr.add(String(buf));
+  }
+  String out;
+  serializeJson(doc, out);
+  server.send(200, "application/json", out);
+}
+#endif
 
 // Clear persistent settings (factory reset helper)
 static void performFactoryReset() {
@@ -495,6 +564,22 @@ void setupWebRoutes() {
     }
 
     mqtt_apply_settings(next);
+    server.send(200, "text/plain", "OK");
+  });
+
+  // Clear MQTT settings (disable without factory reset)
+  server.on("/api/mqtt/clear", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    mqtt_settings_clear();
+    MqttSettings empty;
+    empty.host = "";
+    empty.port = 1883;
+    empty.user = "";
+    empty.pass = "";
+    empty.discoveryPrefix = "homeassistant";
+    empty.baseTopic = "wordclock";
+    empty.allowAnonymous = false;
+    mqtt_apply_settings(empty);
     server.send(200, "text/plain", "OK");
   });
 
@@ -871,11 +956,12 @@ void setupWebRoutes() {
     if (!ensureUiAuth()) return;
     JsonDocument doc;
     doc["firmware"] = FIRMWARE_VERSION;
-    doc["ui"] = UI_VERSION;
+    doc["ui"] = getUiVersion();
     doc["git_sha"] = BUILD_GIT_SHA;
     doc["git_branch"] = BUILD_GIT_BRANCH;
     doc["build_time_utc"] = BUILD_TIME_UTC;
     doc["environment"] = BUILD_ENV_NAME;
+    doc["ui_sync_supported"] = (SUPPORT_OTA_V2 == 0);
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);
@@ -908,8 +994,39 @@ void setupWebRoutes() {
     doc["sdk"] = ESP.getSdkVersion();
     doc["rssi"] = WiFi.RSSI();
 #if defined(ARDUINO_ARCH_ESP32)
+    doc["hardware_id"] = get_hardware_id();
+    doc["device_id"] = get_device_id();
+    doc["has_device_token"] = get_device_token().length() > 0;
+#endif
+#if defined(ARDUINO_ARCH_ESP32)
     doc["temp_c"] = temperatureRead();
 #endif
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  server.on("/api/device/register", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    String deviceId;
+    String token;
+    String err;
+    if (!register_device_with_fleet(deviceId, token, err)) {
+      server.send(502, "text/plain", err);
+      return;
+    }
+    JsonDocument doc;
+    doc["deviceId"] = deviceId;
+    doc["token"] = token;
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  server.on("/api/update/status", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    JsonDocument doc;
+    doc["running"] = is_update_running();
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);
@@ -989,11 +1106,15 @@ void setupWebRoutes() {
   server.on("/restart", []() {
     if (!ensureUiAuth()) return;
     logInfo("⚠️ Restart requested via dashboard");
-    // Clear all log files before restart
-    logInfo("🗑️ Clearing all log files before restart");
-    clearAllLogFiles();
-    // Give filesystem time to complete the deletion operations
-    delay(500);
+    if (getLogDeleteOnBoot()) {
+      // Clear all log files before restart (if enabled in settings)
+      logInfo("🗑️ Clearing all log files before restart");
+      clearAllLogFiles();
+      // Give filesystem time to complete the deletion operations
+      delay(500);
+    } else {
+      logInfo("🧾 Log delete-on-boot disabled; preserving logs on restart");
+    }
     server.send(200, "text/html", R"rawliteral(
       <html>
         <head>
@@ -1001,7 +1122,7 @@ void setupWebRoutes() {
         </head>
         <body>
           <h1>Wordclock is restarting...</h1>
-          <p>All logs have been cleared. You will be redirected to the dashboard in 5 seconds.</p>
+          <p>Device will restart shortly. You will be redirected to the dashboard in 5 seconds.</p>
         </body>
       </html>
     )rawliteral");
@@ -1127,13 +1248,13 @@ void setupWebRoutes() {
     }
   );  
 
-  // Separate endpoint for SPIFFS (UI) updates
+  // Separate endpoint for filesystem (UI) updates
   server.on(
-    "/uploadSpiffs",
+    "/uploadFs",
     HTTP_POST,
     []() {
       if (!ensureUiAuth()) return;
-      server.send(200, "text/plain", Update.hasError() ? "SPIFFS update failed" : "SPIFFS update successful. Rebooting...");
+      server.send(200, "text/plain", Update.hasError() ? "Filesystem update failed" : "Filesystem update successful. Rebooting...");
       if (!Update.hasError()) {
         delay(1000);
         safeRestart();
@@ -1143,7 +1264,7 @@ void setupWebRoutes() {
       if (!ensureUiAuth()) return;
       HTTPUpload& upload = server.upload();
       if (upload.status == UPLOAD_FILE_START) {
-        logInfo("📂 SPIFFS upload started: " + upload.filename);
+        logInfo("📂 Filesystem upload started: " + upload.filename);
         if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
           logError("❌ Update.begin(U_SPIFFS) failed");
           Update.printError(Serial);
@@ -1151,14 +1272,53 @@ void setupWebRoutes() {
       } else if (upload.status == UPLOAD_FILE_WRITE) {
         size_t written = Update.write(upload.buf, upload.currentSize);
         if (written != upload.currentSize) {
-          logError("❌ Error writing chunk (SPIFFS)");
+          logError("❌ Error writing chunk (filesystem)");
           Update.printError(Serial);
         } else {
-          logDebug("✏️ SPIFFS written: " + String(written) + " bytes");
+          logDebug("✏️ Filesystem written: " + String(written) + " bytes");
         }
       } else if (upload.status == UPLOAD_FILE_END) {
-        logInfo("📥 SPIFFS upload completed");
-        logDebug("SPIFFS total " + String(Update.size()) + " bytes");
+        logInfo("📥 Filesystem upload completed");
+        logDebug("Filesystem total " + String(Update.size()) + " bytes");
+        if (!Update.end(true)) {
+          logError("❌ Update.end(U_SPIFFS) failed");
+          Update.printError(Serial);
+        }
+      }
+    }
+  );
+
+  server.on(
+    "/uploadSpiffs",
+    HTTP_POST,
+    []() {
+      if (!ensureUiAuth()) return;
+      server.send(200, "text/plain", Update.hasError() ? "Filesystem update failed" : "Filesystem update successful. Rebooting...");
+      if (!Update.hasError()) {
+        delay(1000);
+        safeRestart();
+      }
+    },
+    []() {
+      if (!ensureUiAuth()) return;
+      HTTPUpload& upload = server.upload();
+      if (upload.status == UPLOAD_FILE_START) {
+        logInfo("📂 Filesystem upload started: " + upload.filename);
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
+          logError("❌ Update.begin(U_SPIFFS) failed");
+          Update.printError(Serial);
+        }
+      } else if (upload.status == UPLOAD_FILE_WRITE) {
+        size_t written = Update.write(upload.buf, upload.currentSize);
+        if (written != upload.currentSize) {
+          logError("❌ Error writing chunk (filesystem)");
+          Update.printError(Serial);
+        } else {
+          logDebug("✏️ Filesystem written: " + String(written) + " bytes");
+        }
+      } else if (upload.status == UPLOAD_FILE_END) {
+        logInfo("📥 Filesystem upload completed");
+        logDebug("Filesystem total " + String(Update.size()) + " bytes");
         if (!Update.end(true)) {
           logError("❌ Update.end(U_SPIFFS) failed");
           Update.printError(Serial);
@@ -1169,18 +1329,41 @@ void setupWebRoutes() {
 
   server.on("/checkForUpdate", HTTP_ANY, []() {
     if (!ensureUiAuth()) return;
-    logInfo("Firmware update manually started via UI");
+    if (is_update_running()) {
+      server.send(409, "text/plain", "Firmware update already running");
+      return;
+    }
+    logInfo("Firmware update manually started via UI (background task)");
+    BaseType_t ok = xTaskCreatePinnedToCore(
+      otaUpdateTask,
+      "otaUpdate",
+      12288,
+      nullptr,
+      1,
+      &g_otaTaskHandle,
+      tskNO_AFFINITY
+    );
+    if (ok != pdPASS) {
+      set_update_running(false);
+      mqtt_publish_update_status(false);
+      g_otaTaskHandle = nullptr;
+      logError("Failed to start OTA update task");
+      server.send(500, "text/plain", "Failed to start firmware update");
+      return;
+    }
+    set_update_running(true);
+    mqtt_publish_update_status(true);
     server.send(200, "text/plain", "Firmware update started");
-    delay(100);
-    checkForFirmwareUpdate();
   });
 
+#if SUPPORT_OTA_V2 == 0
   server.on("/syncUI", HTTP_POST, []() {
     if (!ensureAdminAuth()) return;
     logInfo("🗂️ UI sync requested by admin");
     syncFilesFromManifest();
     server.send(200, "text/plain", "UI sync started");
   });
+#endif
 
   server.on("/getBrightness", []() {
     if (!ensureUiAuth()) {
@@ -1212,6 +1395,69 @@ void setupWebRoutes() {
     server.send(200, "text/plain", "OK");
   });
 
+#if defined(PRODUCT_VARIANT_LOGO)
+  server.on("/logo/state", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    sendLogoState();
+  });
+
+  server.on("/logo/state", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    if (!server.hasArg("plain")) {
+      server.send(400, "text/plain", "Missing body");
+      return;
+    }
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, server.arg("plain"));
+    if (err) {
+      server.send(400, "text/plain", "Invalid JSON");
+      return;
+    }
+
+    bool updated = false;
+    if (doc["brightness"].is<int>()) {
+      int br = doc["brightness"].as<int>();
+      br = constrain(br, 0, 255);
+      logoLeds.setBrightness(static_cast<uint8_t>(br));
+      updated = true;
+    }
+
+    if (doc["all"].is<const char*>() || doc["all"].is<String>()) {
+      String hex = doc["all"].as<String>();
+      uint8_t r = 0, g = 0, b = 0;
+      if (!parseHexColor(hex, r, g, b)) {
+        server.send(400, "text/plain", "Invalid all-color value");
+        return;
+      }
+      logoLeds.setAll(r, g, b);
+      updated = true;
+    }
+
+    if (doc["colors"].is<JsonArray>()) {
+      JsonArray arr = doc["colors"].as<JsonArray>();
+      if (!arr || arr.size() != LOGO_LED_COUNT) {
+        server.send(400, "text/plain", String("colors array must contain ") + LOGO_LED_COUNT + " hex strings");
+        return;
+      }
+      for (uint16_t i = 0; i < LOGO_LED_COUNT; ++i) {
+        uint8_t r = 0, g = 0, b = 0;
+        if (!parseHexColor(arr[i].as<String>(), r, g, b)) {
+          server.send(400, "text/plain", "Invalid color entry");
+          return;
+        }
+        logoLeds.setColor(i, r, g, b, false);
+      }
+      logoLeds.flushColors();
+      updated = true;
+    }
+
+    if (updated) {
+      refreshCurrentTimeDisplay();
+    }
+    sendLogoState();
+  });
+#endif
+
   // Expose firmware version
   server.on("/version", []() {
     if (!ensureUiAuth()) {
@@ -1227,7 +1473,7 @@ void setupWebRoutes() {
       logWarn("[API] /uiversion: Auth failed");
       return;
     }
-    server.send(200, "text/plain", UI_VERSION);
+    server.send(200, "text/plain", getUiVersion());
   });
 
   // Sell mode endpoints (force 10:47 display)
@@ -1417,12 +1663,20 @@ void setupWebRoutes() {
       logWarn("[API] /getHetIsDuration: Auth failed");
       return;
     }
+#if defined(PRODUCT_VARIANT_MINI)
+    server.send(404, "text/plain", "HET IS not supported on this product");
+    return;
+#endif
     uint16_t duration = displaySettings.getHetIsDurationSec();
     server.send(200, "text/plain", String(duration));
   });
 
   server.on("/setHetIsDuration", []() {
     if (!ensureUiAuth()) return;
+#if defined(PRODUCT_VARIANT_MINI)
+    server.send(404, "text/plain", "HET IS not supported on this product");
+    return;
+#endif
     if (!server.hasArg("seconds")) {
       server.send(400, "text/plain", "Missing seconds");
       return;

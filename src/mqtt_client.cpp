@@ -13,6 +13,7 @@
 #include "time_mapper.h"
 #include "sequence_controller.h"
 #include "mqtt_settings.h"
+#include "update_status.h"
 #include <esp_system.h>
 #include <Preferences.h>
 #include "night_mode.h"
@@ -51,15 +52,18 @@ static String tNightEndState, tNightEndSet;
 static String tVersion, tUiVersion, tIp, tRssi, tUptime;
 static String tHeap, tWifiChan, tBootReason, tResetCount;
 static String tUpdateChannelState, tUpdateAutoAllowed, tUpdateAvailable;
+static String tUpdateRunning;
 
 static unsigned long lastReconnectAttempt = 0;
 static unsigned long lastStateAt = 0;
 static const unsigned long STATE_INTERVAL_MS = 30000; // 30s
 static const unsigned long RECONNECT_DELAY_MIN_MS = 2000;
 static const unsigned long RECONNECT_DELAY_MAX_MS = 60000;
+static const unsigned long RECONNECT_PAUSED_RETRY_MS = 300000;
 static unsigned long reconnectDelayMs = RECONNECT_DELAY_MIN_MS;
 static uint8_t reconnectAttempts = 0;
 static bool reconnectAborted = false;
+static unsigned long lastPausedRetryMs = 0;
 
 static void buildTopics() {
   base = g_mqttCfg.baseTopic;
@@ -105,6 +109,7 @@ static void buildTopics() {
   tUpdateChannelState = base + "/update/channel";
   tUpdateAutoAllowed  = base + "/update/auto_allowed";
   tUpdateAvailable    = base + "/update/available";
+  tUpdateRunning      = base + "/update/running";
 }
 
 static void publishDiscovery() {
@@ -140,13 +145,17 @@ static void publishDiscovery() {
   builder.addNumber("Night mode dim %", nodeId + "_night_dim",
                    tNightDimState, tNightDimSet,
                    0, 100, 1, "%");
+#if !defined(PRODUCT_VARIANT_MINI)
   builder.addNumber("'HET IS' seconds", nodeId + "_hetis",
                    tHetIsState, tHetIsSet,
                    0, 360, 1, "s");
+#endif
   
   // Binary sensor
   builder.addBinarySensor("Night mode active", nodeId + "_night_active",
                          tNightActiveState);
+  builder.addBinarySensor("Update running", nodeId + "_update_running",
+                         tUpdateRunning);
   
   // Buttons
   builder.addButton("Restart", nodeId + "_restart", tRestartCmd, "restart");
@@ -284,7 +293,9 @@ void mqtt_publish_state(bool force) {
   publishLightState();
   publishSwitch(tAnimState, displaySettings.getAnimateWords());
   publishSwitch(tAutoUpdState, displaySettings.getAutoUpdate());
+#if !defined(PRODUCT_VARIANT_MINI)
   publishNumber(tHetIsState, displaySettings.getHetIsDurationSec());
+#endif
   publishSwitch(tNightEnabledState, nightMode.isEnabled());
   publishNightEffectState();
   publishNightDimState();
@@ -299,9 +310,11 @@ void mqtt_publish_state(bool force) {
   bool autoAllowed = displaySettings.getAutoUpdate() && updCh != "develop";
   mqtt.publish(tUpdateAutoAllowed.c_str(), autoAllowed ? "ON" : "OFF", true);
   mqtt.publish(tUpdateAvailable.c_str(), "unknown", true); // placeholder until a remote check runs
+  mqtt.publish(tUpdateRunning.c_str(), is_update_running() ? "ON" : "OFF", true);
 
   mqtt.publish(tVersion.c_str(), FIRMWARE_VERSION, true);
-  mqtt.publish(tUiVersion.c_str(), UI_VERSION, true);
+  String uiVersion = getUiVersion();
+  mqtt.publish(tUiVersion.c_str(), uiVersion.c_str(), true);
   mqtt.publish(tIp.c_str(), WiFi.localIP().toString().c_str(), true);
   char rssi[16]; snprintf(rssi, sizeof(rssi), "%d", WiFi.RSSI()); mqtt.publish(tRssi.c_str(), rssi, true);
   char heap[24]; snprintf(heap, sizeof(heap), "%u", (unsigned)esp_get_free_heap_size()); mqtt.publish(tHeap.c_str(), heap, true);
@@ -325,6 +338,11 @@ void mqtt_publish_state(bool force) {
   }
   const char* bootOut = g_bootTimeSet ? g_bootTimeStr.c_str() : "unknown";
   mqtt.publish(tUptime.c_str(), bootOut, true);
+}
+
+void mqtt_publish_update_status(bool running) {
+  if (!mqtt.connected()) return;
+  mqtt.publish(tUpdateRunning.c_str(), running ? "ON" : "OFF", true);
 }
 
 static void publishBirth() {
@@ -374,11 +392,13 @@ static void initCommandHandlers() {
   ));
   
   // Number handlers
+#if !defined(PRODUCT_VARIANT_MINI)
   registry.registerHandler(tHetIsSet, new NumberCommandHandler(
     0, 360,
     [](int v) { displaySettings.setHetIsDurationSec((uint16_t)v); },
     []() { publishNumber(tHetIsState, displaySettings.getHetIsDurationSec()); }
   ));
+#endif
   
   registry.registerHandler(tNightDimSet, new NumberCommandHandler(
     0, 100,
@@ -445,7 +465,11 @@ static void initCommandHandlers() {
   });
   
   registry.registerLambda(tUpdateCmd, [](const String&) {
+    set_update_running(true);
+    mqtt_publish_update_status(true);
     checkForFirmwareUpdate();
+    set_update_running(false);
+    mqtt_publish_update_status(false);
   });
 }
 
@@ -510,7 +534,9 @@ static bool mqtt_connect() {
   mqtt.subscribe(tClockSet.c_str());
   mqtt.subscribe(tAnimSet.c_str());
   mqtt.subscribe(tAutoUpdSet.c_str());
+#if !defined(PRODUCT_VARIANT_MINI)
   mqtt.subscribe(tHetIsSet.c_str());
+#endif
   mqtt.subscribe(tNightEnabledSet.c_str());
   mqtt.subscribe(tNightOverrideSet.c_str());
   mqtt.subscribe(tNightEffectSet.c_str());
@@ -577,7 +603,19 @@ void mqtt_loop() {
     return;
   }
   mqttConfiguredLogged = false;
-  if (reconnectAborted) return;
+  if (reconnectAborted) {
+    unsigned long now = millis();
+    if (lastPausedRetryMs == 0 || now - lastPausedRetryMs >= RECONNECT_PAUSED_RETRY_MS) {
+      logInfo("🔄 MQTT retry after paused backoff");
+      reconnectAborted = false;
+      reconnectDelayMs = RECONNECT_DELAY_MIN_MS;
+      reconnectAttempts = 0;
+      lastReconnectAttempt = 0;
+      lastPausedRetryMs = now;
+    } else {
+      return;
+    }
+  }
 
   if (!mqtt.connected()) {
     unsigned long now = millis();
@@ -600,6 +638,7 @@ void mqtt_loop() {
                           String(". Will retry on network recovery, config change, or manual reconnect.");
           logWarn(errMsg);
           reconnectAborted = true;
+          lastPausedRetryMs = millis();
           // Note: reconnectAborted will be cleared on:
           // 1. Successful connection (mqtt_connect success path)
           // 2. Configuration change (mqtt_apply_settings)

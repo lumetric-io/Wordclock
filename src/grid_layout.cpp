@@ -3,13 +3,90 @@
 #include <Arduino.h>
 #include <string.h>
 
+#ifdef PRODUCT_CONFIG_HEADER
+#include PRODUCT_CONFIG_HEADER
+#elif defined(__has_include)
+#if __has_include("product_config.h")
+#include "product_config.h"
+#endif
+#endif
+
+#if !defined(ENABLE_GRID_NL_V1) && !defined(ENABLE_GRID_NL_V2) && !defined(ENABLE_GRID_NL_V3) && \
+    !defined(ENABLE_GRID_NL_V4) && !defined(ENABLE_GRID_NL_50X50_V1) && !defined(ENABLE_GRID_NL_50X50_V2) && \
+    !defined(ENABLE_GRID_NL_50X50_V3) && !defined(ENABLE_GRID_NL_55X50_LOGO_V1) && \
+    !defined(ENABLE_GRID_NL_20X20_V1)
+#define ENABLE_GRID_NL_V1 1
+#define ENABLE_GRID_NL_V2 1
+#define ENABLE_GRID_NL_V3 1
+#define ENABLE_GRID_NL_V4 1
+#define ENABLE_GRID_NL_50X50_V1 1
+#define ENABLE_GRID_NL_50X50_V2 1
+#define ENABLE_GRID_NL_50X50_V3 1
+#define ENABLE_GRID_NL_55X50_LOGO_V1 1
+#define ENABLE_GRID_NL_20X20_V1 1
+#endif
+
+#ifndef ENABLE_GRID_NL_V1
+#define ENABLE_GRID_NL_V1 0
+#endif
+#ifndef ENABLE_GRID_NL_V2
+#define ENABLE_GRID_NL_V2 0
+#endif
+#ifndef ENABLE_GRID_NL_V3
+#define ENABLE_GRID_NL_V3 0
+#endif
+#ifndef ENABLE_GRID_NL_V4
+#define ENABLE_GRID_NL_V4 0
+#endif
+#ifndef ENABLE_GRID_NL_50X50_V1
+#define ENABLE_GRID_NL_50X50_V1 0
+#endif
+#ifndef ENABLE_GRID_NL_50X50_V2
+#define ENABLE_GRID_NL_50X50_V2 0
+#endif
+#ifndef ENABLE_GRID_NL_50X50_V3
+#define ENABLE_GRID_NL_50X50_V3 0
+#endif
+#ifndef ENABLE_GRID_NL_55X50_LOGO_V1
+#define ENABLE_GRID_NL_55X50_LOGO_V1 0
+#endif
+#ifndef ENABLE_GRID_NL_20X20_V1
+#define ENABLE_GRID_NL_20X20_V1 0
+#endif
+
+#if !(ENABLE_GRID_NL_V1 || ENABLE_GRID_NL_V2 || ENABLE_GRID_NL_V3 || ENABLE_GRID_NL_V4 || \
+      ENABLE_GRID_NL_50X50_V1 || ENABLE_GRID_NL_50X50_V2 || ENABLE_GRID_NL_50X50_V3 || \
+      ENABLE_GRID_NL_55X50_LOGO_V1 || ENABLE_GRID_NL_20X20_V1)
+#error "At least one grid variant must be enabled."
+#endif
+
+#if ENABLE_GRID_NL_V1
 #include "grid_variants/nl_v1.h"
+#endif
+#if ENABLE_GRID_NL_V2
 #include "grid_variants/nl_v2.h"
+#endif
+#if ENABLE_GRID_NL_V3
 #include "grid_variants/nl_v3.h"
+#endif
+#if ENABLE_GRID_NL_V4
 #include "grid_variants/nl_v4.h"
+#endif
+#if ENABLE_GRID_NL_50X50_V1
 #include "grid_variants/nl_50x50_v1.h"
+#endif
+#if ENABLE_GRID_NL_50X50_V2
 #include "grid_variants/nl_50x50_v2.h"
+#endif
+#if ENABLE_GRID_NL_50X50_V3
 #include "grid_variants/nl_50x50_v3.h"
+#endif
+#if ENABLE_GRID_NL_55X50_LOGO_V1
+#include "grid_variants/nl_55x50_logo_v1.h"
+#endif
+#if ENABLE_GRID_NL_20X20_V1
+#include "grid_variants/nl_20x20_v1.h"
+#endif
 
 namespace {
 
@@ -63,13 +140,33 @@ uint16_t computeExtraLedCount(const GridVariantData* data) {
 }
 
 static const GridVariantData GRID_VARIANTS[] = {
-  { GridVariant::NL_V1, "NL_V1", "Nederlands V1", "nl", "v1", LED_COUNT_GRID_NL_V1, LED_COUNT_EXTRA_NL_V1, LED_COUNT_TOTAL_NL_V1, LETTER_GRID_NL_V1, WORDS_NL_V1, WORDS_NL_V1_COUNT, EXTRA_MINUTES_NL_V1, EXTRA_MINUTES_NL_V1_COUNT, MinuteLayout::AfterGrid },
-  { GridVariant::NL_V2, "NL_V2", "Nederlands V2", "nl", "v2", LED_COUNT_GRID_NL_V2, LED_COUNT_EXTRA_NL_V2, LED_COUNT_TOTAL_NL_V2, LETTER_GRID_NL_V2, WORDS_NL_V2, WORDS_NL_V2_COUNT, EXTRA_MINUTES_NL_V2, EXTRA_MINUTES_NL_V2_COUNT, MinuteLayout::AfterGrid },
-  { GridVariant::NL_V3, "NL_V3", "Nederlands V3", "nl", "v3", LED_COUNT_GRID_NL_V3, LED_COUNT_EXTRA_NL_V3, LED_COUNT_TOTAL_NL_V3, LETTER_GRID_NL_V3, WORDS_NL_V3, WORDS_NL_V3_COUNT, EXTRA_MINUTES_NL_V3, EXTRA_MINUTES_NL_V3_COUNT, MinuteLayout::AfterGrid },
-  { GridVariant::NL_V4, "NL_V4", "Nederlands V4", "nl", "v4", LED_COUNT_GRID_NL_V4, LED_COUNT_EXTRA_NL_V4, LED_COUNT_TOTAL_NL_V4, LETTER_GRID_NL_V4, WORDS_NL_V4, WORDS_NL_V4_COUNT, EXTRA_MINUTES_NL_V4, EXTRA_MINUTES_NL_V4_COUNT, MinuteLayout::AfterGrid },
+#if ENABLE_GRID_NL_V1
+  { GridVariant::NL_V1, "NL_V1", "Nederlands 30x30 V1", "nl", "v1", LED_COUNT_GRID_NL_V1, LED_COUNT_EXTRA_NL_V1, LED_COUNT_TOTAL_NL_V1, LETTER_GRID_NL_V1, WORDS_NL_V1, WORDS_NL_V1_COUNT, EXTRA_MINUTES_NL_V1, EXTRA_MINUTES_NL_V1_COUNT, MinuteLayout::AfterGrid },
+#endif
+#if ENABLE_GRID_NL_V2
+  { GridVariant::NL_V2, "NL_V2", "Nederlands 30x30 V2", "nl", "v2", LED_COUNT_GRID_NL_V2, LED_COUNT_EXTRA_NL_V2, LED_COUNT_TOTAL_NL_V2, LETTER_GRID_NL_V2, WORDS_NL_V2, WORDS_NL_V2_COUNT, EXTRA_MINUTES_NL_V2, EXTRA_MINUTES_NL_V2_COUNT, MinuteLayout::AfterGrid },
+#endif
+#if ENABLE_GRID_NL_V3
+  { GridVariant::NL_V3, "NL_V3", "Nederlands 30x30 V3", "nl", "v3", LED_COUNT_GRID_NL_V3, LED_COUNT_EXTRA_NL_V3, LED_COUNT_TOTAL_NL_V3, LETTER_GRID_NL_V3, WORDS_NL_V3, WORDS_NL_V3_COUNT, EXTRA_MINUTES_NL_V3, EXTRA_MINUTES_NL_V3_COUNT, MinuteLayout::AfterGrid },
+#endif
+#if ENABLE_GRID_NL_V4
+  { GridVariant::NL_V4, "NL_V4", "Nederlands 30x30 V4", "nl", "v4", LED_COUNT_GRID_NL_V4, LED_COUNT_EXTRA_NL_V4, LED_COUNT_TOTAL_NL_V4, LETTER_GRID_NL_V4, WORDS_NL_V4, WORDS_NL_V4_COUNT, EXTRA_MINUTES_NL_V4, EXTRA_MINUTES_NL_V4_COUNT, MinuteLayout::AfterGrid },
+#endif
+#if ENABLE_GRID_NL_50X50_V1
   { GridVariant::NL_50x50_V1, "NL_50x50_V1", "Nederlands 50x50 V1", "nl", "v1", LED_COUNT_GRID_NL_50x50_V1, LED_COUNT_EXTRA_NL_50x50_V1, LED_COUNT_TOTAL_NL_50x50_V1, LETTER_GRID_NL_50x50_V1, WORDS_NL_50x50_V1, WORDS_NL_50x50_V1_COUNT, EXTRA_MINUTES_NL_50x50_V1, EXTRA_MINUTES_NL_50x50_V1_COUNT, MinuteLayout::MixedIntoGrid },
+#endif
+#if ENABLE_GRID_NL_50X50_V2
   { GridVariant::NL_50x50_V2, "NL_50x50_V2", "Nederlands 50x50 V2", "nl", "v2", LED_COUNT_GRID_NL_50x50_V2, LED_COUNT_EXTRA_NL_50x50_V2, LED_COUNT_TOTAL_NL_50x50_V2, LETTER_GRID_NL_50x50_V2, WORDS_NL_50x50_V2, WORDS_NL_50x50_V2_COUNT, EXTRA_MINUTES_NL_50x50_V2, EXTRA_MINUTES_NL_50x50_V2_COUNT, MinuteLayout::AfterGrid },
-  { GridVariant::NL_50x50_V3, "NL_50x50_V3", "Nederlands 50x50 V3", "nl", "v3", LED_COUNT_GRID_NL_50x50_V3, LED_COUNT_EXTRA_NL_50x50_V3, LED_COUNT_TOTAL_NL_50x50_V3, LETTER_GRID_NL_50x50_V3, WORDS_NL_50x50_V3, WORDS_NL_50x50_V3_COUNT, EXTRA_MINUTES_NL_50x50_V3, EXTRA_MINUTES_NL_50x50_V3_COUNT, MinuteLayout::AfterGrid }
+#endif
+#if ENABLE_GRID_NL_50X50_V3
+  { GridVariant::NL_50x50_V3, "NL_50x50_V3", "Nederlands 50x50 V3", "nl", "v3", LED_COUNT_GRID_NL_50x50_V3, LED_COUNT_EXTRA_NL_50x50_V3, LED_COUNT_TOTAL_NL_50x50_V3, LETTER_GRID_NL_50x50_V3, WORDS_NL_50x50_V3, WORDS_NL_50x50_V3_COUNT, EXTRA_MINUTES_NL_50x50_V3, EXTRA_MINUTES_NL_50x50_V3_COUNT, MinuteLayout::AfterGrid },
+#endif
+#if ENABLE_GRID_NL_55X50_LOGO_V1
+  { GridVariant::NL_55x50_LOGO_V1, "NL_55x50_LOGO_V1", "Nederlands 55x50 Logo V1", "nl", "v1", LED_COUNT_GRID_NL_55x50_LOGO_V1, LED_COUNT_EXTRA_NL_55x50_LOGO_V1, LED_COUNT_TOTAL_NL_55x50_LOGO_V1, LETTER_GRID_NL_55x50_LOGO_V1, WORDS_NL_55x50_LOGO_V1, WORDS_NL_55x50_LOGO_V1_COUNT, EXTRA_MINUTES_NL_55x50_LOGO_V1, EXTRA_MINUTES_NL_55x50_LOGO_V1_COUNT, MinuteLayout::AfterGrid },
+#endif
+#if ENABLE_GRID_NL_20X20_V1
+  { GridVariant::NL_20x20_V1, "NL_20x20_V1", "Nederlands 20x20 V1", "nl", "v1", LED_COUNT_GRID_NL_20x20_V1, LED_COUNT_EXTRA_NL_20x20_V1, LED_COUNT_TOTAL_NL_20x20_V1, LETTER_GRID_NL_20x20_V1, WORDS_NL_20x20_V1, WORDS_NL_20x20_V1_COUNT, EXTRA_MINUTES_NL_20x20_V1, EXTRA_MINUTES_NL_20x20_V1_COUNT, MinuteLayout::AfterGrid },
+#endif
 };
 
 static const GridVariantData* activeVariant = &GRID_VARIANTS[0];
@@ -107,11 +204,11 @@ const GridVariantData* findVariantByKey(const char* key) {
 } // namespace
 
 // Public state
-const char* const* LETTER_GRID = LETTER_GRID_NL_V1;
-const WordPosition* ACTIVE_WORDS = WORDS_NL_V1;
-size_t ACTIVE_WORD_COUNT = WORDS_NL_V1_COUNT;
-const uint16_t* EXTRA_MINUTE_LEDS = EXTRA_MINUTES_NL_V1;
-size_t EXTRA_MINUTE_LED_COUNT = EXTRA_MINUTES_NL_V1_COUNT;
+const char* const* LETTER_GRID = GRID_VARIANTS[0].letterGrid;
+const WordPosition* ACTIVE_WORDS = GRID_VARIANTS[0].words;
+size_t ACTIVE_WORD_COUNT = GRID_VARIANTS[0].wordCount;
+const uint16_t* EXTRA_MINUTE_LEDS = GRID_VARIANTS[0].minuteLeds;
+size_t EXTRA_MINUTE_LED_COUNT = GRID_VARIANTS[0].minuteCount;
 
 GridVariant getActiveGridVariant() {
   return activeVariant->variant;
@@ -126,8 +223,7 @@ bool setActiveGridVariant(GridVariant variant) {
 
 bool setActiveGridVariantById(uint8_t id) {
   if (id >= countof(GRID_VARIANTS)) return false;
-  applyActiveVariant(&GRID_VARIANTS[id]);
-  return true;
+  return setActiveGridVariant(GRID_VARIANTS[id].variant);
 }
 
 bool setActiveGridVariantByKey(const char* key) {
@@ -187,18 +283,15 @@ const GridVariantInfo* getGridVariantInfos(size_t& count) {
 }
 
 const GridVariantInfo* getGridVariantInfo(GridVariant variant) {
-  for (size_t i = 0; i < countof(GRID_VARIANTS); ++i) {
-    if (GRID_VARIANTS[i].variant == variant) {
-      static GridVariantInfo info;
-      info.variant = GRID_VARIANTS[i].variant;
-      info.key = GRID_VARIANTS[i].key;
-      info.label = GRID_VARIANTS[i].label;
-      info.language = GRID_VARIANTS[i].language;
-      info.version = GRID_VARIANTS[i].version;
-      return &info;
-    }
-  }
-  return nullptr;
+  const GridVariantData* data = findVariant(variant);
+  if (!data) return nullptr;
+  static GridVariantInfo info;
+  info.variant = data->variant;
+  info.key = data->key;
+  info.label = data->label;
+  info.language = data->language;
+  info.version = data->version;
+  return &info;
 }
 
 const WordPosition* find_word(const char* name) {
