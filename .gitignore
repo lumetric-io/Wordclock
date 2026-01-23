@@ -7,7 +7,7 @@
 *.o
 *.a
 *.pyc
-
+*
 # VS Code instellingen (indien gebruikt)
 .vscode/
 
