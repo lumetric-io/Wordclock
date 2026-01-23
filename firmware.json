@@ -1,183 +1,183 @@
 {
-  "version": "26.2.2",
-  "ui_version": "26.2.2",
-  "released": "2026-01-11T15:47:14Z",
-  "firmware": "https://github.com/lumetric-io/Wordclock/releases/download/v26.2.2/wordclock-v26.2.2.bin",
+  "version": "legacy-26.2.4",
+  "ui_version": "legacy-26.2.4",
+  "released": "2026-01-23T10:38:46Z",
+  "firmware": "https://github.com/lumetric-io/Wordclock/releases/download/legacy-26.2.4/wordclock-legacy-26.2.4.bin",
   "files": [
     {
       "path": "/admin.html",
-      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/admin.html",
-      "sha256": "65f8ad77e10a738d2f4f59abf2bb862c8baa00d59e1bffb9ce20f6192469efac"
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/admin.html",
+      "sha256": ""
     },
     {
       "path": "/changepw.html",
-      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/changepw.html",
-      "sha256": "4eca474197b774878b0d56bdda7bc63af2bda08e7eeabc2413b46399351a977a"
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/changepw.html",
+      "sha256": ""
     },
     {
       "path": "/dashboard.html",
-      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/dashboard.html",
-      "sha256": "3fb5afd2735505c80d031ba15f530bd44e5ab4aeb4feb07551f763a1a4c63ff5"
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/dashboard.html",
+      "sha256": ""
     },
     {
       "path": "/logs.html",
-      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/logs.html",
-      "sha256": "bd225018bf0697d693cc3c983c8f668623aad43dada9a55a653fe9efe203e868"
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/logs.html",
+      "sha256": ""
     },
     {
       "path": "/mqtt.html",
-      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/mqtt.html",
-      "sha256": "51af4aed63cbfe1dc84b9160c998ee686e9c0be50b64fe2c1de78cfed7e8aeb2"
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/mqtt.html",
+      "sha256": ""
     },
     {
       "path": "/setup.html",
-      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/setup.html",
-      "sha256": "6d3e35ee659c17a8a230c0060a1fb51847952e23a0954af3e6b86dcb1ff265e3"
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/setup.html",
+      "sha256": ""
     },
     {
       "path": "/update.html",
-      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/update.html",
-      "sha256": "0b71af60ce0346ca3afbba3164054723413b2d0921530a63cecf208fd7f1c90b"
+      "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/update.html",
+      "sha256": ""
     }
   ],
   "channels": {
     "stable": {
-      "version": "26.2.2",
-      "ui_version": "26.2.2",
-      "released": "2026-01-11T15:47:14Z",
+      "version": "legacy-26.2.4",
+      "ui_version": "legacy-26.2.4",
+      "released": "2026-01-23T10:38:46Z",
       "firmware": {
-        "version": "26.2.2",
-        "url": "https://github.com/lumetric-io/Wordclock/releases/download/v26.2.2/wordclock-v26.2.2.bin"
+        "version": "legacy-26.2.4",
+        "url": "https://github.com/lumetric-io/Wordclock/releases/download/legacy-26.2.4/wordclock-legacy-26.2.4.bin"
       },
       "files": [
         {
           "path": "/admin.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/admin.html",
-          "sha256": "65f8ad77e10a738d2f4f59abf2bb862c8baa00d59e1bffb9ce20f6192469efac"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/admin.html",
+          "sha256": ""
         },
         {
           "path": "/changepw.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/changepw.html",
-          "sha256": "4eca474197b774878b0d56bdda7bc63af2bda08e7eeabc2413b46399351a977a"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/changepw.html",
+          "sha256": ""
         },
         {
           "path": "/dashboard.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/dashboard.html",
-          "sha256": "3fb5afd2735505c80d031ba15f530bd44e5ab4aeb4feb07551f763a1a4c63ff5"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/dashboard.html",
+          "sha256": ""
         },
         {
           "path": "/logs.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/logs.html",
-          "sha256": "bd225018bf0697d693cc3c983c8f668623aad43dada9a55a653fe9efe203e868"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/logs.html",
+          "sha256": ""
         },
         {
           "path": "/mqtt.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/mqtt.html",
-          "sha256": "51af4aed63cbfe1dc84b9160c998ee686e9c0be50b64fe2c1de78cfed7e8aeb2"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/mqtt.html",
+          "sha256": ""
         },
         {
           "path": "/setup.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/setup.html",
-          "sha256": "6d3e35ee659c17a8a230c0060a1fb51847952e23a0954af3e6b86dcb1ff265e3"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/setup.html",
+          "sha256": ""
         },
         {
           "path": "/update.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2/data/update.html",
-          "sha256": "0b71af60ce0346ca3afbba3164054723413b2d0921530a63cecf208fd7f1c90b"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.4/data/update.html",
+          "sha256": ""
         }
       ],
       "release_notes": ""
     },
     "early": {
-      "version": "26.2.2-rc.9",
-      "ui_version": "26.2.2-rc.9",
-      "released": "2026-01-11T14:31:13Z",
+      "version": "legacy-26.2.3-rc.1",
+      "ui_version": "legacy-26.2.3-rc.1",
+      "released": "2026-01-22T15:50:31Z",
       "firmware": {
-        "version": "26.2.2-rc.9",
-        "url": "https://github.com/lumetric-io/Wordclock/releases/download/v26.2.2-rc.9/wordclock-v26.2.2-rc.9.bin"
+        "version": "legacy-26.2.3-rc.1",
+        "url": "https://github.com/lumetric-io/Wordclock/releases/download/legacy-26.2.3-rc.1/wordclock-legacy-26.2.3-rc.1.bin"
       },
       "files": [
         {
           "path": "/admin.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.9/data/admin.html",
-          "sha256": "65f8ad77e10a738d2f4f59abf2bb862c8baa00d59e1bffb9ce20f6192469efac"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.3-rc.1/data/admin.html",
+          "sha256": "e2aa9e17a036d4144d37433d811deca79890eb0fd6d73a82d0c2e3b1b3af700b"
         },
         {
           "path": "/changepw.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.9/data/changepw.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.3-rc.1/data/changepw.html",
           "sha256": "4eca474197b774878b0d56bdda7bc63af2bda08e7eeabc2413b46399351a977a"
         },
         {
           "path": "/dashboard.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.9/data/dashboard.html",
-          "sha256": "3fb5afd2735505c80d031ba15f530bd44e5ab4aeb4feb07551f763a1a4c63ff5"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.3-rc.1/data/dashboard.html",
+          "sha256": "336097a1dc63ab976f09d791e5e933e3924ebce446c79335808ed880759839fb"
         },
         {
           "path": "/logs.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.9/data/logs.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.3-rc.1/data/logs.html",
           "sha256": "bd225018bf0697d693cc3c983c8f668623aad43dada9a55a653fe9efe203e868"
         },
         {
           "path": "/mqtt.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.9/data/mqtt.html",
-          "sha256": "51af4aed63cbfe1dc84b9160c998ee686e9c0be50b64fe2c1de78cfed7e8aeb2"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.3-rc.1/data/mqtt.html",
+          "sha256": "2c0030d2219b3605cd2f4414ff14d344f3b2a39dce40ab7a40c0e392224b771c"
         },
         {
           "path": "/setup.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.9/data/setup.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.3-rc.1/data/setup.html",
           "sha256": "6d3e35ee659c17a8a230c0060a1fb51847952e23a0954af3e6b86dcb1ff265e3"
         },
         {
           "path": "/update.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-rc.9/data/update.html",
-          "sha256": "0b71af60ce0346ca3afbba3164054723413b2d0921530a63cecf208fd7f1c90b"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.3-rc.1/data/update.html",
+          "sha256": "dd7f318ad038e1467ff11321d7dbbb13fa296fa0dcbb28ff7d49ad2ac360563b"
         }
       ],
       "release_notes": ""
     },
     "develop": {
-      "version": "26.2.2-dev.21",
-      "ui_version": "26.2.2-dev.21",
-      "released": "2026-01-11T14:25:07Z",
+      "version": "legacy-26.2.1-dev.5",
+      "ui_version": "legacy-26.2.1-dev.5",
+      "released": "2026-01-20T20:24:29Z",
       "firmware": {
-        "version": "26.2.2-dev.21",
-        "url": "https://github.com/lumetric-io/Wordclock/releases/download/v26.2.2-dev.21/wordclock-v26.2.2-dev.21.bin"
+        "version": "legacy-26.2.1-dev.5",
+        "url": "https://github.com/lumetric-io/Wordclock/releases/download/legacy-26.2.1-dev.5/wordclock-legacy-26.2.1-dev.5.bin"
       },
       "files": [
         {
           "path": "/admin.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.21/data/admin.html",
-          "sha256": "5c8dccb269c19eb4c630aba38376c1809ab3802690617c9887d2534fe8673c7c"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.1-dev.5/data/admin.html",
+          "sha256": "cd680f4862b1f740036059f1ec5878e6649b32b746a792ee701c8747cf6bdf7a"
         },
         {
           "path": "/changepw.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.21/data/changepw.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.1-dev.5/data/changepw.html",
           "sha256": "4eca474197b774878b0d56bdda7bc63af2bda08e7eeabc2413b46399351a977a"
         },
         {
           "path": "/dashboard.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.21/data/dashboard.html",
-          "sha256": "b6d1185a1f1fc3628386c064eedc3c351a4996ec9285657345d7aca3f88e0cbc"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.1-dev.5/data/dashboard.html",
+          "sha256": "08619090acee4416cede81f39393cccd98b0abbecafb5ad10b666ed541840193"
         },
         {
           "path": "/logs.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.21/data/logs.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.1-dev.5/data/logs.html",
           "sha256": "bd225018bf0697d693cc3c983c8f668623aad43dada9a55a653fe9efe203e868"
         },
         {
           "path": "/mqtt.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.21/data/mqtt.html",
-          "sha256": "4a95962fe2aae81f53084ade962e0044fd8472b16cf4b615d89633da65e4829c"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.1-dev.5/data/mqtt.html",
+          "sha256": "51af4aed63cbfe1dc84b9160c998ee686e9c0be50b64fe2c1de78cfed7e8aeb2"
         },
         {
           "path": "/setup.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.21/data/setup.html",
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.1-dev.5/data/setup.html",
           "sha256": "6d3e35ee659c17a8a230c0060a1fb51847952e23a0954af3e6b86dcb1ff265e3"
         },
         {
           "path": "/update.html",
-          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/v26.2.2-dev.21/data/update.html",
-          "sha256": "0b71af60ce0346ca3afbba3164054723413b2d0921530a63cecf208fd7f1c90b"
+          "url": "https://raw.githubusercontent.com/lumetric-io/Wordclock/legacy-26.2.1-dev.5/data/update.html",
+          "sha256": "dd7f318ad038e1467ff11321d7dbbb13fa296fa0dcbb28ff7d49ad2ac360563b"
         }
       ],
       "release_notes": ""
