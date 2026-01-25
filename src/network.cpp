@@ -2,6 +2,7 @@
 #include <WiFiManager.h>
 
 #include "network_init.h"
+#include "ble_provisioning.h"
 #include "config.h"
 #include "log.h"
 #include "led_controller.h"
@@ -21,8 +22,27 @@ WiFiManager& getManager() {
 bool g_wifiConnected = false;
 static unsigned long lastReconnectAttemptMs = 0;
 static const unsigned long WIFI_RECONNECT_INTERVAL_MS = 15000; // 15s between manual reconnect attempts
+static bool g_wifiManagerStarted = false;
 
 } // namespace
+
+static bool connectWithStoredCredentials() {
+  WiFi.begin();
+  for (int attempt = 0; attempt < WIFI_CONNECT_MAX_RETRIES; ++attempt) {
+    if (WiFi.status() == WL_CONNECTED) return true;
+    delay(WIFI_CONNECT_RETRY_DELAY_MS);
+  }
+  return WiFi.status() == WL_CONNECTED;
+}
+
+static void startWiFiManagerPortal() {
+  if (g_wifiManagerStarted) return;
+  auto& wm = getManager();
+  wm.setConfigPortalBlocking(false);
+  wm.startConfigPortal(AP_NAME, AP_PASSWORD);
+  g_wifiManagerStarted = true;
+  logWarn(String("📶 WiFi config portal active. Connect to '") + AP_NAME + "' to configure WiFi.");
+}
 
 void initNetwork() {
   WiFi.mode(WIFI_STA);
@@ -39,16 +59,37 @@ void initNetwork() {
   g_wifiHadCredentialsAtBoot = wm.getWiFiIsSaved();
   logInfo(String("WiFiManager starting connection (credentials present: ") + (g_wifiHadCredentialsAtBoot ? "yes" : "no") + ")");
 
+#if BLE_PROVISIONING_ENABLED
+  if (!g_wifiHadCredentialsAtBoot) {
+    startBleProvisioning(BleProvisioningReason::FirstBootNoCreds);
+    g_wifiConnected = false;
+    return;
+  }
+
+  if (connectWithStoredCredentials()) {
+    g_wifiConnected = true;
+    logInfo("✅ WiFi connected to stored network: " + String(WiFi.SSID()));
+    logInfo("📡 IP address: " + WiFi.localIP().toString());
+    return;
+  }
+
+  startBleProvisioning(BleProvisioningReason::WiFiUnavailableAtBoot);
+  g_wifiConnected = false;
+  return;
+#endif
+
   bool autoResult = wm.autoConnect(AP_NAME, AP_PASSWORD);
   (void)autoResult;
   g_wifiConnected = (WiFi.status() == WL_CONNECTED);
   if (g_wifiConnected) {
     logInfo("✅ WiFi connected to network: " + String(WiFi.SSID()));
     logInfo("📡 IP address: " + WiFi.localIP().toString());
-  } else if (wm.getConfigPortalActive()) {
-    logWarn(String("📶 WiFi config portal active. Connect to '") + AP_NAME + "' to configure WiFi.");
   } else {
-    logWarn("⚠️ WiFi not connected and config portal inactive (autoConnect failed).");
+    if (!wm.getConfigPortalActive()) {
+      startWiFiManagerPortal();
+    } else {
+      logWarn(String("📶 WiFi config portal active. Connect to '") + AP_NAME + "' to configure WiFi.");
+    }
   }
 }
 
@@ -76,6 +117,12 @@ void processNetwork() {
     }
   }
   g_wifiConnected = connected;
+
+#if BLE_PROVISIONING_ENABLED
+  if (takeBleProvisioningTimeout()) {
+    startWiFiManagerPortal();
+  }
+#endif
 }
 
 bool isWiFiConnected() {

@@ -35,6 +35,7 @@
 #include "update_status.h"
 #include "device_identity.h"
 #include "device_registration.h"
+#include "ble_provisioning.h"
 #include <WiFi.h>
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
@@ -414,6 +415,28 @@ void setupWebRoutes() {
       wordclock_force_animation_for_time(&timeinfo);
     }
     server.send(200, "text/plain", "OK");
+  });
+
+  server.on("/api/ble/start", HTTP_POST, []() {
+    if (setupState.isComplete()) {
+      if (!ensureUiAuth()) return;
+    }
+    if (isBleProvisioningActive()) {
+      server.send(409, "text/plain", "BLE provisioning already active");
+      return;
+    }
+    startBleProvisioning(BleProvisioningReason::ManualTrigger);
+    server.send(200, "text/plain", "OK");
+  });
+
+  server.on("/api/ble/status", HTTP_GET, []() {
+    JsonDocument doc;
+    doc["active"] = isBleProvisioningActive();
+    doc["state"] = getBleProvisioningState();
+    doc["hardware_id"] = get_hardware_id();
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
   });
 
   // Grid endpoints for the setup flow (open when setup is pending; require auth afterwards)

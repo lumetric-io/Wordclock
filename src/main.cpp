@@ -37,6 +37,7 @@
 #include "led_state.h"
 #include "settings_migration.h"
 #include "system_utils.h"
+#include "ble_provisioning.h"
 
 
 bool clockEnabled = true;
@@ -95,6 +96,7 @@ void setup() {
   // IMPORTANT: Migrate settings before initializing them
   SettingsMigration::migrateIfNeeded();
 
+  initBleProvisioning();
   initNetwork();              // WiFiManager (WiFi-instellingen en verbinding)
   initOTA();                  // OTA (Over-the-air updates)
   
@@ -160,6 +162,7 @@ void setup() {
 // Loop: hoofdprogramma, verwerkt webrequests, OTA, MQTT en kloklogica
 void loop() {
   processNetwork();
+  processBleProvisioning();
   if (isWiFiConnected() && !g_serverInitialized) {
     initWebServer(server);
     g_serverInitialized = true;
@@ -201,6 +204,10 @@ void loop() {
     nightMode.loop();
     setupState.loop();
     lastSettingsFlush = millis();
+  }
+
+  if (isBleProvisioningActive()) {
+    return;
   }
 
   // Startup animatie: blokkeert klok tot animatie klaar is
