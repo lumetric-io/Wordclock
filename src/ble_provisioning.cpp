@@ -42,6 +42,8 @@ BleState g_state = BleState::Idle;
 bool g_bleActive = false;
 bool g_bleTimedOut = false;
 bool g_hasClient = false;
+bool g_connectRequested = false;
+unsigned long g_lastStatusNotifyMs = 0;
 
 String g_ssid;
 String g_pass;
@@ -222,6 +224,8 @@ void startWifiConnect() {
   logInfo(String("🔵 BLE WiFi connect starting (SSID=") + g_ssid + ")");
   WiFi.begin(g_ssid.c_str(), g_pass.c_str());
   notifyStatusJson("wifi_connecting");
+  g_lastStatusNotifyMs = g_wifiConnectStartMs;
+  g_connectRequested = false;
 }
 
 class ProvisioningCallbacks : public BLECharacteristicCallbacks {
@@ -239,7 +243,12 @@ public:
       g_pass = value;
     } else if (strcmp(label_, "cmd") == 0) {
       if (value == "apply" || value == "APPLY") {
-        startWifiConnect();
+        g_connectRequested = true;
+        return;
+      }
+      if (value == "stop" || value == "STOP") {
+        notifyStatusJson("ble_stop_ack");
+        stopBleProvisioning();
         return;
       }
     }
@@ -248,7 +257,7 @@ public:
     }
     if (g_ssid.length() > 0 && g_pass.length() > 0) {
       notifyStatusJson("creds_received");
-      startWifiConnect();
+      g_connectRequested = true;
     }
   }
 
@@ -264,7 +273,9 @@ class ServerCallbacks : public BLEServerCallbacks {
   void onDisconnect(BLEServer* server) override {
     g_hasClient = false;
     notifyStatus("ble_disconnected");
-    server->getAdvertising()->start();
+    if (g_bleActive) {
+      server->getAdvertising()->start();
+    }
   }
 };
 
@@ -324,15 +335,30 @@ void processBleProvisioning() {
   if (g_state == BleState::WifiConnecting) {
     if (WiFi.status() == WL_CONNECTED) {
       notifyStatusJson("wifi_ok", "ip", WiFi.localIP().toString());
-      stopBleProvisioning();
+      g_state = BleState::Active;
       return;
+    }
+    if (now - g_lastStatusNotifyMs >= 1000) {
+      notifyStatusJson("wifi_connecting");
+      g_lastStatusNotifyMs = now;
     }
     const unsigned long timeoutMs = WIFI_CONNECT_MAX_RETRIES * WIFI_CONNECT_RETRY_DELAY_MS;
     if (now - g_wifiConnectStartMs > timeoutMs) {
-      notifyStatusJson("wifi_fail", "reason", wifiStatusToReason(WiFi.status()));
+      const wl_status_t status = WiFi.status();
+      const char* state = "wifi_fail";
+#ifdef WL_WRONG_PASSWORD
+      if (status == WL_WRONG_PASSWORD) {
+        state = "wifi_auth_fail";
+      }
+#endif
+      notifyStatusJson(state, "reason", wifiStatusToReason(status));
       g_state = BleState::Active;
       WiFi.disconnect(true);
     }
+  }
+
+  if (g_connectRequested && g_state != BleState::WifiConnecting) {
+    startWifiConnect();
   }
 
   if (now - g_bleStartMs > (BLE_PROVISIONING_TIMEOUT_SEC * 1000UL)) {
@@ -353,6 +379,8 @@ void startBleProvisioning(BleProvisioningReason reason) {
   g_passkeyLastToggleMs = g_bleStartMs;
   g_bleReason = String(bleReasonToString(reason));
   g_wifiAttempt = 0;
+  g_connectRequested = false;
+  g_lastStatusNotifyMs = 0;
 
   generatePasskey();
   logInfo(String("🔵 BLE provisioning start, reason=") + static_cast<int>(reason));
@@ -363,14 +391,7 @@ void startBleProvisioning(BleProvisioningReason reason) {
 
   String deviceName = buildDeviceName();
   BLEDevice::init(deviceName.c_str());
-  BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
-
-  BLESecurity* security = new BLESecurity();
-  security->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_MITM_BOND);
-  security->setCapability(ESP_IO_CAP_OUT);
-  security->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
-  security->setKeySize(16);
-  security->setStaticPIN(g_passkey);
+  // Provisioning should be usable without OS pairing/bonding; do not enable BLE security here.
 
   g_server = BLEDevice::createServer();
   g_server->setCallbacks(new ServerCallbacks());
@@ -397,6 +418,7 @@ void stopBleProvisioning() {
   g_state = BleState::Idle;
   g_ssid = "";
   g_pass = "";
+  g_connectRequested = false;
   if (g_server) {
     g_server->getAdvertising()->stop();
   }
