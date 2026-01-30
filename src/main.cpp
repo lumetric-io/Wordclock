@@ -163,21 +163,44 @@ void setup() {
 void loop() {
   processNetwork();
   processBleProvisioning();
-  if (isWiFiConnected() && !g_serverInitialized) {
+  const bool wifiConnected = isWiFiConnected();
+  static bool s_lastWifiConnected = false;
+  if (wifiConnected != s_lastWifiConnected) {
+    if (wifiConnected) {
+      logInfo("✅ WiFi connected. Exiting portal mode.");
+    } else {
+      logWarn("📶 WiFi not connected. Entering portal mode (WiFiManager active).");
+    }
+    s_lastWifiConnected = wifiConnected;
+  }
+
+  if (!wifiConnected) {
+    // Portal mode: keep loop minimal for WiFiManager responsiveness.
+    static unsigned long lastSettingsFlush = 0;
+    if (millis() - lastSettingsFlush >= 5000) {
+      ledState.loop();
+      displaySettings.loop();
+      nightMode.loop();
+      setupState.loop();
+      lastSettingsFlush = millis();
+    }
+    return;
+  }
+  if (wifiConnected && !g_serverInitialized) {
     initWebServer(server);
     g_serverInitialized = true;
   }
-  if (isWiFiConnected() && !g_mqttInitialized) {
+  if (wifiConnected && !g_mqttInitialized) {
     initMqtt();
     g_mqttInitialized = true;
   }
-  if (isWiFiConnected() && !g_uiSyncHandled) {
+  if (wifiConnected && !g_uiSyncHandled) {
 #if SUPPORT_OTA_V2 == 0
     syncFilesFromManifest();
 #endif
     g_uiSyncHandled = true;
   }
-  if (isWiFiConnected() && !g_autoUpdateHandled) {
+  if (wifiConnected && !g_autoUpdateHandled) {
     bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
     if (autoAllowed) {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
@@ -187,14 +210,16 @@ void loop() {
     }
     g_autoUpdateHandled = true;
   }
-  if (isWiFiConnected() && !g_autoRegistrationHandled) {
+  if (wifiConnected && !g_autoRegistrationHandled) {
     attemptAutoRegistration();
   }
-  if (g_serverInitialized) {
+  if (wifiConnected && g_serverInitialized) {
     server.handleClient();
   }
-  ArduinoOTA.handle();
-  mqttEventLoop();
+  if (wifiConnected) {
+    ArduinoOTA.handle();
+    mqttEventLoop();
+  }
 
   // Periodic settings flush (every ~1 second)
   static unsigned long lastSettingsFlush = 0;
