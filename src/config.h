@@ -30,6 +30,10 @@
 #define SUPPORT_OTA_V2 0
 #endif
 
+#ifndef OTA2_NO_CACHE_HEADERS
+#define OTA2_NO_CACHE_HEADERS 1
+#endif
+
 #ifndef BLE_PROVISIONING_ENABLED
 #define BLE_PROVISIONING_ENABLED 0
 #endif

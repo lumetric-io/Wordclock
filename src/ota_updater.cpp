@@ -230,6 +230,11 @@ static bool fetchJsonByUrl(JsonDocument& doc, WiFiClient& client, const String& 
   http.setTimeout(15000);
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   http.addHeader("Accept-Encoding", "identity");
+#if SUPPORT_OTA_V2 && OTA2_NO_CACHE_HEADERS
+  http.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  http.addHeader("Pragma", "no-cache");
+  http.addHeader("Expires", "0");
+#endif
   if (!http.begin(client, url)) {
     logError(String("Failed to begin ") + label + " request");
     return false;
@@ -312,6 +317,11 @@ static bool performHttpOta(const String& firmwareUrl, WiFiClient& client) {
   HTTPClient http;
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   http.setTimeout(15000);
+#if SUPPORT_OTA_V2 && OTA2_NO_CACHE_HEADERS
+  http.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  http.addHeader("Pragma", "no-cache");
+  http.addHeader("Expires", "0");
+#endif
   if (!http.begin(client, firmwareUrl)) {
     logError("❌ http.begin failed");
     return false;
@@ -360,6 +370,11 @@ static bool performFilesystemUpdate(const String& fsUrl, int expectedSize, WiFiC
   HTTPClient http;
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   http.setTimeout(15000);
+#if SUPPORT_OTA_V2 && OTA2_NO_CACHE_HEADERS
+  http.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  http.addHeader("Pragma", "no-cache");
+  http.addHeader("Expires", "0");
+#endif
   if (!http.begin(client, fsUrl)) {
     logError("❌ http.begin failed for filesystem update");
     return false;
