@@ -1,3 +1,22 @@
+#include "config.h"
+#include "ota_updater.h"
+#include "fs_compat.h"
+
+#if !OTA_ENABLED
+
+String getUiVersion() {
+  return UI_VERSION;
+}
+
+void checkForFirmwareUpdate() {}
+
+#if SUPPORT_OTA_V2 == 0
+void syncFilesFromManifest() {}
+void syncUiFilesFromConfiguredVersion() {}
+#endif
+
+#else
+
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -7,11 +26,8 @@
 #include <algorithm>
 #include <cstring>
 #include <cctype>
-#include "fs_compat.h"
-#include "config.h"
 #include "log.h"
 #include "secrets.h"
-#include "ota_updater.h"
 #include "display_settings.h"
 #include "system_utils.h"
 
@@ -814,3 +830,4 @@ void checkForFirmwareUpdate() {
   checkForFirmwareUpdateLegacy();
 #endif
 }
+#endif // OTA_ENABLED

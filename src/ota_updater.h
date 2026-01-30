@@ -1,6 +1,8 @@
 // Public OTA functions (implementation in ota_updater.cpp)
 #pragma once
 
+#include <Arduino.h>
+
 void checkForFirmwareUpdate();
 String getUiVersion();
 

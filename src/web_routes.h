@@ -1,7 +1,9 @@
 #pragma once
 #include "network_init.h"
 #include "fs_compat.h"
+#if OTA_ENABLED
 #include <Update.h>
+#endif
 #include <WebServer.h>
 #include <esp_system.h>
 #include <ctype.h>
@@ -20,6 +22,9 @@
 #include "log.h"
 #include "time_mapper.h"
 #include "ota_updater.h"
+#if OTA_ENABLED
+#include "update_status.h"
+#endif
 #include "led_controller.h"
 #include "config.h"
 #include "display_settings.h"
@@ -32,7 +37,6 @@
 #include "build_info.h"
 #include "setup_state.h"
 #include "system_utils.h"
-#include "update_status.h"
 #include "device_identity.h"
 #include "device_registration.h"
 #include "ble_provisioning.h"
@@ -49,6 +53,7 @@ extern int logIndex;
 extern bool clockEnabled;
 extern bool g_wifiHadCredentialsAtBoot;
 
+#if OTA_ENABLED
 static TaskHandle_t g_otaTaskHandle = nullptr;
 
 static void otaUpdateTask(void* params) {
@@ -65,6 +70,7 @@ static void otaUpdateTask(void* params) {
   logInfo("🧵 OTA update task finished");
   vTaskDelete(nullptr);
 }
+#endif
 
 // Serve file, preferring a .gz variant if client accepts gzip
 static void serveFile(const char* path, const char* mime) {
@@ -510,6 +516,7 @@ void setupWebRoutes() {
     server.send(200, "application/json", out);
   });
 
+#if OTA_ENABLED
   // Update page (protected)
   server.on("/update.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
@@ -520,6 +527,7 @@ void setupWebRoutes() {
     }
     serveFile("/update.html", "text/html");
   });
+#endif
 
   // MQTT settings page (protected)
   server.on("/mqtt.html", HTTP_GET, []() {
@@ -669,6 +677,7 @@ void setupWebRoutes() {
     server.send(200, "text/plain", "OK");
   });
 
+#if OTA_ENABLED
   // Auto update toggle
   server.on("/getAutoUpdate", []() {
     if (!ensureUiAuth()) {
@@ -737,6 +746,7 @@ void setupWebRoutes() {
     serializeJson(doc, out);
     server.send(200, "application/json", out);
   });
+#endif
 
   // Grid variant endpoints
   server.on("/getGridVariant", []() {
@@ -1046,6 +1056,7 @@ void setupWebRoutes() {
     server.send(200, "application/json", out);
   });
 
+#if OTA_ENABLED
   server.on("/api/update/status", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     JsonDocument doc;
@@ -1054,6 +1065,7 @@ void setupWebRoutes() {
     serializeJson(doc, out);
     server.send(200, "application/json", out);
   });
+#endif
 
   server.on("/log/download", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
@@ -1231,6 +1243,7 @@ void setupWebRoutes() {
     server.send(200, "text/plain", "Startup sequence executed");
   });
   
+#if OTA_ENABLED
   server.on(
     "/uploadFirmware",
     HTTP_POST,
@@ -1386,6 +1399,7 @@ void setupWebRoutes() {
     syncFilesFromManifest();
     server.send(200, "text/plain", "UI sync started");
   });
+#endif
 #endif
 
   server.on("/getBrightness", []() {

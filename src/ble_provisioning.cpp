@@ -361,11 +361,13 @@ void processBleProvisioning() {
     startWifiConnect();
   }
 
+#if !BLE_PROVISIONING_DISABLE_TIMEOUT
   if (now - g_bleStartMs > (BLE_PROVISIONING_TIMEOUT_SEC * 1000UL)) {
     logWarn("🔵 BLE provisioning timeout reached");
     g_bleTimedOut = true;
     stopBleProvisioning();
   }
+#endif
 }
 
 void startBleProvisioning(BleProvisioningReason reason) {
@@ -382,12 +384,13 @@ void startBleProvisioning(BleProvisioningReason reason) {
   g_connectRequested = false;
   g_lastStatusNotifyMs = 0;
 
-  generatePasskey();
   logInfo(String("🔵 BLE provisioning start, reason=") + static_cast<int>(reason));
   logInfo(String("🔵 BLE timeout (sec): ") + BLE_PROVISIONING_TIMEOUT_SEC);
-  logInfo(String("🔵 BLE passkey: ") + g_passkey);
-
-  showPasskeyFrame();
+  if (BLE_PASSKEY_DISPLAY_ENABLED) {
+    generatePasskey();
+    logInfo(String("🔵 BLE passkey: ") + g_passkey);
+    showPasskeyFrame();
+  }
 
   String deviceName = buildDeviceName();
   BLEDevice::init(deviceName.c_str());

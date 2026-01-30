@@ -15,10 +15,11 @@
 #include "fs_compat.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <WiFiManager.h>
 #include <WiFiServer.h>
 #include <time.h>
+#if OTA_ENABLED
 #include <ArduinoOTA.h>
+#endif
 #include <WebServer.h>
 #include "wordclock.h"
 #include "web_routes.h"
@@ -98,12 +99,14 @@ void setup() {
 
   initBleProvisioning();
   initNetwork();              // WiFiManager (WiFi-instellingen en verbinding)
+#if OTA_ENABLED
   initOTA();                  // OTA (Over-the-air updates)
   
   // Register flush handler for OTA start
   ArduinoOTA.onStart([]() {
     flushAllSettings();
   });
+#endif
 
   // Start mDNS voor lokale netwerknaam
   if (MDNS.begin(MDNS_HOSTNAME)) {
@@ -136,6 +139,7 @@ void setup() {
     syncFilesFromManifest();
 #endif
     g_uiSyncHandled = true;
+#if OTA_ENABLED
     bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
     if (autoAllowed) {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
@@ -144,11 +148,18 @@ void setup() {
       logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
     }
     g_autoUpdateHandled = true;
+#else
+    g_autoUpdateHandled = true;
+#endif
     attemptAutoRegistration();
   } else {
     logInfo("⚠️ No WiFi. Waiting for connection or config portal.");
+#if OTA_ENABLED
     bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
     g_autoUpdateHandled = !autoAllowed;
+#else
+    g_autoUpdateHandled = true;
+#endif
     g_serverInitialized = false;
   }
 
@@ -167,9 +178,13 @@ void loop() {
   static bool s_lastWifiConnected = false;
   if (wifiConnected != s_lastWifiConnected) {
     if (wifiConnected) {
-      logInfo("✅ WiFi connected. Exiting portal mode.");
+      logInfo("✅ WiFi connected. Exiting provisioning mode.");
     } else {
+#if WIFI_MANAGER_ENABLED
       logWarn("📶 WiFi not connected. Entering portal mode (WiFiManager active).");
+#else
+      logWarn("📶 WiFi not connected. Entering provisioning mode (BLE only).");
+#endif
     }
     s_lastWifiConnected = wifiConnected;
   }
@@ -201,6 +216,7 @@ void loop() {
     g_uiSyncHandled = true;
   }
   if (wifiConnected && !g_autoUpdateHandled) {
+#if OTA_ENABLED
     bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
     if (autoAllowed) {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
@@ -208,6 +224,7 @@ void loop() {
     } else {
       logInfo("ℹ️ Automatic firmware updates disabled. Skipping check.");
     }
+#endif
     g_autoUpdateHandled = true;
   }
   if (wifiConnected && !g_autoRegistrationHandled) {
@@ -217,7 +234,9 @@ void loop() {
     server.handleClient();
   }
   if (wifiConnected) {
+#if OTA_ENABLED
     ArduinoOTA.handle();
+#endif
     mqttEventLoop();
   }
 
@@ -247,6 +266,7 @@ void loop() {
     lastLoop = now;
     runWordclockLoop();
 
+#if OTA_ENABLED
     // Dagelijkse firmwarecheck om 02:00
     struct tm timeinfo;
     if (getLocalTime(&timeinfo)) {
@@ -263,5 +283,6 @@ void loop() {
         lastFirmwareCheck = nowEpoch;
       }
     }
+#endif
   }
 }
