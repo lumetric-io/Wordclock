@@ -39,7 +39,9 @@ bool register_device_with_fleet(String& outDeviceId, String& outToken, String& o
   req["productId"] = PRODUCT_ID;
   req["firmware"] = FIRMWARE_VERSION;
   req["uiFirmware"] = getUiVersion();
+#if OTA_ENABLED
   req["otaChannel"] = displaySettings.getUpdateChannel();
+#endif
 
   String payload;
   serializeJson(req, payload);

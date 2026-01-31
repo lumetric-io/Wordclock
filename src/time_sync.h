@@ -3,6 +3,7 @@
 #include <time.h>
 #include "log.h"
 #include "config.h"
+#include "led_events.h"
 
 extern bool g_initialTimeSyncSucceeded;
 
@@ -26,6 +27,7 @@ inline void initTimeSync(const char* tzInfo, const char* ntp1, const char* ntp2)
     }
     if (!synced) {
         logWarn("⌛ NTP timeout; proceeding without synced time");
+        ledEventStart(LedEvent::NtpFailed);
         return;
     }
     char buf[32];
@@ -37,4 +39,5 @@ inline void initTimeSync(const char* tzInfo, const char* ntp1, const char* ntp2)
     logInfo(String("🕒 Time synchronized: ") + buf);
     g_initialTimeSyncSucceeded = true;
     logRewriteUnsynced(); // rewrite uptime-based logs with real timestamps now that time is synced
+    ledEventStop(LedEvent::NtpFailed);
 }

@@ -1,4 +1,6 @@
 #include "mqtt_client.h"
+
+#include "led_events.h"
 #include "mqtt_command_handler.h"
 #include "mqtt_discovery_builder.h"
 #include <WiFi.h>
@@ -8,8 +10,8 @@
 #include "display_settings.h"
 #include "led_state.h"
 #include "log.h"
-#include "ota_updater.h"
 #if OTA_ENABLED
+#include "ota_updater.h"
 #include "update_status.h"
 #endif
 #include "wordclock.h"
@@ -327,8 +329,12 @@ void mqtt_publish_state(bool force) {
 #endif
 
   mqtt.publish(tVersion.c_str(), FIRMWARE_VERSION, true);
+#if OTA_ENABLED
   String uiVersion = getUiVersion();
   mqtt.publish(tUiVersion.c_str(), uiVersion.c_str(), true);
+#else
+  mqtt.publish(tUiVersion.c_str(), UI_VERSION, true);
+#endif
   mqtt.publish(tIp.c_str(), WiFi.localIP().toString().c_str(), true);
   char rssi[16]; snprintf(rssi, sizeof(rssi), "%d", WiFi.RSSI()); mqtt.publish(tRssi.c_str(), rssi, true);
   char heap[24]; snprintf(heap, sizeof(heap), "%u", (unsigned)esp_get_free_heap_size()); mqtt.publish(tHeap.c_str(), heap, true);
@@ -576,6 +582,7 @@ static bool mqtt_connect() {
 
   mqtt_publish_state(true);
   g_connected = true;
+  ledEventStop(LedEvent::MqttDisconnected);
   
   // Reset reconnection state on success
   reconnectAttempts = 0;
@@ -622,6 +629,7 @@ void mqtt_begin() {
 void mqtt_loop() {
   if (!mqtt_has_configuration()) {
     g_connected = false;
+    ledEventStop(LedEvent::MqttDisconnected);
     if (!mqttConfiguredLogged) {
       logInfo("MQTT disabled (no broker configured)");
       mqttConfiguredLogged = true;
@@ -644,6 +652,7 @@ void mqtt_loop() {
   }
 
   if (!mqtt.connected()) {
+    ledEventStart(LedEvent::MqttDisconnected);
     unsigned long now = millis();
     if (now - lastReconnectAttempt >= reconnectDelayMs) {
       lastReconnectAttempt = now;
@@ -679,6 +688,7 @@ void mqtt_loop() {
     }
     return;
   }
+  ledEventStop(LedEvent::MqttDisconnected);
   mqtt.loop();
   mqtt_publish_state(false);
 }

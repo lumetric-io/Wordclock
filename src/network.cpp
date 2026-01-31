@@ -1,11 +1,16 @@
+#include "config.h"
+
 #include <WiFi.h>
 #if WIFI_MANAGER_ENABLED
+#ifndef ESP32
+#define ESP32
+#endif
 #include <WiFiManager.h>
 #endif
 
 #include "network_init.h"
 #include "ble_provisioning.h"
-#include "config.h"
+#include "led_events.h"
 #include "log.h"
 #include "led_controller.h"
 #include "secrets.h"
@@ -44,6 +49,7 @@ static bool connectWithStoredCredentials() {
 static void startWiFiManagerPortal() {
 #if WIFI_MANAGER_ENABLED
   if (g_wifiManagerStarted) return;
+  ledEventStart(LedEvent::WifiManagerPortal);
   auto& wm = getManager();
   wm.setConfigPortalBlocking(false);
   wm.startConfigPortal(AP_NAME, AP_PASSWORD);
@@ -63,7 +69,11 @@ void initNetwork() {
   wm.setAPClientCheck(false);  // allow AP even when STA disconnected
   wm.setCleanConnect(true);    // ensure fresh STA connect attempts
   wm.setSTAStaticIPConfig(IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0));
+  #if defined(WM_DEBUG_DEV)
   wm.setDebugOutput(true, WM_DEBUG_DEV);
+  #else
+  wm.setDebugOutput(true);
+  #endif
 
   g_wifiHadCredentialsAtBoot = wm.getWiFiIsSaved();
   logInfo(String("WiFiManager starting connection (credentials present: ") + (g_wifiHadCredentialsAtBoot ? "yes" : "no") + ")");
@@ -139,6 +149,8 @@ void processNetwork() {
     logInfo("✅ WiFi connection established: " + String(WiFi.SSID()));
     logInfo("📡 IP address: " + WiFi.localIP().toString());
     lastReconnectAttemptMs = millis();
+    ledEventStop(LedEvent::WifiManagerPortal);
+    g_wifiManagerStarted = false;
   } else if (!connected && g_wifiConnected) {
     logWarn("⚠️ WiFi connection lost.");
     lastReconnectAttemptMs = 0; // allow immediate manual reconnect attempt

@@ -21,8 +21,8 @@
 #endif
 #include "log.h"
 #include "time_mapper.h"
-#include "ota_updater.h"
 #if OTA_ENABLED
+#include "ota_updater.h"
 #include "update_status.h"
 #endif
 #include "led_controller.h"
@@ -345,12 +345,6 @@ void setupWebRoutes() {
     delay(200);
     performFactoryReset();
     resetWiFiSettings(); // will restart
-  });
-
-  // Change password page (protected, but accessible during forced-change flow)
-  server.on("/changepw.html", HTTP_GET, []() {
-    if (!ensureAdminAuth()) return;
-    serveFile("/changepw.html", "text/html");
   });
 
   // Handle password change
@@ -995,6 +989,7 @@ void setupWebRoutes() {
     doc["build_time_utc"] = BUILD_TIME_UTC;
     doc["environment"] = BUILD_ENV_NAME;
     doc["ui_sync_supported"] = (SUPPORT_OTA_V2 == 0);
+    doc["ota_enabled"] = (bool)OTA_ENABLED;
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);

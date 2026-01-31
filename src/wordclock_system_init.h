@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui_auth.h"
+#include "secrets.h"
 #include "wordclock.h"
 #include "log.h"
 

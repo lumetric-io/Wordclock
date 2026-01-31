@@ -4,6 +4,7 @@
 #include "device_identity.h"
 #include "grid_layout.h"
 #include "led_controller.h"
+#include "led_events.h"
 #include "log.h"
 #include "time_mapper.h"
 
@@ -44,6 +45,9 @@ bool g_bleTimedOut = false;
 bool g_hasClient = false;
 bool g_connectRequested = false;
 unsigned long g_lastStatusNotifyMs = 0;
+volatile bool g_stopRequested = false;
+volatile bool g_credsPartialPending = false;
+volatile bool g_credsReceivedPending = false;
 
 String g_ssid;
 String g_pass;
@@ -217,11 +221,19 @@ void updatePasskeyDisplay(unsigned long nowMs) {
 }
 
 void startWifiConnect() {
-  if (g_ssid.length() == 0 || g_pass.length() == 0) return;
+  if (g_ssid.length() == 0) {
+    logWarn("🔵 BLE WiFi connect skipped: SSID empty");
+    return;
+  }
   g_state = BleState::WifiConnecting;
   g_wifiConnectStartMs = millis();
   g_wifiAttempt += 1;
   logInfo(String("🔵 BLE WiFi connect starting (SSID=") + g_ssid + ")");
+  if (g_pass.length() == 0) {
+    logInfo("🔵 BLE WiFi connect using open network (empty password)");
+  } else {
+    logInfo(String("🔵 BLE WiFi password length=") + g_pass.length());
+  }
   WiFi.begin(g_ssid.c_str(), g_pass.c_str());
   notifyStatusJson("wifi_connecting");
   g_lastStatusNotifyMs = g_wifiConnectStartMs;
@@ -236,7 +248,6 @@ public:
     std::string val = characteristic->getValue();
     String value = String(val.c_str());
     value.trim(); // Avoid hidden whitespace/newlines from BLE clients
-    logInfo(String("🔵 BLE write: ") + label_);
     if (strcmp(label_, "ssid") == 0) {
       g_ssid = value;
     } else if (strcmp(label_, "pass") == 0) {
@@ -247,17 +258,15 @@ public:
         return;
       }
       if (value == "stop" || value == "STOP") {
-        notifyStatusJson("ble_stop_ack");
-        stopBleProvisioning();
+        g_stopRequested = true;
         return;
       }
     }
     if (g_ssid.length() > 0 || g_pass.length() > 0) {
-      notifyStatusJson("creds_partial");
+      g_credsPartialPending = true;
     }
     if (g_ssid.length() > 0 && g_pass.length() > 0) {
-      notifyStatusJson("creds_received");
-      g_connectRequested = true;
+      g_credsReceivedPending = true;
     }
   }
 
@@ -332,11 +341,35 @@ void processBleProvisioning() {
   unsigned long now = millis();
   updatePasskeyDisplay(now);
 
+  if (g_stopRequested) {
+    g_stopRequested = false;
+    notifyStatusJson("ble_stop_ack");
+    stopBleProvisioning();
+    return;
+  }
+
+  if (g_credsPartialPending) {
+    g_credsPartialPending = false;
+    notifyStatusJson("creds_partial");
+  }
+  if (g_credsReceivedPending) {
+    g_credsReceivedPending = false;
+    notifyStatusJson("creds_received");
+    g_connectRequested = true;
+  }
+
   if (g_state == BleState::WifiConnecting) {
+    static wl_status_t lastWifiStatus = WL_IDLE_STATUS;
     if (WiFi.status() == WL_CONNECTED) {
       notifyStatusJson("wifi_ok", "ip", WiFi.localIP().toString());
       g_state = BleState::Active;
+      lastWifiStatus = WL_CONNECTED;
       return;
+    }
+    wl_status_t statusNow = WiFi.status();
+    if (statusNow != lastWifiStatus) {
+      logInfo(String("🔵 BLE WiFi status change: ") + wifiStatusToReason(statusNow) + " (" + statusNow + ")");
+      lastWifiStatus = statusNow;
     }
     if (now - g_lastStatusNotifyMs >= 1000) {
       notifyStatusJson("wifi_connecting");
@@ -375,6 +408,7 @@ void startBleProvisioning(BleProvisioningReason reason) {
   g_bleActive = true;
   g_bleTimedOut = false;
   g_state = BleState::Active;
+  ledEventStart(LedEvent::BleProvisioning);
   g_bleStartMs = millis();
   g_passkeyIndex = 0;
   g_passkeyShowing = true;
@@ -419,6 +453,7 @@ void stopBleProvisioning() {
   if (!g_bleActive) return;
   g_bleActive = false;
   g_state = BleState::Idle;
+  ledEventStop(LedEvent::BleProvisioning);
   g_ssid = "";
   g_pass = "";
   g_connectRequested = false;

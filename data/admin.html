@@ -47,10 +47,10 @@
           <span id="updateBtnLabel">⬆️ Update</span>
           <span id="updateBtnMsg" class="block text-xs text-gray-200 mt-1"></span>
         </button>
-        <a class="py-2 rounded bg-gray-200 text-gray-800 text-center hover:bg-gray-300" href="/update.html">🧰 Update page</a>
+        <a class="py-2 rounded bg-gray-200 text-gray-800 text-center hover:bg-gray-300" href="/update.html" id="updatePageLink">🧰 Update page</a>
       </div>
 
-      <div class="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4">
+      <div class="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4" id="releaseChannelSection">
         <h2 class="text-lg font-semibold mb-2">Release channel</h2>
         <div class="space-y-1 mb-2">
           <label class="inline-flex items-center space-x-2">
@@ -483,8 +483,17 @@
         set('buildDeviceId', devInfo.device_id);
         set('buildHardwareId', devInfo.hardware_id);
         const syncSection = document.getElementById('syncUiSection');
+        const channelSection = document.getElementById('releaseChannelSection');
+        const updateBtn = document.getElementById('updateBtnAdm');
+        const updatePageLink = document.getElementById('updatePageLink');
         if (syncSection && info.ui_sync_supported === false) {
           syncSection.classList.add('hidden');
+        }
+        if (info.ota_enabled === false) {
+          if (syncSection) syncSection.classList.add('hidden');
+          if (channelSection) channelSection.classList.add('hidden');
+          if (updateBtn) updateBtn.classList.add('hidden');
+          if (updatePageLink) updatePageLink.classList.add('hidden');
         }
         if (buildStatus) buildStatus.textContent = 'Last updated just now.';
       } catch (err) {
