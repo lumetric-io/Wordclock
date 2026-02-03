@@ -457,6 +457,9 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const body = await res.json();
           if (gridStatusPublic) gridStatusPublic.textContent = `Actieve grid: ${formatVariantLabel(body)}`;
+          if (isLogoProduct && dataLoader.loaders.has('logoState')) {
+            dataLoader.load('logoState');
+          }
         } catch (err) {
           if (gridStatusPublic) gridStatusPublic.textContent = 'Opslaan mislukt';
         }
