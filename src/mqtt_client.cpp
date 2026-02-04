@@ -179,7 +179,7 @@ static void publishDiscovery() {
   builder.addSensor("UI Version", nodeId + "_uiversion", tUiVersion);
   builder.addSensor("IP Address", nodeId + "_ip", tIp);
   builder.addSensor("WiFi RSSI", nodeId + "_rssi", tRssi, "dBm", "signal_strength");
-  builder.addSensor("Last Startup", nodeId + "_uptime", tUptime, "s");
+  builder.addSensor("Last Startup", nodeId + "_uptime", tUptime, "", "timestamp");
   builder.addSensor("Free Heap (bytes)", nodeId + "_heap", tHeap, "bytes");
   builder.addSensor("WiFi Channel", nodeId + "_wifichan", tWifiChan);
   builder.addSensor("Boot Reason", nodeId + "_bootreason", tBootReason);
@@ -353,7 +353,7 @@ void mqtt_publish_state(bool force) {
     struct tm lt = {};
     localtime_r(&boot, &lt);
     char buf[32];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &lt);
+    strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S%z", &lt);
     g_bootTimeStr = String(buf);
     g_bootTimeSet = true;
   }
