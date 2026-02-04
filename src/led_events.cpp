@@ -87,20 +87,17 @@ bool runBlinkPattern(unsigned long nowMs,
 
 bool handleSetupBlink(unsigned long nowMs) {
 #if SETUP_BLINK_ENABLED && SETUP_BLINK_LED_COUNT > 0
-  static bool lastComplete = false;
   static bool lastHasWifiConfig = false;
   static unsigned long greenUntilMs = 0;
   static BlinkState setupBlinkState;
 
   const bool complete = setupState.isComplete();
 
-  if (complete && !lastComplete) {
+  if (complete && setupState.takeCompletionPulse()) {
     greenUntilMs = nowMs + 1000;
     showLedsColor(kSetupBlinkLedVec, 0, scaleChannel(255, kBlinkScale), 0);
-    lastComplete = complete;
     return true;
   }
-  lastComplete = complete;
 
   if (greenUntilMs != 0) {
     if (nowMs >= greenUntilMs) {
@@ -117,6 +114,7 @@ bool handleSetupBlink(unsigned long nowMs) {
 
   const bool hasSavedSsid = WiFi.SSID().length() > 0;
   const bool hasWifiConfig = g_wifiHadCredentialsAtBoot || hasSavedSsid;
+  const bool shouldShowNoSetup = !hasWifiConfig && !complete;
   if (hasWifiConfig != lastHasWifiConfig) {
     lastHasWifiConfig = hasWifiConfig;
     setupBlinkState = BlinkState{};

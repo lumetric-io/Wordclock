@@ -82,8 +82,19 @@
 #define WIFI_MANAGER_ENABLED 1
 #endif
 
+#ifndef UPDATE_UPLOAD_ENABLED
+#define UPDATE_UPLOAD_ENABLED 1
+#endif
+
+#ifndef SETUP_ASSUME_DONE_IF_LEGACY_CONFIG
+#define SETUP_ASSUME_DONE_IF_LEGACY_CONFIG 0
+#endif
+
 #ifndef DATA_PIN
 #define DATA_PIN 4
+#endif
+#ifndef LOGO_DATA_PIN
+#define LOGO_DATA_PIN DATA_PIN
 #endif
 #define DEFAULT_BRIGHTNESS 5
 

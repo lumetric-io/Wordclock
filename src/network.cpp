@@ -65,8 +65,9 @@ void initNetwork() {
   auto& wm = getManager();
 
   wm.setConfigPortalBlocking(false);
-  wm.setConfigPortalTimeout(WIFI_CONFIG_PORTAL_TIMEOUT);
   wm.setAPClientCheck(false);  // allow AP even when STA disconnected
+  wm.setCaptivePortalEnable(true);
+  wm.setWebPortalClientCheck(false); // keep portal alive; Android captive checks can be chatty
   wm.setCleanConnect(true);    // ensure fresh STA connect attempts
   wm.setSTAStaticIPConfig(IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0));
   #if defined(WM_DEBUG_DEV)
@@ -124,6 +125,8 @@ void initNetwork() {
     if (!wm.getConfigPortalActive()) {
       startWiFiManagerPortal();
     } else {
+      ledEventStart(LedEvent::WifiManagerPortal);
+      g_wifiManagerStarted = true;
       logWarn(String("📶 WiFi config portal active. Connect to '") + AP_NAME + "' to configure WiFi.");
     }
   }
@@ -149,6 +152,13 @@ void processNetwork() {
     logInfo("✅ WiFi connection established: " + String(WiFi.SSID()));
     logInfo("📡 IP address: " + WiFi.localIP().toString());
     lastReconnectAttemptMs = millis();
+#if WIFI_MANAGER_ENABLED
+    auto& wm = getManager();
+    if (wm.getConfigPortalActive()) {
+      wm.stopConfigPortal();
+      logInfo("📶 WiFiManager portal stopped after STA connect");
+    }
+#endif
     ledEventStop(LedEvent::WifiManagerPortal);
     g_wifiManagerStarted = false;
   } else if (!connected && g_wifiConnected) {

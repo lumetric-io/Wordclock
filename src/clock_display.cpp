@@ -129,9 +129,14 @@ void ClockDisplay::handleNoTime(unsigned long nowMs) {
 
 void ClockDisplay::ensureNoTimeIndicatorLeds() {
     if (!noTimeIndicator_.leds.empty()) return;
-    size_t count = EXTRA_MINUTE_LED_COUNT >= 4 ? 4 : EXTRA_MINUTE_LED_COUNT;
+    if (EXTRA_MINUTE_LED_GROUP_SIZE == 0) return;
+    size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
+    size_t count = symbolCount >= 4 ? 4 : symbolCount;
     for (size_t i = 0; i < count; ++i) {
-        noTimeIndicator_.leds.push_back(EXTRA_MINUTE_LEDS[i]);
+        size_t base = i * EXTRA_MINUTE_LED_GROUP_SIZE;
+        for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
+            noTimeIndicator_.leds.push_back(EXTRA_MINUTE_LEDS[base + j]);
+        }
     }
 }
 
@@ -160,10 +165,10 @@ ClockDisplay::DisplayTime ClockDisplay::prepareDisplayTime() {
     // Use cached time
     dt.effective = time_.cached;
     
-    // Apply sell-mode override (forces 10:47)
+    // Apply sell-mode override (forces 11:49)
     if (displaySettings.isSellMode()) {
-        dt.effective.tm_hour = 10;
-        dt.effective.tm_min = 47;
+        dt.effective.tm_hour = 11;
+        dt.effective.tm_min = 49;
     }
     
     dt.rounded = (dt.effective.tm_min / 5) * 5;
@@ -206,8 +211,14 @@ void ClockDisplay::buildAnimationFrames(const DisplayTime& dt, unsigned long now
         if (!animation_.frames.empty() && dt.extra > 0) {
 #if SUPPORT_MINUTE_LEDS
             auto& finalFrame = animation_.frames.back();
-            for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(EXTRA_MINUTE_LED_COUNT); ++i) {
-                finalFrame.push_back(EXTRA_MINUTE_LEDS[i]);
+            if (EXTRA_MINUTE_LED_GROUP_SIZE > 0) {
+                size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
+                for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(symbolCount); ++i) {
+                    size_t base = static_cast<size_t>(i) * EXTRA_MINUTE_LED_GROUP_SIZE;
+                    for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
+                        finalFrame.push_back(EXTRA_MINUTE_LEDS[base + j]);
+                    }
+                }
             }
 #endif
         }
@@ -306,8 +317,14 @@ void ClockDisplay::displayStaticTime(const DisplayTime& dt) {
     
     // Add extra minute LEDs
 #if SUPPORT_MINUTE_LEDS
-    for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(EXTRA_MINUTE_LED_COUNT); ++i) {
-        indices.push_back(EXTRA_MINUTE_LEDS[i]);
+    if (EXTRA_MINUTE_LED_GROUP_SIZE > 0) {
+        size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
+        for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(symbolCount); ++i) {
+            size_t base = static_cast<size_t>(i) * EXTRA_MINUTE_LED_GROUP_SIZE;
+            for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
+                indices.push_back(EXTRA_MINUTE_LEDS[base + j]);
+            }
+        }
     }
 #endif
     

@@ -1,7 +1,7 @@
 #pragma once
 #include "network_init.h"
 #include "fs_compat.h"
-#if OTA_ENABLED
+#if OTA_ENABLED || UPDATE_UPLOAD_ENABLED
 #include <Update.h>
 #endif
 #include <WebServer.h>
@@ -200,11 +200,12 @@ static void refreshCurrentTimeDisplay() {
 static void sendLogoState() {
   JsonDocument doc;
   doc["brightness"] = logoLeds.getBrightness();
-  doc["count"] = LOGO_LED_COUNT;
+  uint16_t logoCount = getLogoLedCount();
+  doc["count"] = logoCount;
   doc["start"] = getLogoStartIndex();
   JsonArray arr = doc["colors"].to<JsonArray>();
   const LogoLedColor* colors = logoLeds.getColors();
-  for (uint16_t i = 0; i < LOGO_LED_COUNT; ++i) {
+  for (uint16_t i = 0; i < logoCount; ++i) {
     char buf[7];
     snprintf(buf, sizeof(buf), "%02X%02X%02X", colors[i].r, colors[i].g, colors[i].b);
     arr.add(String(buf));
@@ -1238,7 +1239,7 @@ void setupWebRoutes() {
     server.send(200, "text/plain", "Startup sequence executed");
   });
   
-#if OTA_ENABLED
+#if UPDATE_UPLOAD_ENABLED
   server.on(
     "/uploadFirmware",
     HTTP_POST,
@@ -1277,7 +1278,7 @@ void setupWebRoutes() {
         }
       }
     }
-  );  
+  );
 
   // Separate endpoint for filesystem (UI) updates
   server.on(
@@ -1318,46 +1319,10 @@ void setupWebRoutes() {
       }
     }
   );
+#endif
 
-  server.on(
-    "/uploadSpiffs",
-    HTTP_POST,
-    []() {
-      if (!ensureUiAuth()) return;
-      server.send(200, "text/plain", Update.hasError() ? "Filesystem update failed" : "Filesystem update successful. Rebooting...");
-      if (!Update.hasError()) {
-        delay(1000);
-        safeRestart();
-      }
-    },
-    []() {
-      if (!ensureUiAuth()) return;
-      HTTPUpload& upload = server.upload();
-      if (upload.status == UPLOAD_FILE_START) {
-        logInfo("📂 Filesystem upload started: " + upload.filename);
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
-          logError("❌ Update.begin(U_SPIFFS) failed");
-          Update.printError(Serial);
-        }
-      } else if (upload.status == UPLOAD_FILE_WRITE) {
-        size_t written = Update.write(upload.buf, upload.currentSize);
-        if (written != upload.currentSize) {
-          logError("❌ Error writing chunk (filesystem)");
-          Update.printError(Serial);
-        } else {
-          logDebug("✏️ Filesystem written: " + String(written) + " bytes");
-        }
-      } else if (upload.status == UPLOAD_FILE_END) {
-        logInfo("📥 Filesystem upload completed");
-        logDebug("Filesystem total " + String(Update.size()) + " bytes");
-        if (!Update.end(true)) {
-          logError("❌ Update.end(U_SPIFFS) failed");
-          Update.printError(Serial);
-        }
-      }
-    }
-  );
 
+#if OTA_ENABLED
   server.on("/checkForUpdate", HTTP_ANY, []() {
     if (!ensureUiAuth()) return;
     if (is_update_running()) {
@@ -1386,6 +1351,7 @@ void setupWebRoutes() {
     mqtt_publish_update_status(true);
     server.send(200, "text/plain", "Firmware update started");
   });
+#endif
 
 #if SUPPORT_OTA_V2 == 0
   server.on("/syncUI", HTTP_POST, []() {
@@ -1394,7 +1360,6 @@ void setupWebRoutes() {
     syncFilesFromManifest();
     server.send(200, "text/plain", "UI sync started");
   });
-#endif
 #endif
 
   server.on("/getBrightness", []() {
@@ -1467,11 +1432,12 @@ void setupWebRoutes() {
 
     if (doc["colors"].is<JsonArray>()) {
       JsonArray arr = doc["colors"].as<JsonArray>();
-      if (!arr || arr.size() != LOGO_LED_COUNT) {
-        server.send(400, "text/plain", String("colors array must contain ") + LOGO_LED_COUNT + " hex strings");
+      uint16_t logoCount = getLogoLedCount();
+      if (!arr || arr.size() != logoCount) {
+        server.send(400, "text/plain", String("colors array must contain ") + logoCount + " hex strings");
         return;
       }
-      for (uint16_t i = 0; i < LOGO_LED_COUNT; ++i) {
+      for (uint16_t i = 0; i < logoCount; ++i) {
         uint8_t r = 0, g = 0, b = 0;
         if (!parseHexColor(arr[i].as<String>(), r, g, b)) {
           server.send(400, "text/plain", "Invalid color entry");
@@ -1508,7 +1474,7 @@ void setupWebRoutes() {
     server.send(200, "text/plain", getUiVersion());
   });
 
-  // Sell mode endpoints (force 10:47 display)
+  // Sell mode endpoints (force 11:49 display)
   server.on("/getSellMode", []() {
     if (!ensureUiAuth()) return;
     server.send(200, "text/plain", displaySettings.isSellMode() ? "on" : "off");
@@ -1525,13 +1491,13 @@ void setupWebRoutes() {
     // Trigger animation to new effective time
     struct tm t = {};
     if (on) {
-      t.tm_hour = 10;
-      t.tm_min = 47;
+      t.tm_hour = 11;
+      t.tm_min = 49;
     } else {
       if (!getLocalTime(&t)) { server.send(200, "text/plain", "OK"); return; }
     }
     wordclock_force_animation_for_time(&t);
-  logInfo(String("🛒 Sell time ") + (on ? "ON (10:47)" : "OFF"));
+  logInfo(String("🛒 Sell time ") + (on ? "ON (11:49)" : "OFF"));
     server.send(200, "text/plain", "OK");
   });
 

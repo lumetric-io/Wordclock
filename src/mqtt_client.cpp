@@ -207,8 +207,9 @@ void publishLightState() {
   uint8_t r, g, b, w; ledState.getRGBW(r,g,b,w);
   doc["state"] = clockEnabled ? "ON" : "OFF";
   doc["brightness"] = ledState.getBrightness();
+  doc["color_mode"] = "rgbw";
   JsonObject col = doc["color"].to<JsonObject>();
-  col["r"] = r; col["g"] = g; col["b"] = b;
+  col["r"] = r; col["g"] = g; col["b"] = b; col["w"] = w;
   String out; serializeJson(doc, out);
   mqtt.publish(tLightState.c_str(), out.c_str(), true);
 }

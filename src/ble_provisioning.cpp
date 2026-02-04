@@ -182,8 +182,15 @@ std::vector<uint16_t> ledsForDigit(uint8_t digit) {
 std::vector<uint16_t> cornerLeds() {
   std::vector<uint16_t> leds;
 #if SUPPORT_MINUTE_LEDS
-  if (EXTRA_MINUTE_LED_COUNT >= 4) {
-    leds.assign(EXTRA_MINUTE_LEDS, EXTRA_MINUTE_LEDS + 4);
+  if (EXTRA_MINUTE_LED_GROUP_SIZE > 0) {
+    size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
+    size_t count = symbolCount >= 4 ? 4 : symbolCount;
+    for (size_t i = 0; i < count; ++i) {
+      size_t base = i * EXTRA_MINUTE_LED_GROUP_SIZE;
+      for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
+        leds.push_back(EXTRA_MINUTE_LEDS[base + j]);
+      }
+    }
   }
 #endif
   return leds;

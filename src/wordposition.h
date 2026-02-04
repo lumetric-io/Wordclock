@@ -2,5 +2,5 @@
 
 struct WordPosition {
   const char* word;
-  int indices[20];
+  int indices[32];
 };

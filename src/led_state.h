@@ -46,6 +46,24 @@ public:
     }
 
     /**
+     * @brief Set RGBW color (immediate in-memory, deferred persistence)
+     * @param r Red component (0-255)
+     * @param g Green component (0-255)
+     * @param b Blue component (0-255)
+     * @param w White component (0-255)
+     */
+    void setRGBW(uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
+        if (red_ == r && green_ == g && blue_ == b && white_ == w) {
+            return;
+        }
+        red_ = r;
+        green_ = g;
+        blue_ = b;
+        white_ = w;
+        markDirty();
+    }
+
+    /**
      * @brief Set brightness (immediate in-memory, deferred persistence)
      * @param b Brightness value (0-255)
      */

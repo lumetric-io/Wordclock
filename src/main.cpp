@@ -73,7 +73,8 @@ void setup() {
 
   // Load persisted display settings (e.g. auto-update preference) before running dependent flows
   displaySettings.begin();
-  const bool hasLegacyConfig = g_wifiHadCredentialsAtBoot || displaySettings.hasPersistedGridVariant();
+  const bool hasLegacyConfig = SETUP_ASSUME_DONE_IF_LEGACY_CONFIG &&
+                               displaySettings.hasPersistedGridVariant();
   setupState.begin(hasLegacyConfig);
   nightMode.begin();
 
