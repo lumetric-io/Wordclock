@@ -77,9 +77,6 @@ static uint8_t applyBrightness(uint8_t value, uint8_t brightness) {
 }
 
 static void renderLogoLeds() {
-  logoStrip.clear();
-  logoStrip.show();
-  return;
   const LogoLedColor* colors = logoLeds.getColors();
   uint8_t logoBrightness = nightMode.applyToBrightness(logoLeds.getBrightness());
   uint16_t count = getLogoLedCount();
