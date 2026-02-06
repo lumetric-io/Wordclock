@@ -64,6 +64,19 @@ bool register_device_with_fleet(String& outDeviceId, String& outToken, String& o
       apiError = errDoc["error"].as<const char*>();
     }
     if (code == 409) {
+      // Check if server provided credentials for recovery
+      if (errDoc["deviceId"].is<const char*>() && errDoc["deviceToken"].is<const char*>()) {
+        String recoveredId = errDoc["deviceId"].as<const char*>();
+        String recoveredToken = errDoc["deviceToken"].as<const char*>();
+        
+        // Store the recovered credentials
+        if (set_device_id(recoveredId) && set_device_token(recoveredToken)) {
+          outDeviceId = recoveredId;
+          outToken = recoveredToken;
+          logInfo("✅ Device credentials recovered from server");
+          return true;  // Treat as success since we now have valid credentials
+        }
+      }
       outError = apiError.length() > 0 ? apiError : "Device already registered";
       return false;
     }

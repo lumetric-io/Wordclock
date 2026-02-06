@@ -109,7 +109,7 @@ void loop() {
   }
 
   runtimeEnsureOnlineServices(server);
-  runtimeHandleOnlineServices(server);
+  runtimeHandleOnlineServices(server, nowMs);
   runtimeHandlePeriodicSettings(nowMs, 1000);
 
   if (runtimeHandleLedEvents(nowMs)) {

@@ -11,8 +11,10 @@
 #endif
 
 #include "ble_provisioning.h"
-#include "display_settings.h"
+#include "device_identity.h"
 #include "device_registration.h"
+#include "display_settings.h"
+#include "heartbeat.h"
 #include "led_events.h"
 #include "led_state.h"
 #include "log.h"
@@ -34,6 +36,7 @@ bool g_autoUpdateHandled = false;
 bool g_uiSyncHandled = false;
 bool g_serverInitialized = false;
 bool g_autoRegistrationHandled = false;
+bool g_heartbeatInitialized = false;
 
 bool g_lastWifiConnected = false;
 unsigned long g_lastSettingsFlushPortalMs = 0;
@@ -43,13 +46,28 @@ time_t g_lastFirmwareCheck = 0;
 
 void attemptAutoRegistration() {
   if (g_autoRegistrationHandled || !isWiFiConnected()) return;
+  
+  // Skip if already registered (credentials exist)
+  String existingId = get_device_id();
+  String existingToken = get_device_token();
+  if (!existingId.isEmpty() && !existingToken.isEmpty()) {
+    logDebug("ℹ️ Device already has credentials, skipping registration");
+    g_autoRegistrationHandled = true;
+    return;
+  }
+  
   String deviceId;
   String token;
   String err;
   if (register_device_with_fleet(deviceId, token, err)) {
     logInfo("✅ Auto-registered device on startup.");
   } else {
-    logWarn(String("⚠️ Auto-registration failed: ") + err);
+    // "Device already registered" is expected, only log as debug
+    if (err.indexOf("already registered") >= 0) {
+      logDebug(String("ℹ️ ") + err);
+    } else {
+      logWarn(String("⚠️ Auto-registration failed: ") + err);
+    }
   }
   g_autoRegistrationHandled = true;
 }
@@ -95,6 +113,10 @@ void runtimeHandleWifiTransitionLogs(bool wifiConnected) {
   if (wifiConnected != g_lastWifiConnected) {
     if (wifiConnected) {
       logInfo("✅ WiFi connected. Exiting provisioning mode.");
+      // Trigger heartbeat on WiFi reconnect
+      if (g_heartbeatInitialized) {
+        triggerHeartbeat();
+      }
     } else {
 #if WIFI_MANAGER_ENABLED
       logWarn("📶 WiFi not connected. Entering portal mode (WiFiManager active).");
@@ -152,9 +174,13 @@ void runtimeEnsureOnlineServices(WebServer& server) {
   if (!g_autoRegistrationHandled) {
     attemptAutoRegistration();
   }
+  if (!g_heartbeatInitialized) {
+    initHeartbeat();
+    g_heartbeatInitialized = true;
+  }
 }
 
-void runtimeHandleOnlineServices(WebServer& server) {
+void runtimeHandleOnlineServices(WebServer& server, unsigned long nowMs) {
   if (!isWiFiConnected()) return;
   if (g_serverInitialized) {
     server.handleClient();
@@ -163,6 +189,7 @@ void runtimeHandleOnlineServices(WebServer& server) {
   ArduinoOTA.handle();
 #endif
   mqttEventLoop();
+  processHeartbeat(nowMs);
 }
 
 void runtimeHandlePeriodicSettings(unsigned long nowMs, unsigned long intervalMs) {

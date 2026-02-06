@@ -9,7 +9,7 @@ void runtimeInitOnSetup(bool wifiConnected, WebServer& server);
 void runtimeHandleWifiTransitionLogs(bool wifiConnected);
 bool runtimeHandleNoWifiLoop(unsigned long nowMs);
 void runtimeEnsureOnlineServices(WebServer& server);
-void runtimeHandleOnlineServices(WebServer& server);
+void runtimeHandleOnlineServices(WebServer& server, unsigned long nowMs);
 void runtimeHandlePeriodicSettings(unsigned long nowMs, unsigned long intervalMs);
 bool runtimeHandleLedEvents(unsigned long nowMs);
 bool runtimeHandleStartupSequence(StartupSequence& startupSequence);
