@@ -31,6 +31,7 @@ void syncUiFilesFromConfiguredVersion() {}
 #include "log.h"
 #include "secrets.h"
 #include "display_settings.h"
+#include "grid_layout.h"
 #include "system_utils.h"
 
 static const char* FS_IMAGE_VERSION_FILE = "/.fs_image_version";
@@ -244,24 +245,29 @@ static String buildOta2ChannelUrl(const String& productId, const String& channel
 }
 
 // Map grid variant to grid-specific product ID for OTA updates
-// This allows multi-grid firmware (wordclock-legacy) to migrate to grid-specific OTA
+// This allows multi-grid firmware to migrate to grid-specific OTA
 static String getEffectiveOtaProductId() {
+  const GridVariantInfo* info = getGridVariantInfo(displaySettings.getGridVariant());
+  const char* gridKey = info ? info->key : "unknown";
+
 #if defined(PRODUCT_VARIANT_LEGACY)
-  // Only apply mapping for legacy multi-grid product
-  String gridVariant = displaySettings.getGridVariant();
-  
-  if (gridVariant == "nl_v1") return "wordclock-legacy-nl-v1";
-  if (gridVariant == "nl_v2") return "wordclock-legacy-nl-v2";
-  if (gridVariant == "nl_v3") return "wordclock-legacy-nl-v3";
-  if (gridVariant == "nl_v4") return "wordclock-legacy-nl-v4";
-  if (gridVariant == "nl_50x50_v1") return "wordclock-legacy-nl-50x50-v1";
-  if (gridVariant == "nl_50x50_v2") return "wordclock-legacy-nl-50x50-v2";
-  if (gridVariant == "nl_50x50_v3") return "wordclock-legacy-nl-50x50-v3";
-  
-  // Fallback if grid not recognized (shouldn't happen)
-  logWarn("Unknown grid variant for OTA mapping: " + gridVariant);
+  // Legacy multi-grid product mapping
+  if (strcmp(gridKey, "nl_v1") == 0) return "wordclock-legacy-nl-v1";
+  if (strcmp(gridKey, "nl_v2") == 0) return "wordclock-legacy-nl-v2";
+  if (strcmp(gridKey, "nl_v3") == 0) return "wordclock-legacy-nl-v3";
+  if (strcmp(gridKey, "nl_v4") == 0) return "wordclock-legacy-nl-v4";
+  if (strcmp(gridKey, "nl_50x50_v1") == 0) return "wordclock-legacy-nl-50x50-v1";
+  if (strcmp(gridKey, "nl_50x50_v2") == 0) return "wordclock-legacy-nl-50x50-v2";
+  if (strcmp(gridKey, "nl_50x50_v3") == 0) return "wordclock-legacy-nl-50x50-v3";
+  logWarn(String("Unknown grid variant for OTA mapping: ") + gridKey);
+#elif defined(PRODUCT_VARIANT_LOGO)
+  // Logo multi-grid product mapping
+  if (strcmp(gridKey, "nl_55x50_logo_v1") == 0) return "wordclock-logo-nl-55x50-v1";
+  if (strcmp(gridKey, "nl_100x100_logo_v1") == 0) return "wordclock-logo-nl-100x100-v1";
+  logWarn(String("Unknown grid variant for OTA mapping: ") + gridKey);
 #endif
-  // For non-legacy products or fallback, use compile-time product ID
+
+  // For single-grid products or fallback, use compile-time product ID
   return PRODUCT_ID;
 }
 
@@ -306,7 +312,8 @@ static bool fetchJsonByUrl(JsonDocument& doc, WiFiClient& client, const String& 
 static bool fetchOta2Channel(JsonDocument& doc, WiFiClient& client, const String& channel) {
   const String effectiveProductId = getEffectiveOtaProductId();
   const String url = buildOta2ChannelUrl(effectiveProductId, channel);
-  logDebug("OTA product: " + effectiveProductId + " (grid: " + displaySettings.getGridVariant() + ")");
+  const GridVariantInfo* info = getGridVariantInfo(displaySettings.getGridVariant());
+  logDebug("OTA product: " + effectiveProductId + " (grid: " + String(info ? info->key : "unknown") + ")");
   logDebug("OTA channel URL: " + url);
   return fetchJsonByUrl(doc, client, url, "channel info");
 }
