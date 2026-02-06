@@ -93,8 +93,14 @@ std::vector<uint16_t> get_led_indices_for_time(struct tm* timeinfo) {
 
   // Add extra minute LEDs if needed
 #if SUPPORT_MINUTE_LEDS
-  for (int i = 0; i < extra_minutes && i < 4 && i < static_cast<int>(EXTRA_MINUTE_LED_COUNT); ++i) {
-    leds.push_back(EXTRA_MINUTE_LEDS[i]);
+  if (EXTRA_MINUTE_LED_GROUP_SIZE > 0) {
+    size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
+    for (int i = 0; i < extra_minutes && i < 4 && i < static_cast<int>(symbolCount); ++i) {
+      size_t base = static_cast<size_t>(i) * EXTRA_MINUTE_LED_GROUP_SIZE;
+      for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
+        leds.push_back(EXTRA_MINUTE_LEDS[base + j]);
+      }
+    }
   }
 #endif
 

@@ -17,6 +17,7 @@ void SetupState::persist() {
 void SetupState::begin(bool hasLegacyConfig) {
   prefs_.begin(PREF_NAMESPACE, false);
   migratedFromLegacy_ = false;
+  completionPulse_ = false;
   const bool hasDoneKey = prefs_.isKey("done");
   const bool hasVerKey = prefs_.isKey("ver");
   completed_ = prefs_.getBool("done", false);
@@ -47,6 +48,7 @@ void SetupState::begin(bool hasLegacyConfig) {
 void SetupState::markComplete() {
   if (completed_) return;  // Early exit if no change
   completed_ = true;
+  completionPulse_ = true;
   version_ = SETUP_STATE_VERSION;
   markDirty();
   logInfo("✅ Setup marked as complete");
@@ -55,9 +57,16 @@ void SetupState::markComplete() {
 void SetupState::reset() {
   if (!completed_) return;  // Early exit if no change
   completed_ = false;
+  completionPulse_ = false;
   version_ = SETUP_STATE_VERSION;
   markDirty();
   logInfo("ℹ️ Setup state reset (wizard required)");
+}
+
+bool SetupState::takeCompletionPulse() {
+  if (!completionPulse_) return false;
+  completionPulse_ = false;
+  return true;
 }
 
 void SetupState::flush() {

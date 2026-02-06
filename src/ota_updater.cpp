@@ -1,3 +1,24 @@
+#include "config.h"
+#include "ota_updater.h"
+
+#include "led_events.h"
+#include "fs_compat.h"
+
+#if !OTA_ENABLED
+
+String getUiVersion() {
+  return UI_VERSION;
+}
+
+void checkForFirmwareUpdate() {}
+
+#if SUPPORT_OTA_V2 == 0
+void syncFilesFromManifest() {}
+void syncUiFilesFromConfiguredVersion() {}
+#endif
+
+#else
+
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -7,11 +28,8 @@
 #include <algorithm>
 #include <cstring>
 #include <cctype>
-#include "fs_compat.h"
-#include "config.h"
 #include "log.h"
 #include "secrets.h"
-#include "ota_updater.h"
 #include "display_settings.h"
 #include "system_utils.h"
 
@@ -230,6 +248,11 @@ static bool fetchJsonByUrl(JsonDocument& doc, WiFiClient& client, const String& 
   http.setTimeout(15000);
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   http.addHeader("Accept-Encoding", "identity");
+#if SUPPORT_OTA_V2 && OTA2_NO_CACHE_HEADERS
+  http.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  http.addHeader("Pragma", "no-cache");
+  http.addHeader("Expires", "0");
+#endif
   if (!http.begin(client, url)) {
     logError(String("Failed to begin ") + label + " request");
     return false;
@@ -312,6 +335,11 @@ static bool performHttpOta(const String& firmwareUrl, WiFiClient& client) {
   HTTPClient http;
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   http.setTimeout(15000);
+#if SUPPORT_OTA_V2 && OTA2_NO_CACHE_HEADERS
+  http.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  http.addHeader("Pragma", "no-cache");
+  http.addHeader("Expires", "0");
+#endif
   if (!http.begin(client, firmwareUrl)) {
     logError("❌ http.begin failed");
     return false;
@@ -360,6 +388,11 @@ static bool performFilesystemUpdate(const String& fsUrl, int expectedSize, WiFiC
   HTTPClient http;
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   http.setTimeout(15000);
+#if SUPPORT_OTA_V2 && OTA2_NO_CACHE_HEADERS
+  http.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  http.addHeader("Pragma", "no-cache");
+  http.addHeader("Expires", "0");
+#endif
   if (!http.begin(client, fsUrl)) {
     logError("❌ http.begin failed for filesystem update");
     return false;
@@ -585,6 +618,7 @@ void syncFilesFromManifest() {
 
 static void checkForFirmwareUpdateLegacy() {
   logInfo("🔍 Checking for new firmware...");
+  ledEventPulse(LedEvent::FirmwareCheck);
 
   std::unique_ptr<WiFiClientSecure> client(new WiFiClientSecure());
   client->setInsecure();
@@ -639,21 +673,25 @@ static void checkForFirmwareUpdateLegacy() {
   logInfo("ℹ️ Remote version: " + remoteVersion);
   if (remoteVersion == FIRMWARE_VERSION) {
     logInfo("✅ Firmware already latest (" + String(FIRMWARE_VERSION) + ")");
+    ledEventStop(LedEvent::FirmwareAvailable);
     syncFilesFromManifest();
     return;
   }
+  ledEventStart(LedEvent::FirmwareAvailable);
 
   HTTPClient http;
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   http.setTimeout(15000);
   if (!http.begin(*client, fwUrl)) {
     logError("❌ http.begin failed");
+    ledEventStop(LedEvent::FirmwareAvailable);
     return;
   }
   int code = http.GET();
   if (code != 200) {
     logError("❌ Firmware download failed: HTTP " + String(code));
     http.end();
+    ledEventStop(LedEvent::FirmwareAvailable);
     return;
   }
 
@@ -661,14 +699,19 @@ static void checkForFirmwareUpdateLegacy() {
   if (contentLength <= 0) {
     logError("❌ Invalid firmware size");
     http.end();
+    ledEventStop(LedEvent::FirmwareAvailable);
     return;
   }
 
   if (!Update.begin(contentLength)) {
     logError("❌ Update.begin() failed");
     http.end();
+    ledEventStop(LedEvent::FirmwareAvailable);
     return;
   }
+
+  ledEventStop(LedEvent::FirmwareAvailable);
+  ledEventStart(LedEvent::FirmwareDownloading);
 
   WiFiClient& stream = http.getStream();
   size_t written = Update.writeStream(stream);
@@ -677,18 +720,23 @@ static void checkForFirmwareUpdateLegacy() {
   if (written != (size_t)contentLength) {
     logError("❌ Incomplete write: " + String(written) + "/" + String(contentLength));
     Update.abort();
+    ledEventStop(LedEvent::FirmwareDownloading);
     return;
   }
   if (!Update.end()) {
     logError("❌ Update.end() failed");
+    ledEventStop(LedEvent::FirmwareDownloading);
     return;
   }
   if (Update.isFinished()) {
     logInfo("✅ Firmware updated, rebooting...");
+    ledEventStop(LedEvent::FirmwareDownloading);
+    ledEventStart(LedEvent::FirmwareApplying);
     delay(500);
     safeRestart();
   } else {
     logError("❌ Update not finished");
+    ledEventStop(LedEvent::FirmwareDownloading);
   }
 }
 
@@ -696,6 +744,7 @@ static void checkForFirmwareUpdateLegacy() {
 
 static void checkForFirmwareUpdateV2() {
   logInfo("🔍 Checking for new firmware...");
+  ledEventPulse(LedEvent::FirmwareCheck);
 
   std::unique_ptr<WiFiClient> client(new WiFiClient());
 
@@ -707,6 +756,7 @@ static void checkForFirmwareUpdateV2() {
   JsonVariant target = channelDoc["target"];
   if (target.isNull()) {
     logInfo("✅ No firmware update available.");
+    ledEventStop(LedEvent::FirmwareAvailable);
 #if SUPPORT_OTA_V2 == 0
     syncFilesFromManifest();
 #endif
@@ -757,6 +807,7 @@ static void checkForFirmwareUpdateV2() {
   logInfo("ℹ️ Remote version: " + remoteVersion);
   if (!isVersionNewer(remoteVersion, FIRMWARE_VERSION)) {
     logInfo("✅ Firmware already latest (" + String(FIRMWARE_VERSION) + ")");
+    ledEventStop(LedEvent::FirmwareAvailable);
     if (fsUpdated) {
       logInfo("🔁 Restarting to apply filesystem update...");
       delay(500);
@@ -769,8 +820,13 @@ static void checkForFirmwareUpdateV2() {
     return;
   }
 
+  ledEventStart(LedEvent::FirmwareAvailable);
+
   JsonDocument artifactDoc;
-  if (!fetchOta2Artifact(artifactDoc, *client, manifestUrl)) return;
+  if (!fetchOta2Artifact(artifactDoc, *client, manifestUrl)) {
+    ledEventStop(LedEvent::FirmwareAvailable);
+    return;
+  }
 
   const String fwUrl = artifactDoc["url"] | "";
   const String sha256 = artifactDoc["sha256"] | "";
@@ -783,11 +839,16 @@ static void checkForFirmwareUpdateV2() {
   }
 
   logInfo("⬇️ Starting firmware update...");
+  ledEventStop(LedEvent::FirmwareAvailable);
+  ledEventStart(LedEvent::FirmwareDownloading);
   if (!performHttpOta(fwUrl, *client)) {
+    ledEventStop(LedEvent::FirmwareDownloading);
     return;
   }
 
   logInfo("✅ Firmware updated, rebooting...");
+  ledEventStop(LedEvent::FirmwareDownloading);
+  ledEventStart(LedEvent::FirmwareApplying);
   delay(500);
   safeRestart();
 }
@@ -799,3 +860,4 @@ void checkForFirmwareUpdate() {
   checkForFirmwareUpdateLegacy();
 #endif
 }
+#endif // OTA_ENABLED

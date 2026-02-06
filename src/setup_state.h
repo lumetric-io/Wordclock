@@ -12,6 +12,7 @@ public:
   bool isComplete() const { return completed_; }
   uint8_t getVersion() const { return version_; }
   bool wasMigrated() const { return migratedFromLegacy_; }
+  bool takeCompletionPulse();
 
   /**
    * @brief Force immediate write to persistent storage
@@ -39,6 +40,7 @@ private:
   bool completed_ = false;
   uint8_t version_ = 0;
   bool migratedFromLegacy_ = false;
+  bool completionPulse_ = false;
   bool dirty_ = false;
   unsigned long lastFlush_ = 0;
   

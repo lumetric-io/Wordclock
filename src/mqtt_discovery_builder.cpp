@@ -56,7 +56,9 @@ void MqttDiscoveryBuilder::addLight(const String& stateTopic, const String& cmdT
     entity.config["cmd_t"] = cmdTopic;
     entity.config["schema"] = "json";
     entity.config["brightness"] = true;
-    entity.config["rgb"] = true;
+    entity.config["brightness_scale"] = 255;
+    JsonArray modes = entity.config["supported_color_modes"].to<JsonArray>();
+    modes.add("rgbw");
     
     addDeviceInfo(entity.config);
     addAvailability(entity.config);
@@ -263,4 +265,3 @@ int MqttDiscoveryBuilder::publish() {
 void MqttDiscoveryBuilder::clear() {
     entities_.clear();
 }
-

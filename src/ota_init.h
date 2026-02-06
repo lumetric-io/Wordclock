@@ -1,5 +1,8 @@
 #pragma once
 
+#include "config.h"
+
+#if OTA_ENABLED
 #include <ArduinoOTA.h>
 #include "log.h"
 #include "secrets.h"
@@ -36,3 +39,6 @@ inline void initOTA() {
     ArduinoOTA.begin();
     logInfo("🟢 Network OTA service active, waiting for upload");
 }
+#else
+inline void initOTA() {}
+#endif

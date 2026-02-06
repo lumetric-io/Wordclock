@@ -110,7 +110,8 @@ void LightCommandHandler::handle(const String& payload) {
         uint8_t r = doc["color"]["r"] | 0;
         uint8_t g = doc["color"]["g"] | 0;
         uint8_t b = doc["color"]["b"] | 0;
-        ledState.setRGB(r, g, b);
+        uint8_t w = doc["color"]["w"] | 0;
+        ledState.setRGBW(r, g, b, w);
     }
     
     // Apply display immediately
@@ -210,4 +211,3 @@ void TimeStringCommandHandler::handle(const String& payload) {
     setter_(minutes);
     publisher_();
 }
-

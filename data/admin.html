@@ -47,10 +47,10 @@
           <span id="updateBtnLabel">⬆️ Update</span>
           <span id="updateBtnMsg" class="block text-xs text-gray-200 mt-1"></span>
         </button>
-        <a class="py-2 rounded bg-gray-200 text-gray-800 text-center hover:bg-gray-300" href="/update.html">🧰 Update page</a>
+        <a class="py-2 rounded bg-gray-200 text-gray-800 text-center hover:bg-gray-300" href="/update.html" id="updatePageLink">🧰 Update page</a>
       </div>
 
-      <div class="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4">
+      <div class="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4" id="releaseChannelSection">
         <h2 class="text-lg font-semibold mb-2">Release channel</h2>
         <div class="space-y-1 mb-2">
           <label class="inline-flex items-center space-x-2">
@@ -136,6 +136,13 @@
       </form>
       <p id="updateStatus" class="text-xs text-gray-600 mt-2"></p>
       <span id="updateSpinnerAdm" class="spinner hidden" aria-label="Update in progress"></span>
+
+      <h2 class="text-xl font-semibold mt-6 mb-2">Upload UI (LittleFS)</h2>
+      <form action="/uploadFs" method="POST" enctype="multipart/form-data" class="space-y-2">
+        <input type="file" name="filesystemFile" accept=".bin" required class="block w-full text-sm text-gray-700" />
+        <button type="submit" class="py-2 px-3 rounded bg-gray-700 text-white hover:bg-gray-800">Upload</button>
+      </form>
+      <p id="updateFsStatus" class="text-xs text-gray-600 mt-2"></p>
 
       <div class="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
         <h2 class="text-xl font-semibold mb-2">Fleet registration</h2>
@@ -483,8 +490,17 @@
         set('buildDeviceId', devInfo.device_id);
         set('buildHardwareId', devInfo.hardware_id);
         const syncSection = document.getElementById('syncUiSection');
+        const channelSection = document.getElementById('releaseChannelSection');
+        const updateBtn = document.getElementById('updateBtnAdm');
+        const updatePageLink = document.getElementById('updatePageLink');
         if (syncSection && info.ui_sync_supported === false) {
           syncSection.classList.add('hidden');
+        }
+        if (info.ota_enabled === false) {
+          if (syncSection) syncSection.classList.add('hidden');
+          if (channelSection) channelSection.classList.add('hidden');
+          if (updateBtn) updateBtn.classList.add('hidden');
+          if (updatePageLink) updatePageLink.classList.add('hidden');
         }
         if (buildStatus) buildStatus.textContent = 'Last updated just now.';
       } catch (err) {

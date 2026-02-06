@@ -1,4 +1,6 @@
 #include "mqtt_client.h"
+
+#include "led_events.h"
 #include "mqtt_command_handler.h"
 #include "mqtt_discovery_builder.h"
 #include <WiFi.h>
@@ -8,12 +10,14 @@
 #include "display_settings.h"
 #include "led_state.h"
 #include "log.h"
+#if OTA_ENABLED
 #include "ota_updater.h"
+#include "update_status.h"
+#endif
 #include "wordclock.h"
 #include "time_mapper.h"
 #include "sequence_controller.h"
 #include "mqtt_settings.h"
-#include "update_status.h"
 #include <esp_system.h>
 #include <Preferences.h>
 #include "night_mode.h"
@@ -75,8 +79,6 @@ static void buildTopics() {
   tClockSet     = base + "/clock/set";
   tAnimState    = base + "/animate/state";
   tAnimSet      = base + "/animate/set";
-  tAutoUpdState = base + "/autoupdate/state";
-  tAutoUpdSet   = base + "/autoupdate/set";
   tHetIsState   = base + "/hetis/state";
   tHetIsSet     = base + "/hetis/set";
   tNightEnabledState = base + "/nightmode/enabled/state";
@@ -96,7 +98,6 @@ static void buildTopics() {
   tLogLvlSet    = base + "/loglevel/set";
   tRestartCmd   = base + "/restart/press";
   tSeqCmd       = base + "/sequence/press";
-  tUpdateCmd    = base + "/update/press";
   tVersion      = base + "/version";
   tUiVersion    = base + "/uiversion";
   tIp           = base + "/ip";
@@ -106,10 +107,15 @@ static void buildTopics() {
   tWifiChan     = base + "/wifi_channel";
   tBootReason   = base + "/boot_reason";
   tResetCount   = base + "/reset_count";
+#if OTA_ENABLED
+  tAutoUpdState = base + "/autoupdate/state";
+  tAutoUpdSet   = base + "/autoupdate/set";
+  tUpdateCmd    = base + "/update/press";
   tUpdateChannelState = base + "/update/channel";
   tUpdateAutoAllowed  = base + "/update/auto_allowed";
   tUpdateAvailable    = base + "/update/available";
   tUpdateRunning      = base + "/update/running";
+#endif
 }
 
 static void publishDiscovery() {
@@ -126,7 +132,9 @@ static void publishDiscovery() {
   
   // Switches
   builder.addSwitch("Animate words", nodeId + "_anim", tAnimState, tAnimSet);
+#if OTA_ENABLED
   builder.addSwitch("Auto update", nodeId + "_autoupd", tAutoUpdState, tAutoUpdSet);
+#endif
   builder.addSwitch("Night mode enabled", nodeId + "_night_enabled", 
                    tNightEnabledState, tNightEnabledSet);
   
@@ -154,20 +162,24 @@ static void publishDiscovery() {
   // Binary sensor
   builder.addBinarySensor("Night mode active", nodeId + "_night_active",
                          tNightActiveState);
+#if OTA_ENABLED
   builder.addBinarySensor("Update running", nodeId + "_update_running",
                          tUpdateRunning);
+#endif
   
   // Buttons
   builder.addButton("Restart", nodeId + "_restart", tRestartCmd, "restart");
   builder.addButton("Start sequence", nodeId + "_sequence", tSeqCmd);
+#if OTA_ENABLED
   builder.addButton("Check for update", nodeId + "_update", tUpdateCmd, "update");
+#endif
   
   // Sensors
   builder.addSensor("Firmware Version", nodeId + "_version", tVersion);
   builder.addSensor("UI Version", nodeId + "_uiversion", tUiVersion);
   builder.addSensor("IP Address", nodeId + "_ip", tIp);
   builder.addSensor("WiFi RSSI", nodeId + "_rssi", tRssi, "dBm", "signal_strength");
-  builder.addSensor("Last Startup", nodeId + "_uptime", tUptime, "s");
+  builder.addSensor("Last Startup", nodeId + "_uptime", tUptime, "", "timestamp");
   builder.addSensor("Free Heap (bytes)", nodeId + "_heap", tHeap, "bytes");
   builder.addSensor("WiFi Channel", nodeId + "_wifichan", tWifiChan);
   builder.addSensor("Boot Reason", nodeId + "_bootreason", tBootReason);
@@ -195,8 +207,9 @@ void publishLightState() {
   uint8_t r, g, b, w; ledState.getRGBW(r,g,b,w);
   doc["state"] = clockEnabled ? "ON" : "OFF";
   doc["brightness"] = ledState.getBrightness();
+  doc["color_mode"] = "rgbw";
   JsonObject col = doc["color"].to<JsonObject>();
-  col["r"] = r; col["g"] = g; col["b"] = b;
+  col["r"] = r; col["g"] = g; col["b"] = b; col["w"] = w;
   String out; serializeJson(doc, out);
   mqtt.publish(tLightState.c_str(), out.c_str(), true);
 }
@@ -292,7 +305,9 @@ void mqtt_publish_state(bool force) {
 
   publishLightState();
   publishSwitch(tAnimState, displaySettings.getAnimateWords());
+#if OTA_ENABLED
   publishSwitch(tAutoUpdState, displaySettings.getAutoUpdate());
+#endif
 #if !defined(PRODUCT_VARIANT_MINI)
   publishNumber(tHetIsState, displaySettings.getHetIsDurationSec());
 #endif
@@ -304,6 +319,7 @@ void mqtt_publish_state(bool force) {
   publishNightActiveState();
   publishSelect(tLogLvlState);
 
+#if OTA_ENABLED
   // Update channel / auto-update status
   String updCh = displaySettings.getUpdateChannel();
   mqtt.publish(tUpdateChannelState.c_str(), updCh.c_str(), true);
@@ -311,10 +327,15 @@ void mqtt_publish_state(bool force) {
   mqtt.publish(tUpdateAutoAllowed.c_str(), autoAllowed ? "ON" : "OFF", true);
   mqtt.publish(tUpdateAvailable.c_str(), "unknown", true); // placeholder until a remote check runs
   mqtt.publish(tUpdateRunning.c_str(), is_update_running() ? "ON" : "OFF", true);
+#endif
 
   mqtt.publish(tVersion.c_str(), FIRMWARE_VERSION, true);
+#if OTA_ENABLED
   String uiVersion = getUiVersion();
   mqtt.publish(tUiVersion.c_str(), uiVersion.c_str(), true);
+#else
+  mqtt.publish(tUiVersion.c_str(), UI_VERSION, true);
+#endif
   mqtt.publish(tIp.c_str(), WiFi.localIP().toString().c_str(), true);
   char rssi[16]; snprintf(rssi, sizeof(rssi), "%d", WiFi.RSSI()); mqtt.publish(tRssi.c_str(), rssi, true);
   char heap[24]; snprintf(heap, sizeof(heap), "%u", (unsigned)esp_get_free_heap_size()); mqtt.publish(tHeap.c_str(), heap, true);
@@ -332,7 +353,7 @@ void mqtt_publish_state(bool force) {
     struct tm lt = {};
     localtime_r(&boot, &lt);
     char buf[32];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &lt);
+    strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S%z", &lt);
     g_bootTimeStr = String(buf);
     g_bootTimeSet = true;
   }
@@ -341,8 +362,12 @@ void mqtt_publish_state(bool force) {
 }
 
 void mqtt_publish_update_status(bool running) {
+#if OTA_ENABLED
   if (!mqtt.connected()) return;
   mqtt.publish(tUpdateRunning.c_str(), running ? "ON" : "OFF", true);
+#else
+  (void)running;
+#endif
 }
 
 static void publishBirth() {
@@ -379,11 +404,13 @@ static void initCommandHandlers() {
   ));
   
   
+#if OTA_ENABLED
   registry.registerHandler(tAutoUpdSet, new SwitchCommandHandler(
     "auto_update",
     [](bool on) { displaySettings.setAutoUpdate(on); },
     []() { publishSwitch(tAutoUpdState, displaySettings.getAutoUpdate()); }
   ));
+#endif
   
   registry.registerHandler(tNightEnabledSet, new SwitchCommandHandler(
     "night_enabled",
@@ -464,6 +491,7 @@ static void initCommandHandlers() {
     startupSequence.start();
   });
   
+#if OTA_ENABLED
   registry.registerLambda(tUpdateCmd, [](const String&) {
     set_update_running(true);
     mqtt_publish_update_status(true);
@@ -471,6 +499,7 @@ static void initCommandHandlers() {
     set_update_running(false);
     mqtt_publish_update_status(false);
   });
+#endif
 }
 
 /**
@@ -533,7 +562,9 @@ static bool mqtt_connect() {
   mqtt.subscribe(tLightSet.c_str());
   mqtt.subscribe(tClockSet.c_str());
   mqtt.subscribe(tAnimSet.c_str());
+#if OTA_ENABLED
   mqtt.subscribe(tAutoUpdSet.c_str());
+#endif
 #if !defined(PRODUCT_VARIANT_MINI)
   mqtt.subscribe(tHetIsSet.c_str());
 #endif
@@ -546,10 +577,13 @@ static bool mqtt_connect() {
   mqtt.subscribe(tLogLvlSet.c_str());
   mqtt.subscribe(tRestartCmd.c_str());
   mqtt.subscribe(tSeqCmd.c_str());
+#if OTA_ENABLED
   mqtt.subscribe(tUpdateCmd.c_str());
+#endif
 
   mqtt_publish_state(true);
   g_connected = true;
+  ledEventStop(LedEvent::MqttDisconnected);
   
   // Reset reconnection state on success
   reconnectAttempts = 0;
@@ -596,6 +630,7 @@ void mqtt_begin() {
 void mqtt_loop() {
   if (!mqtt_has_configuration()) {
     g_connected = false;
+    ledEventStop(LedEvent::MqttDisconnected);
     if (!mqttConfiguredLogged) {
       logInfo("MQTT disabled (no broker configured)");
       mqttConfiguredLogged = true;
@@ -618,6 +653,7 @@ void mqtt_loop() {
   }
 
   if (!mqtt.connected()) {
+    ledEventStart(LedEvent::MqttDisconnected);
     unsigned long now = millis();
     if (now - lastReconnectAttempt >= reconnectDelayMs) {
       lastReconnectAttempt = now;
@@ -653,6 +689,7 @@ void mqtt_loop() {
     }
     return;
   }
+  ledEventStop(LedEvent::MqttDisconnected);
   mqtt.loop();
   mqtt_publish_state(false);
 }

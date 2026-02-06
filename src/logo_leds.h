@@ -7,7 +7,7 @@
 
 #include "grid_layout.h"
 
-constexpr uint16_t LOGO_LED_COUNT = 50;
+constexpr uint16_t LOGO_LED_STORAGE_COUNT = 52;
 
 struct LogoLedColor {
   uint8_t r = 0;
@@ -33,7 +33,7 @@ private:
   void persistBrightness();
   void persistColors();
 
-  LogoLedColor colors[LOGO_LED_COUNT];
+  LogoLedColor colors[LOGO_LED_STORAGE_COUNT];
   uint8_t brightness = 64;
   Preferences prefs;
 };
@@ -42,5 +42,6 @@ extern LogoLeds logoLeds;
 
 uint16_t getLogoStartIndex();
 uint16_t getTotalStripLength();
+uint16_t getLogoLedCount();
 
 #endif
