@@ -251,19 +251,19 @@ static String getEffectiveOtaProductId() {
   const char* gridKey = info ? info->key : "unknown";
 
 #if defined(PRODUCT_VARIANT_LEGACY)
-  // Legacy multi-grid product mapping
-  if (strcmp(gridKey, "nl_v1") == 0) return "wordclock-legacy-nl-v1";
-  if (strcmp(gridKey, "nl_v2") == 0) return "wordclock-legacy-nl-v2";
-  if (strcmp(gridKey, "nl_v3") == 0) return "wordclock-legacy-nl-v3";
-  if (strcmp(gridKey, "nl_v4") == 0) return "wordclock-legacy-nl-v4";
-  if (strcmp(gridKey, "nl_50x50_v1") == 0) return "wordclock-legacy-nl-50x50-v1";
-  if (strcmp(gridKey, "nl_50x50_v2") == 0) return "wordclock-legacy-nl-50x50-v2";
-  if (strcmp(gridKey, "nl_50x50_v3") == 0) return "wordclock-legacy-nl-50x50-v3";
+  // Legacy multi-grid product mapping (keys are uppercase)
+  if (strcmp(gridKey, "NL_V1") == 0) return "wordclock-legacy-nl-v1";
+  if (strcmp(gridKey, "NL_V2") == 0) return "wordclock-legacy-nl-v2";
+  if (strcmp(gridKey, "NL_V3") == 0) return "wordclock-legacy-nl-v3";
+  if (strcmp(gridKey, "NL_V4") == 0) return "wordclock-legacy-nl-v4";
+  if (strcmp(gridKey, "NL_50x50_V1") == 0) return "wordclock-legacy-nl-50x50-v1";
+  if (strcmp(gridKey, "NL_50x50_V2") == 0) return "wordclock-legacy-nl-50x50-v2";
+  if (strcmp(gridKey, "NL_50x50_V3") == 0) return "wordclock-legacy-nl-50x50-v3";
   logWarn(String("Unknown grid variant for OTA mapping: ") + gridKey);
 #elif defined(PRODUCT_VARIANT_LOGO)
-  // Logo multi-grid product mapping
-  if (strcmp(gridKey, "nl_55x50_logo_v1") == 0) return "wordclock-logo-nl-55x50-v1";
-  if (strcmp(gridKey, "nl_100x100_logo_v1") == 0) return "wordclock-logo-nl-100x100-v1";
+  // Logo multi-grid product mapping (keys are uppercase)
+  if (strcmp(gridKey, "NL_55x50_LOGO_V1") == 0) return "wordclock-logo-nl-55x50-v1";
+  if (strcmp(gridKey, "NL_100x100_LOGO_V1") == 0) return "wordclock-logo-nl-100x100-v1";
   logWarn(String("Unknown grid variant for OTA mapping: ") + gridKey);
 #endif
 
