@@ -156,7 +156,6 @@ bool sendHeartbeat() {
   req["uptime"] = (long)(millis() / 1000);
   req["freeHeap"] = (long)ESP.getFreeHeap();
   req["rssi"] = WiFi.RSSI();
-  req["ip"] = WiFi.localIP().toString();
   
   // Grid variant
   const GridVariantInfo* gridInfo = getGridVariantInfo(getActiveGridVariant());
@@ -170,10 +169,6 @@ bool sendHeartbeat() {
   req["cpuFreqMhz"] = ESP.getCpuFreqMHz();
   req["chipTemp"] = temperatureRead();
   req["resetReason"] = (int)esp_reset_reason();
-  
-  // Extended network info
-  req["wifiChannel"] = WiFi.channel();
-  req["bssid"] = WiFi.BSSIDstr();
   
   // Wordclock state
   req["brightness"] = ledState.getBrightness();
