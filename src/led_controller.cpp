@@ -96,6 +96,46 @@ static void renderLogoLeds() {
 }
 #endif
 
+// Clear LEDs as early as possible during boot to prevent garbage flashes
+// This uses a safe maximum LED count since grid layout isn't loaded yet
+void earlyLedClear() {
+#ifndef PIO_UNIT_TESTING
+  // Use a reasonable maximum LED count for initial clear
+  // This will be properly reconfigured later by ensureStripLength()
+  static const uint16_t EARLY_CLEAR_LED_COUNT = 256;
+
+#if defined(PRODUCT_VARIANT_LOGO)
+  clockStrip.updateType(NEO_GRBW + NEO_KHZ800);
+  clockStrip.setPin(DATA_PIN);
+  clockStrip.updateLength(EARLY_CLEAR_LED_COUNT);
+  clockStrip.begin();
+  clockStrip.clear();
+  clockStrip.show();
+
+  logoStrip.updateType(NEO_GRBW + NEO_KHZ800);
+  logoStrip.setPin(LOGO_DATA_PIN);
+  logoStrip.updateLength(EARLY_CLEAR_LED_COUNT);
+  logoStrip.begin();
+  logoStrip.clear();
+  logoStrip.show();
+
+  // Reset lengths so ensureStripLength() will reconfigure properly
+  activeClockStripLength = 0;
+  activeLogoStripLength = 0;
+#else
+  strip.updateType(NEO_GRBW + NEO_KHZ800);
+  strip.setPin(DATA_PIN);
+  strip.updateLength(EARLY_CLEAR_LED_COUNT);
+  strip.begin();
+  strip.clear();
+  strip.show();
+
+  // Reset length so ensureStripLength() will reconfigure properly
+  activeStripLength = 0;
+#endif
+#endif
+}
+
 void initLeds() {
 #ifndef PIO_UNIT_TESTING
   ensureStripLength();
