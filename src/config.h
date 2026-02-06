@@ -1,6 +1,15 @@
 #pragma once
 
-// Log buffer and default log level
+// Include product config first so it can override defaults
+#ifdef PRODUCT_CONFIG_HEADER
+#include PRODUCT_CONFIG_HEADER
+#elif defined(__has_include)
+#if __has_include("product_config.h")
+#include "product_config.h"
+#endif
+#endif
+
+// Log buffer and default log level (can be overridden by product_config.h)
 #ifndef DEFAULT_LOG_LEVEL
 #define DEFAULT_LOG_LEVEL LOG_LEVEL_ERROR
 #endif
@@ -8,12 +17,9 @@
 #define LOG_BUFFER_SIZE 50  // Reduced from 150 to save flash space
 #endif
 
-#ifdef PRODUCT_CONFIG_HEADER
-#include PRODUCT_CONFIG_HEADER
-#elif defined(__has_include)
-#if __has_include("product_config.h")
-#include "product_config.h"
-#endif
+// Default update channel (can be overridden by product_config.h)
+#ifndef DEFAULT_UPDATE_CHANNEL
+#define DEFAULT_UPDATE_CHANNEL "stable"
 #endif
 
 #ifndef FIRMWARE_VERSION

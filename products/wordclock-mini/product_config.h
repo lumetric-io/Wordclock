@@ -14,3 +14,9 @@
 #define SETUP_BLINK_ENABLED 1
 #define SETUP_BLINK_LED_COUNT 4
 #define SETUP_BLINK_LED_IDS 1,9,97,105
+
+// Log level: LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_WARN, LOG_LEVEL_ERROR
+// #define DEFAULT_LOG_LEVEL LOG_LEVEL_ERROR
+
+// Update channel: "stable", "early", "develop"
+// #define DEFAULT_UPDATE_CHANNEL "stable"

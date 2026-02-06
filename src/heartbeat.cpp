@@ -4,18 +4,26 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <esp_system.h>
 #include <time.h>
 
 #include "config.h"
 #include "device_identity.h"
 #include "display_settings.h"
 #include "grid_layout.h"
+#include "led_state.h"
 #include "log.h"
+#include "night_mode.h"
 #include "ota_updater.h"
 #include "secrets.h"
+#include "setup_state.h"
+
+// Retry interval after failure (5 minutes)
+#define HEARTBEAT_RETRY_INTERVAL_MS (5 * 60 * 1000UL)
 
 // State
 static unsigned long s_lastHeartbeatMs = 0;
+static unsigned long s_lastFailureMs = 0;
 static bool s_initialized = false;
 static bool s_triggerPending = false;
 static bool s_startupDelayComplete = false;
@@ -27,6 +35,7 @@ static bool shouldSendHeartbeat(unsigned long nowMs);
 
 void initHeartbeat() {
   s_lastHeartbeatMs = 0;
+  s_lastFailureMs = 0;
   s_initialized = true;
   s_triggerPending = false;
   s_startupDelayComplete = false;
@@ -60,13 +69,21 @@ void processHeartbeat(unsigned long nowMs) {
     logDebug("💓 Startup delay complete, will send first heartbeat");
   }
   
+  // Check if we're in retry cooldown after a failure
+  if (s_lastFailureMs > 0 && nowMs - s_lastFailureMs < HEARTBEAT_RETRY_INTERVAL_MS) {
+    return;
+  }
+  
   // Check if we should send heartbeat
   if (!shouldSendHeartbeat(nowMs)) return;
   
   // Send heartbeat
   if (sendHeartbeat()) {
     s_lastHeartbeatMs = nowMs;
+    s_lastFailureMs = 0;  // Reset failure state on success
     s_triggerPending = false;
+  } else {
+    s_lastFailureMs = nowMs;  // Start retry cooldown
   }
 }
 
@@ -146,6 +163,22 @@ bool sendHeartbeat() {
   if (gridInfo && gridInfo->key) {
     req["gridVariant"] = gridInfo->key;
   }
+  
+  // Extended system diagnostics
+  req["minFreeHeap"] = (long)ESP.getMinFreeHeap();
+  req["heapSize"] = (long)ESP.getHeapSize();
+  req["cpuFreqMhz"] = ESP.getCpuFreqMHz();
+  req["chipTemp"] = temperatureRead();
+  req["resetReason"] = (int)esp_reset_reason();
+  
+  // Extended network info
+  req["wifiChannel"] = WiFi.channel();
+  req["bssid"] = WiFi.BSSIDstr();
+  
+  // Wordclock state
+  req["brightness"] = ledState.getBrightness();
+  req["nightModeActive"] = nightMode.isActive();
+  req["setupComplete"] = setupState.isComplete();
   
   String payload;
   serializeJson(req, payload);
