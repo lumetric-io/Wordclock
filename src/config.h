@@ -76,12 +76,23 @@
 #define SUPPORT_MINUTE_LEDS 1
 #endif
 
-#ifndef SETUP_BLINK_LED_COUNT
-#define SETUP_BLINK_LED_COUNT 0
+/** LEDs used for status events (MqttDisconnected, NtpFailed, etc.). When LED_STATUS_EVENT_USE_MINUTE_LEDS is 1, minute LEDs from the layout are used instead. */
+#ifndef LED_STATUS_EVENT_LED_COUNT
+#define LED_STATUS_EVENT_LED_COUNT 0
+#endif
+
+/** When 1, use the layout's minute LEDs (EXTRA_MINUTE_LEDS) for status events; wordclock-mini uses 0 and defines LED_STATUS_EVENT_LED_IDS instead. */
+#ifndef LED_STATUS_EVENT_USE_MINUTE_LEDS
+#define LED_STATUS_EVENT_USE_MINUTE_LEDS 1
 #endif
 
 #ifndef SETUP_BLINK_ENABLED
 #define SETUP_BLINK_ENABLED 1
+#endif
+
+/** When 0, no LED status events run (MqttDisconnected, NtpFailed, FirmwareCheck, etc.); clock display is never replaced. */
+#ifndef LED_STATUS_EVENTS_ENABLED
+#define LED_STATUS_EVENTS_ENABLED 1
 #endif
 
 #ifndef WIFI_MANAGER_ENABLED

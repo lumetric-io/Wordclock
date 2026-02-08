@@ -9,6 +9,7 @@
 
 #include "config.h"
 #include "device_identity.h"
+#include "device_registration.h"
 #include "display_settings.h"
 #include "grid_layout.h"
 #include "led_state.h"
@@ -28,6 +29,10 @@ static bool s_initialized = false;
 static bool s_triggerPending = false;
 static bool s_startupDelayComplete = false;
 static unsigned long s_startupMs = 0;
+/** When true, heartbeat is permanently stopped after re-register failed following 401 */
+static bool s_heartbeatStopped = false;
+/** Last HTTP status from sendHeartbeat (0 if no response or not yet sent) */
+static int s_lastHeartbeatHttpCode = 0;
 
 // Forward declarations
 static bool isAtHalfMinute();
@@ -40,6 +45,8 @@ void initHeartbeat() {
   s_triggerPending = false;
   s_startupDelayComplete = false;
   s_startupMs = millis();
+  s_heartbeatStopped = false;
+  s_lastHeartbeatHttpCode = 0;
   logInfo("💓 Heartbeat module initialized");
 }
 
@@ -50,7 +57,8 @@ void triggerHeartbeat() {
 
 void processHeartbeat(unsigned long nowMs) {
   if (!s_initialized) return;
-  
+  if (s_heartbeatStopped) return;
+
   // Check WiFi connection
   if (WiFi.status() != WL_CONNECTED) return;
   
@@ -82,6 +90,24 @@ void processHeartbeat(unsigned long nowMs) {
     s_lastHeartbeatMs = nowMs;
     s_lastFailureMs = 0;  // Reset failure state on success
     s_triggerPending = false;
+  } else if (s_lastHeartbeatHttpCode == 401) {
+    // Unauthorized: re-register to refresh credentials, then send first heartbeat
+    logWarn("💓 Heartbeat 401: re-registering to refresh credentials");
+    String outId, outToken, outError;
+    if (register_device_with_fleet(outId, outToken, outError)) {
+      logInfo("💓 Re-registered successfully, sending first heartbeat");
+      s_lastFailureMs = 0;
+      s_triggerPending = true;
+      if (sendHeartbeat()) {
+        s_lastHeartbeatMs = nowMs;
+        s_triggerPending = false;
+      } else {
+        s_lastFailureMs = nowMs;
+      }
+    } else {
+      logError("💓 Re-register failed: " + outError + " – stopping heartbeat");
+      s_heartbeatStopped = true;
+    }
   } else {
     s_lastFailureMs = nowMs;  // Start retry cooldown
   }
@@ -119,6 +145,8 @@ static bool isAtHalfMinute() {
 }
 
 bool sendHeartbeat() {
+  s_lastHeartbeatHttpCode = 0;
+
   String deviceId = get_device_id();
   String deviceToken = get_device_token();
   
@@ -168,6 +196,8 @@ bool sendHeartbeat() {
   req["heapSize"] = (long)ESP.getHeapSize();
   req["cpuFreqMhz"] = ESP.getCpuFreqMHz();
   req["chipTemp"] = temperatureRead();
+  // resetReason: esp_reset_reason_t as int. 0=UNKNOWN, 1=POWERON, 2=EXT, 3=SW, 4=PANIC,
+  // 5=INT_WDT, 6=TASK_WDT, 7=WDT, 8=DEEPSLEEP, 9=BROWNOUT, 10=SDIO. See docs/HEARTBEAT_RESET_REASON.md
   req["resetReason"] = (int)esp_reset_reason();
   
   // Wordclock state
@@ -181,6 +211,7 @@ bool sendHeartbeat() {
   logDebug("💓 Sending heartbeat to " + url);
   
   int code = http.POST(payload);
+  s_lastHeartbeatHttpCode = (code > 0) ? code : 0;
   
   if (code <= 0) {
     logWarn("💓 HTTP error: " + http.errorToString(code));

@@ -117,10 +117,6 @@ void loop() {
   runtimeHandleOnlineServices(server, nowMs);
   runtimeHandlePeriodicSettings(nowMs, 1000);
 
-  if (runtimeHandleLedEvents(nowMs)) {
-    return;
-  }
-
   if (isBleProvisioningActive()) {
     return;
   }
@@ -130,4 +126,5 @@ void loop() {
   }
 
   runtimeHandleWordclockLoop(nowMs);
+  runtimeHandleLedEvents(nowMs);
 }

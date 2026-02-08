@@ -12,6 +12,9 @@ void initLeds();
 void showLeds(const std::vector<uint16_t> &ledIndices);
 void showLedsColor(const std::vector<uint16_t> &ledIndices,
                    uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0);
+/** Set only the given LED indices to (r,g,b,w) and show; does not clear the strip. Use for overlaying event blink on top of the clock. */
+void setLedsColorOverlay(const std::vector<uint16_t> &ledIndices,
+                         uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0);
 void showLedsWithBrightness(const std::vector<uint16_t> &ledIndices, 
                             const std::vector<uint8_t> &brightnessMultipliers);
 void setLedsSuspended(bool suspended);

@@ -306,6 +306,51 @@ void showLedsColor(const std::vector<uint16_t> &ledIndices,
 #endif
 }
 
+void setLedsColorOverlay(const std::vector<uint16_t> &ledIndices,
+                         uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
+#ifndef PIO_UNIT_TESTING
+  ensureStripLength();
+  if (g_ledsSuspended) {
+    return;
+  }
+#if defined(PRODUCT_VARIANT_LOGO)
+  uint8_t brightness = nightMode.applyToBrightness(ledState.getBrightness());
+  for (uint16_t idx : ledIndices) {
+    if (idx < clockStrip.numPixels()) {
+      clockStrip.setPixelColor(
+        idx,
+        clockStrip.Color(
+          applyBrightness(r, brightness),
+          applyBrightness(g, brightness),
+          applyBrightness(b, brightness),
+          applyBrightness(w, brightness)
+        )
+      );
+    }
+  }
+  clockStrip.setBrightness(255);
+  logoStrip.setBrightness(255);
+  clockStrip.show();
+  logoStrip.show();
+#else
+  for (uint16_t idx : ledIndices) {
+    if (idx < strip.numPixels()) {
+      strip.setPixelColor(idx, strip.Color(r, g, b, w));
+    }
+  }
+  uint8_t brightness = nightMode.applyToBrightness(ledState.getBrightness());
+  strip.setBrightness(brightness);
+  strip.show();
+#endif
+#else
+  (void)ledIndices;
+  (void)r;
+  (void)g;
+  (void)b;
+  (void)w;
+#endif
+}
+
 void showLedsWithBrightness(const std::vector<uint16_t> &ledIndices, 
                             const std::vector<uint8_t> &brightnessMultipliers) {
 #ifndef PIO_UNIT_TESTING
