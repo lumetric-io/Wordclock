@@ -2,6 +2,8 @@
 
 #include <WiFi.h>
 #include <vector>
+#include <algorithm>
+#include <time.h>
 
 #include "config.h"
 #include "led_controller.h"
@@ -9,6 +11,9 @@
 
 #if LED_STATUS_EVENTS_ENABLED && LED_STATUS_EVENT_USE_MINUTE_LEDS
 #include "grid_layout.h"
+#endif
+#if LED_STATUS_EVENTS_ENABLED && LED_STATUS_EVENT_LED_COUNT > 0 && defined(PRODUCT_VARIANT_MINI)
+#include "time_mapper.h"
 #endif
 
 extern bool g_wifiHadCredentialsAtBoot;
@@ -44,6 +49,31 @@ static const std::vector<uint16_t>& getEventLedVector() {
 }
 #elif LED_STATUS_EVENTS_ENABLED && LED_STATUS_EVENT_LED_COUNT > 0
 static const uint16_t kEventLeds[] = { LED_STATUS_EVENT_LED_IDS };
+#if defined(PRODUCT_VARIANT_MINI)
+// wordclock-mini: use corner LEDs for events, but skip any corner that is currently lit for the time display
+static std::vector<uint16_t> g_miniEventLedVec;
+static const std::vector<uint16_t>& getEventLedVector() {
+  g_miniEventLedVec.clear();
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo, 0)) {
+    // No time: use all corner LEDs for event feedback
+    g_miniEventLedVec.assign(kEventLeds, kEventLeds + LED_STATUS_EVENT_LED_COUNT);
+    return g_miniEventLedVec;
+  }
+  std::vector<uint16_t> timeLeds = get_led_indices_for_time(&timeinfo);
+  for (size_t i = 0; i < LED_STATUS_EVENT_LED_COUNT; ++i) {
+    uint16_t id = kEventLeds[i];
+    if (std::find(timeLeds.begin(), timeLeds.end(), id) == timeLeds.end()) {
+      g_miniEventLedVec.push_back(id);
+    }
+  }
+  // If all corners are lit for current time, still show event feedback (e.g. BLE after WiFi reset)
+  if (g_miniEventLedVec.empty()) {
+    g_miniEventLedVec.assign(kEventLeds, kEventLeds + LED_STATUS_EVENT_LED_COUNT);
+  }
+  return g_miniEventLedVec;
+}
+#else
 static const std::vector<uint16_t> kEventLedVec(
   kEventLeds,
   kEventLeds + LED_STATUS_EVENT_LED_COUNT
@@ -51,6 +81,7 @@ static const std::vector<uint16_t> kEventLedVec(
 static const std::vector<uint16_t>& getEventLedVector() {
   return kEventLedVec;
 }
+#endif
 #else
 static const std::vector<uint16_t> kEventLedVec;
 static const std::vector<uint16_t>& getEventLedVector() {
@@ -260,5 +291,24 @@ bool ledEventsTick(unsigned long nowMs) {
 
   runEventPattern(next, nowMs);
   return true;
+#endif
+}
+
+LedEvent ledEventGetCurrent(void) {
+  return pickHighestPriorityEvent();
+}
+
+bool ledEventIsActive(void) {
+#if !LED_STATUS_EVENTS_ENABLED
+  return false;
+#else
+  return g_pulseFirmwareCheck ||
+         g_eventStates[static_cast<uint8_t>(LedEvent::BleProvisioning)].active ||
+         g_eventStates[static_cast<uint8_t>(LedEvent::WifiManagerPortal)].active ||
+         g_eventStates[static_cast<uint8_t>(LedEvent::FirmwareApplying)].active ||
+         g_eventStates[static_cast<uint8_t>(LedEvent::FirmwareDownloading)].active ||
+         g_eventStates[static_cast<uint8_t>(LedEvent::FirmwareAvailable)].active ||
+         g_eventStates[static_cast<uint8_t>(LedEvent::NtpFailed)].active ||
+         g_eventStates[static_cast<uint8_t>(LedEvent::MqttDisconnected)].active;
 #endif
 }

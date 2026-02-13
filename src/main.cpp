@@ -117,6 +117,9 @@ void loop() {
   runtimeHandleOnlineServices(server, nowMs);
   runtimeHandlePeriodicSettings(nowMs, 1000);
 
+  // Always run LED events (e.g. BLE provisioning blink) so they show even when BLE is active
+  runtimeHandleLedEvents(nowMs);
+
   if (isBleProvisioningActive()) {
     return;
   }
@@ -126,5 +129,4 @@ void loop() {
   }
 
   runtimeHandleWordclockLoop(nowMs);
-  runtimeHandleLedEvents(nowMs);
 }

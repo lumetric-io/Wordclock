@@ -54,3 +54,6 @@ const WordPosition* find_word(const char* name);
 uint16_t getActiveLedCountGrid();
 uint16_t getActiveLedCountExtra();
 uint16_t getActiveLedCountTotal();
+
+/** True if the given LED index is used by any word in the active grid (wordclock-mini: skip such LEDs for event blinking). */
+bool isLedUsedByActiveWords(uint16_t ledIndex);

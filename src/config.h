@@ -110,9 +110,6 @@
 #ifndef DATA_PIN
 #define DATA_PIN 4
 #endif
-#ifndef LOGO_DATA_PIN
-#define LOGO_DATA_PIN DATA_PIN
-#endif
 #define DEFAULT_BRIGHTNESS 5
 
 #define CLOCK_NAME "Wordclock"

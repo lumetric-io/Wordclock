@@ -2,7 +2,7 @@
 
 // Mirrors the NL_50x50_V3 layout for the logo hardware variant.
 const uint16_t LED_COUNT_GRID_NL_55x50_LOGO_V1 = 128;
-const uint16_t LED_COUNT_EXTRA_NL_55x50_LOGO_V1 = 13;
+const uint16_t LED_COUNT_EXTRA_NL_55x50_LOGO_V1 = 14;
 const uint16_t LED_COUNT_TOTAL_NL_55x50_LOGO_V1 =
   LED_COUNT_GRID_NL_55x50_LOGO_V1 + LED_COUNT_EXTRA_NL_55x50_LOGO_V1;
 

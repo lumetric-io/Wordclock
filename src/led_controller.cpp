@@ -9,13 +9,21 @@
 
 #include <vector>
 
+#if defined(PRODUCT_VARIANT_LOGO) && defined(LOGO_DATA_PIN)
+#define LOGO_HAS_DEDICATED_PIN 1
+#else
+#define LOGO_HAS_DEDICATED_PIN 0
+#endif
+
 #ifndef PIO_UNIT_TESTING
 // Instance of the NeoPixel strip; length is synchronized with the active grid variant.
 #if defined(PRODUCT_VARIANT_LOGO)
 static Adafruit_NeoPixel clockStrip;
+#if LOGO_HAS_DEDICATED_PIN
 static Adafruit_NeoPixel logoStrip;
-static uint16_t activeClockStripLength = 0;
 static uint16_t activeLogoStripLength = 0;
+#endif
+static uint16_t activeClockStripLength = 0;
 #else
 static Adafruit_NeoPixel strip;
 static uint16_t activeStripLength = 0;
@@ -25,9 +33,12 @@ static bool g_ledsSuspended = false;
 static void ensureStripLength() {
 #if defined(PRODUCT_VARIANT_LOGO)
   uint16_t requiredClock = getActiveLedCountTotal();
-  if (requiredClock == 0) {
-    requiredClock = 1; // keep strip functional even if layout is missing
-  }
+  uint16_t requiredLogo = getLogoLedCount();
+#if !LOGO_HAS_DEDICATED_PIN
+  requiredClock = static_cast<uint16_t>(requiredClock + requiredLogo);
+#endif
+  if (requiredClock == 0) requiredClock = 1; // keep strip functional even if layout is missing
+
   if (requiredClock != activeClockStripLength) {
     activeClockStripLength = requiredClock;
     clockStrip.updateType(NEO_GRBW + NEO_KHZ800);
@@ -38,7 +49,7 @@ static void ensureStripLength() {
     clockStrip.show();
   }
 
-  uint16_t requiredLogo = getLogoLedCount();
+#if LOGO_HAS_DEDICATED_PIN
   if (requiredLogo == 0) {
     requiredLogo = 1; // keep strip functional even if layout is missing
   }
@@ -51,6 +62,7 @@ static void ensureStripLength() {
     logoStrip.clear();
     logoStrip.show();
   }
+#endif
 #else
   uint16_t required = getActiveLedCountTotal();
   if (required == 0) {
@@ -80,9 +92,16 @@ static void renderLogoLeds() {
   const LogoLedColor* colors = logoLeds.getColors();
   uint8_t logoBrightness = nightMode.applyToBrightness(logoLeds.getBrightness());
   uint16_t count = getLogoLedCount();
+  uint16_t clockOffset = getActiveLedCountTotal();
   for (uint16_t i = 0; i < count; ++i) {
+#if LOGO_HAS_DEDICATED_PIN
     if (i >= logoStrip.numPixels()) break;
+#else
+    uint16_t idx = static_cast<uint16_t>(clockOffset + i);
+    if (idx >= clockStrip.numPixels()) break;
+#endif
     const LogoLedColor& c = colors[i];
+#if LOGO_HAS_DEDICATED_PIN
     logoStrip.setPixelColor(
       i,
       logoStrip.Color(
@@ -92,6 +111,17 @@ static void renderLogoLeds() {
         0
       )
     );
+#else
+    clockStrip.setPixelColor(
+      idx,
+      clockStrip.Color(
+        applyBrightness(c.r, logoBrightness),
+        applyBrightness(c.g, logoBrightness),
+        applyBrightness(c.b, logoBrightness),
+        0
+      )
+    );
+#endif
   }
 }
 #endif
@@ -112,16 +142,20 @@ void earlyLedClear() {
   clockStrip.clear();
   clockStrip.show();
 
+#if LOGO_HAS_DEDICATED_PIN
   logoStrip.updateType(NEO_GRBW + NEO_KHZ800);
   logoStrip.setPin(LOGO_DATA_PIN);
   logoStrip.updateLength(EARLY_CLEAR_LED_COUNT);
   logoStrip.begin();
   logoStrip.clear();
   logoStrip.show();
+#endif
 
   // Reset lengths so ensureStripLength() will reconfigure properly
   activeClockStripLength = 0;
+#if LOGO_HAS_DEDICATED_PIN
   activeLogoStripLength = 0;
+#endif
 #else
   strip.updateType(NEO_GRBW + NEO_KHZ800);
   strip.setPin(DATA_PIN);
@@ -141,11 +175,13 @@ void initLeds() {
   ensureStripLength();
 #if defined(PRODUCT_VARIANT_LOGO)
   clockStrip.setBrightness(255);
-  logoStrip.setBrightness(255);
   clockStrip.clear();
   clockStrip.show();
+#if LOGO_HAS_DEDICATED_PIN
+  logoStrip.setBrightness(255);
   logoStrip.clear();
   logoStrip.show();
+#endif
 #else
   uint8_t brightness = nightMode.applyToBrightness(ledState.getBrightness());
   strip.setBrightness(brightness);
@@ -166,9 +202,11 @@ void setLedsSuspended(bool suspended) {
     clockStrip.clear();
     clockStrip.setBrightness(0);
     clockStrip.show();
+#if LOGO_HAS_DEDICATED_PIN
     logoStrip.clear();
     logoStrip.setBrightness(0);
     logoStrip.show();
+#endif
 #else
     strip.clear();
     strip.setBrightness(0);
@@ -188,9 +226,11 @@ void showLeds(const std::vector<uint16_t> &ledIndices) {
     clockStrip.clear();
     clockStrip.setBrightness(0);
     clockStrip.show();
+#if LOGO_HAS_DEDICATED_PIN
     logoStrip.clear();
     logoStrip.setBrightness(0);
     logoStrip.show();
+#endif
 #else
     strip.clear();
     strip.setBrightness(0);
@@ -218,7 +258,9 @@ void showLeds(const std::vector<uint16_t> &ledIndices) {
   }
   renderLogoLeds();
   clockStrip.setBrightness(255);
+#if LOGO_HAS_DEDICATED_PIN
   logoStrip.setBrightness(255);
+#endif
 #else
   strip.clear();
   for (uint16_t idx : ledIndices) {
@@ -234,7 +276,9 @@ void showLeds(const std::vector<uint16_t> &ledIndices) {
 #endif
 #if defined(PRODUCT_VARIANT_LOGO)
   clockStrip.show();
+#if LOGO_HAS_DEDICATED_PIN
   logoStrip.show();
+#endif
 #else
   strip.show();
 #endif
@@ -252,9 +296,11 @@ void showLedsColor(const std::vector<uint16_t> &ledIndices,
     clockStrip.clear();
     clockStrip.setBrightness(0);
     clockStrip.show();
+#if LOGO_HAS_DEDICATED_PIN
     logoStrip.clear();
     logoStrip.setBrightness(0);
     logoStrip.show();
+#endif
 #else
     strip.clear();
     strip.setBrightness(0);
@@ -280,7 +326,9 @@ void showLedsColor(const std::vector<uint16_t> &ledIndices,
   }
   renderLogoLeds();
   clockStrip.setBrightness(255);
+#if LOGO_HAS_DEDICATED_PIN
   logoStrip.setBrightness(255);
+#endif
 #else
   strip.clear();
   for (uint16_t idx : ledIndices) {
@@ -293,7 +341,9 @@ void showLedsColor(const std::vector<uint16_t> &ledIndices,
 #endif
 #if defined(PRODUCT_VARIANT_LOGO)
   clockStrip.show();
+#if LOGO_HAS_DEDICATED_PIN
   logoStrip.show();
+#endif
 #else
   strip.show();
 #endif
@@ -329,9 +379,13 @@ void setLedsColorOverlay(const std::vector<uint16_t> &ledIndices,
     }
   }
   clockStrip.setBrightness(255);
+#if LOGO_HAS_DEDICATED_PIN
   logoStrip.setBrightness(255);
+#endif
   clockStrip.show();
+#if LOGO_HAS_DEDICATED_PIN
   logoStrip.show();
+#endif
 #else
   for (uint16_t idx : ledIndices) {
     if (idx < strip.numPixels()) {
@@ -360,9 +414,11 @@ void showLedsWithBrightness(const std::vector<uint16_t> &ledIndices,
     clockStrip.clear();
     clockStrip.setBrightness(0);
     clockStrip.show();
+#if LOGO_HAS_DEDICATED_PIN
     logoStrip.clear();
     logoStrip.setBrightness(0);
     logoStrip.show();
+#endif
 #else
     strip.clear();
     strip.setBrightness(0);
@@ -412,14 +468,18 @@ void showLedsWithBrightness(const std::vector<uint16_t> &ledIndices,
 #if defined(PRODUCT_VARIANT_LOGO)
   renderLogoLeds();
   clockStrip.setBrightness(255);
+#if LOGO_HAS_DEDICATED_PIN
   logoStrip.setBrightness(255);
+#endif
 #else
   uint8_t brightness = nightMode.applyToBrightness(ledState.getBrightness());
   strip.setBrightness(brightness);
 #endif
 #if defined(PRODUCT_VARIANT_LOGO)
   clockStrip.show();
+#if LOGO_HAS_DEDICATED_PIN
   logoStrip.show();
+#endif
 #else
   strip.show();
 #endif
