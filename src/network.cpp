@@ -144,7 +144,15 @@ void initNetwork() {
 void processNetwork() {
 #if WIFI_MANAGER_ENABLED
   auto& wm = getManager();
-  wm.process();
+  if (wm.getConfigPortalActive()) {
+    // Give the config portal web server more CPU time so 192.168.4.1 responds faster.
+    for (int i = 0; i < 5; ++i) {
+      wm.process();
+      delay(0);
+    }
+  } else {
+    wm.process();
+  }
 #endif
 
   bool connected = (WiFi.status() == WL_CONNECTED);

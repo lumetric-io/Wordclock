@@ -167,7 +167,8 @@ bool runEventPattern(LedEvent event, unsigned long nowMs) {
     case LedEvent::BleProvisioning:
       return runBlinkPattern(nowMs, leds, 0, 120, 255, 120, 880, 2, 5000, true, g_eventBlinkState);
     case LedEvent::WifiManagerPortal:
-      return runBlinkPattern(nowMs, leds, 160, 0, 200, 150, 150, 2, 2000, true, g_eventBlinkState);
+      // Slower blink (250ms) to reduce strip.show() calls and keep config portal responsive
+      return runBlinkPattern(nowMs, leds, 160, 0, 200, 250, 250, 2, 2000, true, g_eventBlinkState);
     case LedEvent::FirmwareApplying:
       return runBlinkPattern(nowMs, leds, 255, 255, 255, 100, 100, 2, 1000, true, g_eventBlinkState);
     case LedEvent::FirmwareDownloading:

@@ -7,6 +7,7 @@
 #include <vector>
 
 // Export the function prototypes:
+void earlyLedClear();  // Call as early as possible in setup() to prevent garbage LED flashes
 void initLeds();
 void showLeds(const std::vector<uint16_t> &ledIndices);
 void showLedsColor(const std::vector<uint16_t> &ledIndices,

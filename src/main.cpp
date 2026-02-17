@@ -32,6 +32,7 @@
 #include "settings_migration.h"
 #include "system_utils.h"
 #include "ble_provisioning.h"
+#include "led_controller.h"
 
 
 bool clockEnabled = true;
@@ -47,6 +48,10 @@ WebServer server(80);
 // Setup: initialiseert hardware, netwerk, OTA, filesystem en start de hoofdservices
 void setup() {
   Serial.begin(SERIAL_BAUDRATE);
+
+  // Clear LEDs immediately to prevent garbage flash during boot
+  earlyLedClear();
+
   delay(MDNS_START_DELAY_MS);
   initLogSettings();
 
