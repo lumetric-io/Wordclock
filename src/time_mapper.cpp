@@ -1,7 +1,9 @@
 // time_mapper.cpp
 #include <vector>
 #include <time.h>
+#include "config.h"
 #include "grid_layout.h"
+#include "led_events.h"
 #include "log.h"
 #include "wordposition.h"
 #include "time_mapper.h"
@@ -15,7 +17,7 @@ std::vector<uint16_t> get_leds_for_word(const char* word) {
   std::vector<uint16_t> result;
   const WordPosition* w = find_word(word);
   if (w) {
-    for (int i = 0; i < 20 && w->indices[i] != 0; ++i) {
+    for (int i = 0; i < 32 && w->indices[i] != 0; ++i) {
       result.push_back(static_cast<uint16_t>(w->indices[i]));
     }
   }
@@ -91,16 +93,22 @@ std::vector<uint16_t> get_led_indices_for_time(struct tm* timeinfo) {
       break;
   }
 
-  // Add extra minute LEDs if needed
+  // Add extra minute LEDs if needed (skip when they are used for LED events, e.g. NTP failed / BLE)
 #if SUPPORT_MINUTE_LEDS
   if (EXTRA_MINUTE_LED_GROUP_SIZE > 0) {
-    size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
-    for (int i = 0; i < extra_minutes && i < 4 && i < static_cast<int>(symbolCount); ++i) {
-      size_t base = static_cast<size_t>(i) * EXTRA_MINUTE_LED_GROUP_SIZE;
-      for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
-        leds.push_back(EXTRA_MINUTE_LEDS[base + j]);
+#if LED_STATUS_EVENTS_ENABLED && LED_STATUS_EVENT_USE_MINUTE_LEDS
+    if (!ledEventIsActive()) {
+#endif
+      size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
+      for (int i = 0; i < extra_minutes && i < 4 && i < static_cast<int>(symbolCount); ++i) {
+        size_t base = static_cast<size_t>(i) * EXTRA_MINUTE_LED_GROUP_SIZE;
+        for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
+          leds.push_back(EXTRA_MINUTE_LEDS[base + j]);
+        }
       }
+#if LED_STATUS_EVENTS_ENABLED && LED_STATUS_EVENT_USE_MINUTE_LEDS
     }
+#endif
   }
 #endif
 

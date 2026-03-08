@@ -45,6 +45,9 @@
           <span id="statusText" class="text-sm text-gray-600">-</span>
         </div>
       </div>
+      <div id="ledEventRow" class="mb-2 text-sm text-gray-600">
+        <span class="font-medium">LED event:</span> <span id="ledEventText">-</span>
+      </div>
       <div class="flex gap-2">
         <button id="toggleClockOn" class="w-full py-2 rounded bg-green-500 text-white hover:bg-green-600">On</button>
         <button id="toggleClockOff" class="w-full py-2 rounded bg-red-500 text-white hover:bg-red-600">Off</button>
@@ -466,6 +469,18 @@
       });
     }
 
+    // Human-readable labels for LED events
+    const LED_EVENT_LABELS = {
+      FirmwareCheck: 'Idle',
+      FirmwareAvailable: 'Firmware available',
+      FirmwareDownloading: 'Firmware downloading',
+      FirmwareApplying: 'Firmware applying',
+      NtpFailed: 'NTP failed',
+      MqttDisconnected: 'MQTT disconnected',
+      BleProvisioning: 'BLE provisioning',
+      WifiManagerPortal: 'WiFi manager portal'
+    };
+
     // Status loader (hoge prioriteit, interval)
     // Interval will be set dynamically based on branch (dev: 5min, others: 30sec)
     dataLoader.register('status', async () => {
@@ -488,6 +503,33 @@
       onError: (error) => {
         setLoadingState('statusIndicator', false);
         setErrorState('statusText', error, 'Error loading status');
+      }
+    });
+
+    // LED event loader (same interval as status, show when event is triggered)
+    dataLoader.register('ledEvent', async () => {
+      const res = await fetch('/api/led/event');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }, {
+      priority: 10,
+      interval: 30000,
+      onSuccess: (data) => {
+        const el = document.getElementById('ledEventText');
+        const row = document.getElementById('ledEventRow');
+        if (!el || !row) return;
+        const name = (data && data.event) ? data.event : 'FirmwareCheck';
+        const label = LED_EVENT_LABELS[name] || name;
+        el.textContent = label;
+        const isActive = name !== 'FirmwareCheck';
+        row.classList.toggle('bg-amber-50', isActive);
+        row.classList.toggle('rounded', isActive);
+        row.classList.toggle('px-2', isActive);
+        row.classList.toggle('py-1', isActive);
+      },
+      onError: () => {
+        const el = document.getElementById('ledEventText');
+        if (el) el.textContent = '-';
       }
     });
 
@@ -1453,6 +1495,7 @@
         const statusLoader = dataLoader.loaders.get('status');
         const logsLoader = dataLoader.loaders.get('logs');
         const versionsLoader = dataLoader.loaders.get('versions');
+        const ledEventLoader = dataLoader.loaders.get('ledEvent');
         
         if (statusLoader) {
           statusLoader.interval = statusInterval;
@@ -1475,6 +1518,10 @@
           } else {
           }
         } else {
+        }
+        
+        if (ledEventLoader && ledEventLoader.interval) {
+          dataLoader.startInterval('ledEvent');
         }
         
         if (logsLoader) {

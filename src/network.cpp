@@ -35,6 +35,22 @@ static const unsigned long WIFI_RECONNECT_INTERVAL_MS = 15000; // 15s between ma
 static bool g_wifiManagerStarted = false;
 #endif
 
+void stopWiFiForBleProvisioning() {
+  // BLE provisioning can fail on ESP32-S3 if WiFi is running during BT init.
+  // Stop WiFi before starting BLE to avoid coex/controller enable errors.
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  delay(50);
+}
+
+#if defined(PRODUCT_VARIANT_MINI)
+void applyMiniWifiTweaks() {
+  // Apply only when WiFi is in use; not before BLE provisioning (avoids radio conflict).
+  WiFi.setTxPower(WIFI_POWER_19_5dBm);
+  WiFi.setSleep(false);
+}
+#endif
+
 } // namespace
 
 static bool connectWithStoredCredentials() {
@@ -86,11 +102,14 @@ void initNetwork() {
 #if BLE_PROVISIONING_ENABLED
 #if WIFI_MANAGER_ENABLED
   if (!g_wifiHadCredentialsAtBoot) {
+    stopWiFiForBleProvisioning();
     startBleProvisioning(BleProvisioningReason::FirstBootNoCreds);
     g_wifiConnected = false;
     return;
   }
-
+#if defined(PRODUCT_VARIANT_MINI)
+  applyMiniWifiTweaks();  // only when using WiFi; not applied before BLE so BLE provisioning is reliable
+#endif
   if (connectWithStoredCredentials()) {
     g_wifiConnected = true;
     logInfo("✅ WiFi connected to stored network: " + String(WiFi.SSID()));
@@ -98,16 +117,21 @@ void initNetwork() {
     return;
   }
 
+  stopWiFiForBleProvisioning();
   startBleProvisioning(BleProvisioningReason::WiFiUnavailableAtBoot);
   g_wifiConnected = false;
   return;
 #else
+#if defined(PRODUCT_VARIANT_MINI)
+  applyMiniWifiTweaks();
+#endif
   if (connectWithStoredCredentials()) {
     g_wifiConnected = true;
     logInfo("✅ WiFi connected to stored network: " + String(WiFi.SSID()));
     logInfo("📡 IP address: " + WiFi.localIP().toString());
     return;
   }
+  stopWiFiForBleProvisioning();
   startBleProvisioning(BleProvisioningReason::WiFiUnavailableAtBoot);
   g_wifiConnected = false;
   return;
@@ -115,6 +139,9 @@ void initNetwork() {
 #endif
 
 #if WIFI_MANAGER_ENABLED
+#if defined(PRODUCT_VARIANT_MINI)
+  applyMiniWifiTweaks();
+#endif
   bool autoResult = wm.autoConnect(AP_NAME, AP_PASSWORD);
   (void)autoResult;
   g_wifiConnected = (WiFi.status() == WL_CONNECTED);
@@ -144,11 +171,25 @@ void initNetwork() {
 void processNetwork() {
 #if WIFI_MANAGER_ENABLED
   auto& wm = getManager();
-  wm.process();
+  if (wm.getConfigPortalActive()) {
+    // Give the config portal web server more CPU time so 192.168.4.1 responds faster.
+    for (int i = 0; i < 5; ++i) {
+      wm.process();
+      delay(0);
+    }
+  } else {
+    wm.process();
+  }
 #endif
 
   bool connected = (WiFi.status() == WL_CONNECTED);
   if (connected && !g_wifiConnected) {
+#if defined(PRODUCT_VARIANT_MINI)
+    // Apply tweaks only when not in BLE provisioning, so BLE can send wifi_ok first (WiFi+BLE coexistence)
+    if (!isBleProvisioningActive()) {
+      applyMiniWifiTweaks();
+    }
+#endif
     logInfo("✅ WiFi connection established: " + String(WiFi.SSID()));
     logInfo("📡 IP address: " + WiFi.localIP().toString());
     lastReconnectAttemptMs = millis();

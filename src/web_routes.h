@@ -26,6 +26,7 @@
 #include "update_status.h"
 #endif
 #include "led_controller.h"
+#include "led_events.h"
 #include "config.h"
 #include "display_settings.h"
 #include "ui_auth.h"
@@ -1022,6 +1023,18 @@ void setupWebRoutes() {
     doc["chip_rev"] = ESP.getChipRevision();
     doc["sdk"] = ESP.getSdkVersion();
     doc["rssi"] = WiFi.RSSI();
+    doc["product_id"] = PRODUCT_ID;
+#if defined(PRODUCT_VARIANT_MINI)
+    doc["product"] = "mini";
+#elif defined(PRODUCT_VARIANT_LOGO)
+    doc["product"] = "logo";
+#elif defined(PRODUCT_VARIANT_NEXTGEN)
+    doc["product"] = "nextgen";
+#elif defined(PRODUCT_VARIANT_LEGACY)
+    doc["product"] = "legacy";
+#else
+    doc["product"] = "legacy";
+#endif
 #if defined(ARDUINO_ARCH_ESP32)
     doc["hardware_id"] = get_hardware_id();
     doc["device_id"] = get_device_id();
@@ -1112,6 +1125,28 @@ void setupWebRoutes() {
     }
     String status = clockEnabled ? "on" : "off";
     server.send(200, "text/plain", status);
+  });
+
+  // Current LED status event (for dashboard)
+  server.on("/api/led/event", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    LedEvent e = ledEventGetCurrent();
+    const char* name = "FirmwareCheck";
+    switch (e) {
+      case LedEvent::FirmwareCheck:         name = "FirmwareCheck"; break;
+      case LedEvent::FirmwareAvailable:    name = "FirmwareAvailable"; break;
+      case LedEvent::FirmwareDownloading:   name = "FirmwareDownloading"; break;
+      case LedEvent::FirmwareApplying:     name = "FirmwareApplying"; break;
+      case LedEvent::NtpFailed:             name = "NtpFailed"; break;
+      case LedEvent::MqttDisconnected:      name = "MqttDisconnected"; break;
+      case LedEvent::BleProvisioning:      name = "BleProvisioning"; break;
+      case LedEvent::WifiManagerPortal:    name = "WifiManagerPortal"; break;
+    }
+    JsonDocument doc;
+    doc["event"] = name;
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
   });
 
   // Turn on/off
