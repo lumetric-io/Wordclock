@@ -119,7 +119,7 @@ void runtimeHandleWifiTransitionLogs(bool wifiConnected) {
       }
     } else {
 #if WIFI_MANAGER_ENABLED
-      logWarn("📶 WiFi not connected. Entering portal mode (WiFiManager active).");
+      logWarn("📶 WiFi not connected. Retrying; portal opens after timeout.");
 #else
       logWarn("📶 WiFi not connected. Entering provisioning mode (BLE only).");
 #endif

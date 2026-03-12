@@ -219,9 +219,14 @@ void processNetwork() {
     // Track how long we have been without a connection (handles boot-time failures too).
     if (disconnectedSinceMs == 0) disconnectedSinceMs = now;
 
+    // Periodically attempt to reconnect using stored credentials.
+    // WiFi.begin() (no args) reuses NVS-stored credentials without calling disconnect first,
+    // avoiding the reconnect-storm that WiFi.reconnect() caused by resetting the connection
+    // attempt every 15 s via esp_wifi_disconnect(). Works in both STA and AP+STA mode,
+    // so this runs whether or not the portal is active.
     if (lastReconnectAttemptMs == 0 || now - lastReconnectAttemptMs >= WIFI_RECONNECT_INTERVAL_MS) {
       logInfo("🔄 Attempting WiFi reconnect...");
-      WiFi.reconnect();
+      WiFi.begin(); // begin() reuses stored credentials without disconnecting first
       lastReconnectAttemptMs = now;
     }
 
