@@ -1,8 +1,8 @@
 #pragma once
 
 #define PRODUCT_ID "wordclock-logo-nl-55x50-v1"
-#define FIRMWARE_VERSION "logo-nl-55x50-v1-26.2.12-rc.1"
-#define UI_VERSION "ui-logo-nl-55x50-v1-26.2.12-rc.1"
+#define FIRMWARE_VERSION "logo-nl-55x50-v1-26.2.12"
+#define UI_VERSION "ui-logo-nl-55x50-v1-26.2.12"
 #define PRODUCT_VARIANT_LOGO 1
 #define DATA_PIN 4
 #define LOGO_DATA_PIN 18
