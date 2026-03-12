@@ -50,3 +50,6 @@ lib/
 !README.md
 !CHANGELOG.md
 !CONTRIBUTING.md
+
+# Claude
+.claude/

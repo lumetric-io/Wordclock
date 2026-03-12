@@ -31,6 +31,7 @@ WiFiManager& getManager() {
 bool g_wifiConnected = false;
 static unsigned long lastReconnectAttemptMs = 0;
 static const unsigned long WIFI_RECONNECT_INTERVAL_MS = 15000; // 15s between manual reconnect attempts
+static unsigned long disconnectedSinceMs = 0; // millis() when WiFi first became unavailable
 #if WIFI_MANAGER_ENABLED
 static bool g_wifiManagerStarted = false;
 #endif
@@ -170,6 +171,9 @@ void initNetwork() {
 
 void processNetwork() {
 #if WIFI_MANAGER_ENABLED
+  // Only service the portal web server — do NOT call process() when idle, as
+  // WiFiManager's internal state machine would otherwise auto-start the portal
+  // on disconnect without waiting for our fallback timer.
   auto& wm = getManager();
   if (wm.getConfigPortalActive()) {
     // Give the config portal web server more CPU time so 192.168.4.1 responds faster.
@@ -177,8 +181,6 @@ void processNetwork() {
       wm.process();
       delay(0);
     }
-  } else {
-    wm.process();
   }
 #endif
 
@@ -193,6 +195,7 @@ void processNetwork() {
     logInfo("✅ WiFi connection established: " + String(WiFi.SSID()));
     logInfo("📡 IP address: " + WiFi.localIP().toString());
     lastReconnectAttemptMs = millis();
+    disconnectedSinceMs = 0;
 #if WIFI_MANAGER_ENABLED
     auto& wm = getManager();
     if (wm.getConfigPortalActive()) {
@@ -205,16 +208,31 @@ void processNetwork() {
   } else if (!connected && g_wifiConnected) {
     logWarn("⚠️ WiFi connection lost.");
     lastReconnectAttemptMs = 0; // allow immediate manual reconnect attempt
+    disconnectedSinceMs = millis();
   }
 
-  // When disconnected, kick off periodic reconnects to avoid needing a full device reboot
+  // When disconnected, kick off periodic reconnects to avoid needing a full device reboot.
+  // The portal (if started) runs in AP+STA mode so reconnect attempts continue alongside it.
   if (!connected) {
     unsigned long now = millis();
+
+    // Track how long we have been without a connection (handles boot-time failures too).
+    if (disconnectedSinceMs == 0) disconnectedSinceMs = now;
+
     if (lastReconnectAttemptMs == 0 || now - lastReconnectAttemptMs >= WIFI_RECONNECT_INTERVAL_MS) {
       logInfo("🔄 Attempting WiFi reconnect...");
       WiFi.reconnect();
       lastReconnectAttemptMs = now;
     }
+
+#if WIFI_MANAGER_ENABLED
+    // After the fallback period open the config portal so the user can intervene,
+    // while reconnect attempts continue in the background.
+    if (!g_wifiManagerStarted && now - disconnectedSinceMs >= WIFI_PORTAL_FALLBACK_MS) {
+      logWarn("⏱️ No WiFi for " + String(WIFI_CONFIG_PORTAL_TIMEOUT) + "s — opening config portal.");
+      startWiFiManagerPortal();
+    }
+#endif
   }
   g_wifiConnected = connected;
 
