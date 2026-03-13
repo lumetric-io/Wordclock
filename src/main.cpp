@@ -110,6 +110,9 @@ void loop() {
 
   unsigned long nowMs = millis();
   if (runtimeHandleNoWifiLoop(nowMs)) {
+    if (!isBleProvisioningActive()) {
+      runtimeHandleWordclockLoop(nowMs);
+    }
     return;
   }
 
