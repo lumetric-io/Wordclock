@@ -1,8 +1,8 @@
 #pragma once
 
 #define PRODUCT_ID "wordclock-legacy-nl-v4"
-#define FIRMWARE_VERSION "legacy-nl-v4-26.2.11-rc.2"
-#define UI_VERSION "ui-legacy-nl-v4-26.2.11-rc.2"
+#define FIRMWARE_VERSION "legacy-nl-v4-26.2.11-rc.3"
+#define UI_VERSION "ui-legacy-nl-v4-26.2.11-rc.3"
 #define PRODUCT_VARIANT_LEGACY 1
 #define SETUP_ASSUME_DONE_IF_LEGACY_CONFIG 1
 #define DATA_PIN 4
