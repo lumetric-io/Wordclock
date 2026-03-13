@@ -11,6 +11,7 @@ enum class LedEvent : uint8_t {
   MqttDisconnected,
   BleProvisioning,
   WifiManagerPortal,
+  WifiDisconnected,
 };
 
 void ledEventStart(LedEvent event);

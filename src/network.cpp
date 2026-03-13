@@ -30,7 +30,9 @@ WiFiManager& getManager() {
 
 bool g_wifiConnected = false;
 static unsigned long lastReconnectAttemptMs = 0;
-static const unsigned long WIFI_RECONNECT_INTERVAL_MS = 15000; // 15s between manual reconnect attempts
+static unsigned long reconnectWindowStartMs = 0;
+static const unsigned long WIFI_RECONNECT_INTERVAL_MS = 60000; // 60s between manual reconnect attempts
+static const unsigned long WIFI_RECONNECT_WINDOW_MS   = 10000; // 10s active scan window per attempt
 static unsigned long disconnectedSinceMs = 0; // millis() when WiFi first became unavailable
 #if WIFI_MANAGER_ENABLED
 static bool g_wifiManagerStarted = false;
@@ -195,6 +197,7 @@ void processNetwork() {
     logInfo("✅ WiFi connection established: " + String(WiFi.SSID()));
     logInfo("📡 IP address: " + WiFi.localIP().toString());
     lastReconnectAttemptMs = millis();
+    reconnectWindowStartMs = 0;
     disconnectedSinceMs = 0;
 #if WIFI_MANAGER_ENABLED
     auto& wm = getManager();
@@ -204,9 +207,11 @@ void processNetwork() {
     }
 #endif
     ledEventStop(LedEvent::WifiManagerPortal);
+    ledEventStop(LedEvent::WifiDisconnected);
     g_wifiManagerStarted = false;
   } else if (!connected && g_wifiConnected) {
     logWarn("⚠️ WiFi connection lost.");
+    ledEventStart(LedEvent::WifiDisconnected);
     lastReconnectAttemptMs = 0; // allow immediate manual reconnect attempt
     disconnectedSinceMs = millis();
   }
@@ -222,12 +227,20 @@ void processNetwork() {
     // Periodically attempt to reconnect using stored credentials.
     // WiFi.begin() (no args) reuses NVS-stored credentials without calling disconnect first,
     // avoiding the reconnect-storm that WiFi.reconnect() caused by resetting the connection
-    // attempt every 15 s via esp_wifi_disconnect(). Works in both STA and AP+STA mode,
-    // so this runs whether or not the portal is active.
+    // attempt every 15s via esp_wifi_disconnect(). setAutoReconnect(true) alone is not
+    // sufficient when WiFiManager is active, as it overrides the auto-reconnect behaviour.
+    //
+    // After each attempt, stop the active scan after WIFI_RECONNECT_WINDOW_MS to prevent
+    // the WiFi stack from scanning indefinitely, which causes LED flickering via DMA contention.
+    if (reconnectWindowStartMs != 0 && now - reconnectWindowStartMs >= WIFI_RECONNECT_WINDOW_MS) {
+      WiFi.disconnect(false); // stop active scan; credentials are preserved
+      reconnectWindowStartMs = 0;
+    }
     if (lastReconnectAttemptMs == 0 || now - lastReconnectAttemptMs >= WIFI_RECONNECT_INTERVAL_MS) {
       logInfo("🔄 Attempting WiFi reconnect...");
       WiFi.begin(); // begin() reuses stored credentials without disconnecting first
       lastReconnectAttemptMs = now;
+      reconnectWindowStartMs = now;
     }
 
 #if WIFI_MANAGER_ENABLED

@@ -31,7 +31,7 @@ struct EventState {
   bool active = false;
 };
 
-EventState g_eventStates[8];
+EventState g_eventStates[9];
 bool g_pulseFirmwareCheck = false;
 LedEvent g_currentEvent = LedEvent::FirmwareCheck;
 BlinkState g_eventBlinkState;
@@ -193,6 +193,9 @@ LedEvent pickHighestPriorityEvent() {
   if (g_eventStates[static_cast<uint8_t>(LedEvent::WifiManagerPortal)].active) {
     return LedEvent::WifiManagerPortal;
   }
+  if (g_eventStates[static_cast<uint8_t>(LedEvent::WifiDisconnected)].active) {
+    return LedEvent::WifiDisconnected;
+  }
   if (g_eventStates[static_cast<uint8_t>(LedEvent::FirmwareApplying)].active) {
     return LedEvent::FirmwareApplying;
   }
@@ -230,6 +233,8 @@ bool runEventPattern(LedEvent event, unsigned long nowMs) {
       return runBlinkPattern(nowMs, leds, 140, 0, 255, 1000, 1000, 1, 0, true, g_eventBlinkState);
     case LedEvent::NtpFailed:
       return runBlinkPattern(nowMs, leds, 255, 140, 0, 150, 150, 3, 10000, true, g_eventBlinkState);
+    case LedEvent::WifiDisconnected:
+      return runBlinkPattern(nowMs, leds, 255, 80, 0, 200, 200, 1, 5000, true, g_eventBlinkState);
     case LedEvent::MqttDisconnected:
       return runBlinkPattern(nowMs, leds, 0, 80, 255, 150, 150, 1, 30000, true, g_eventBlinkState);
     case LedEvent::FirmwareCheck: {
@@ -275,6 +280,7 @@ bool ledEventsTick(unsigned long nowMs) {
   bool hasEvent = g_pulseFirmwareCheck ||
                   g_eventStates[static_cast<uint8_t>(LedEvent::BleProvisioning)].active ||
                   g_eventStates[static_cast<uint8_t>(LedEvent::WifiManagerPortal)].active ||
+                  g_eventStates[static_cast<uint8_t>(LedEvent::WifiDisconnected)].active ||
                   g_eventStates[static_cast<uint8_t>(LedEvent::FirmwareApplying)].active ||
                   g_eventStates[static_cast<uint8_t>(LedEvent::FirmwareDownloading)].active ||
                   g_eventStates[static_cast<uint8_t>(LedEvent::FirmwareAvailable)].active ||
@@ -306,6 +312,7 @@ bool ledEventIsActive(void) {
   return g_pulseFirmwareCheck ||
          g_eventStates[static_cast<uint8_t>(LedEvent::BleProvisioning)].active ||
          g_eventStates[static_cast<uint8_t>(LedEvent::WifiManagerPortal)].active ||
+         g_eventStates[static_cast<uint8_t>(LedEvent::WifiDisconnected)].active ||
          g_eventStates[static_cast<uint8_t>(LedEvent::FirmwareApplying)].active ||
          g_eventStates[static_cast<uint8_t>(LedEvent::FirmwareDownloading)].active ||
          g_eventStates[static_cast<uint8_t>(LedEvent::FirmwareAvailable)].active ||

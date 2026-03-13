@@ -1,5 +1,6 @@
 #include "clock_display.h"
 #include "led_controller.h"
+#include "led_events.h"
 #include "led_state.h"
 #include "setup_state.h"
 #include "night_mode.h"
@@ -212,11 +213,16 @@ void ClockDisplay::buildAnimationFrames(const DisplayTime& dt, unsigned long now
 #if SUPPORT_MINUTE_LEDS
             auto& finalFrame = animation_.frames.back();
             if (EXTRA_MINUTE_LED_GROUP_SIZE > 0) {
-                size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
-                for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(symbolCount); ++i) {
-                    size_t base = static_cast<size_t>(i) * EXTRA_MINUTE_LED_GROUP_SIZE;
-                    for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
-                        finalFrame.push_back(EXTRA_MINUTE_LEDS[base + j]);
+#if LED_STATUS_EVENTS_ENABLED && LED_STATUS_EVENT_USE_MINUTE_LEDS
+                if (!ledEventIsActive())
+#endif
+                {
+                    size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
+                    for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(symbolCount); ++i) {
+                        size_t base = static_cast<size_t>(i) * EXTRA_MINUTE_LED_GROUP_SIZE;
+                        for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
+                            finalFrame.push_back(EXTRA_MINUTE_LEDS[base + j]);
+                        }
                     }
                 }
             }
@@ -315,14 +321,19 @@ void ClockDisplay::displayStaticTime(const DisplayTime& dt) {
         indices.insert(indices.end(), seg.leds.begin(), seg.leds.end());
     }
     
-    // Add extra minute LEDs
+    // Add extra minute LEDs (skip when minute LEDs are reserved for LED events)
 #if SUPPORT_MINUTE_LEDS
     if (EXTRA_MINUTE_LED_GROUP_SIZE > 0) {
-        size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
-        for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(symbolCount); ++i) {
-            size_t base = static_cast<size_t>(i) * EXTRA_MINUTE_LED_GROUP_SIZE;
-            for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
-                indices.push_back(EXTRA_MINUTE_LEDS[base + j]);
+#if LED_STATUS_EVENTS_ENABLED && LED_STATUS_EVENT_USE_MINUTE_LEDS
+        if (!ledEventIsActive())
+#endif
+        {
+            size_t symbolCount = EXTRA_MINUTE_LED_COUNT / EXTRA_MINUTE_LED_GROUP_SIZE;
+            for (int i = 0; i < dt.extra && i < 4 && i < static_cast<int>(symbolCount); ++i) {
+                size_t base = static_cast<size_t>(i) * EXTRA_MINUTE_LED_GROUP_SIZE;
+                for (size_t j = 0; j < EXTRA_MINUTE_LED_GROUP_SIZE; ++j) {
+                    indices.push_back(EXTRA_MINUTE_LEDS[base + j]);
+                }
             }
         }
     }
