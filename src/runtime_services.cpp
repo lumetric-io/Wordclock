@@ -137,7 +137,6 @@ bool runtimeHandleNoWifiLoop(unsigned long nowMs) {
       setupState.loop();
       g_lastSettingsFlushPortalMs = nowMs;
     }
-    ledEventsTick(nowMs);
     return true;
   }
   return false;

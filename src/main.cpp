@@ -113,6 +113,7 @@ void loop() {
     if (!isBleProvisioningActive()) {
       runtimeHandleWordclockLoop(nowMs);
     }
+    runtimeHandleLedEvents(nowMs);
     return;
   }
 
