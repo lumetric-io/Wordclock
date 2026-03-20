@@ -107,6 +107,7 @@ bool ClockDisplay::updateTimeCache(unsigned long nowMs) {
             time_.lastFetchMs = nowMs;
             g_initialTimeSyncSucceeded = true;
             loggedInitialTimeFailure_ = false;
+            ledEventStop(LedEvent::NtpFailed);
             nightMode.updateFromTime(time_.cached);
             resetNoTimeIndicator();
             return true;
