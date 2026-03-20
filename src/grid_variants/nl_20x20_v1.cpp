@@ -43,9 +43,3 @@ const size_t WORDS_NL_20x20_V1_COUNT = sizeof(WORDS_NL_20x20_V1) / sizeof(WORDS_
 
 const uint16_t EXTRA_MINUTES_NL_20x20_V1[] = {};
 const size_t EXTRA_MINUTES_NL_20x20_V1_COUNT = sizeof(EXTRA_MINUTES_NL_20x20_V1) / sizeof(EXTRA_MINUTES_NL_20x20_V1[0]);
-
-// LEDs to blink when no time is available (e.g. NTP sync failed)
-const uint16_t NO_TIME_INDICATOR_LEDS_NL_20x20_V1[] = {
-  101
-};
-const size_t NO_TIME_INDICATOR_LEDS_NL_20x20_V1_COUNT = sizeof(NO_TIME_INDICATOR_LEDS_NL_20x20_V1) / sizeof(NO_TIME_INDICATOR_LEDS_NL_20x20_V1[0]);
