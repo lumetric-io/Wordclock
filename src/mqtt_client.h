@@ -18,3 +18,8 @@ void mqtt_force_reconnect();
 // Status helpers for Web UI
 bool mqtt_is_connected();
 const String& mqtt_last_error();
+
+// Diagnostic counters (persisted in NVS)
+uint32_t mqtt_get_reset_count();
+uint32_t mqtt_get_brownout_count();
+const String& mqtt_get_reset_reason_str();

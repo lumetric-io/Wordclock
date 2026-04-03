@@ -272,6 +272,7 @@ static String g_bootTimeStr;
 static bool g_bootTimeSet = false;
 static String g_bootReasonStr;
 static uint32_t g_resetCount = 0;
+static uint32_t g_brownoutCount = 0;
 static bool mqttConfiguredLogged = false;
 
 static bool mqtt_has_configuration() {
@@ -609,14 +610,21 @@ void mqtt_begin() {
   reconnectAborted = false;
   lastReconnectAttempt = 0;
   // Bump reset counter (persisted), and cache boot reason string
-  g_bootReasonStr = reset_reason_to_str(esp_reset_reason());
+  esp_reset_reason_t resetReason = esp_reset_reason();
+  g_bootReasonStr = reset_reason_to_str(resetReason);
   Preferences p;
   if (p.begin("sys", false)) {
     uint32_t cnt = p.getULong("resets", 0);
     cnt += 1;
     p.putULong("resets", cnt);
-    p.end();
     g_resetCount = cnt;
+    uint32_t boCnt = p.getULong("brownouts", 0);
+    if (resetReason == ESP_RST_BROWNOUT) {
+      boCnt += 1;
+      p.putULong("brownouts", boCnt);
+    }
+    g_brownoutCount = boCnt;
+    p.end();
   }
 
   if (!mqtt_has_configuration() && !mqttConfiguredLogged) {
@@ -700,6 +708,18 @@ bool mqtt_is_connected() {
 
 const String& mqtt_last_error() {
   return g_lastErr;
+}
+
+uint32_t mqtt_get_reset_count() {
+  return g_resetCount;
+}
+
+uint32_t mqtt_get_brownout_count() {
+  return g_brownoutCount;
+}
+
+const String& mqtt_get_reset_reason_str() {
+  return g_bootReasonStr;
 }
 
 void mqtt_apply_settings(const MqttSettings& s) {

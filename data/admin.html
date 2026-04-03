@@ -153,6 +153,89 @@
       </div>
 
       <div class="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xl font-semibold">Chip Diagnostics</h2>
+          <button id="diagRefreshBtn" class="text-xs py-1 px-2 rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200">↻ Refresh</button>
+        </div>
+
+        <div class="mb-3">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Power &amp; Resets</h3>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <dt class="text-gray-500">Brownout resets</dt>
+            <dd id="diagBrownouts" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Total resets</dt>
+            <dd id="diagResets" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Last reset reason</dt>
+            <dd id="diagResetReason" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Est. current (max)</dt>
+            <dd id="diagCurrentMa" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">WiFi TX power</dt>
+            <dd id="diagWifiTx" class="font-mono text-gray-800">-</dd>
+          </dl>
+        </div>
+
+        <div class="mb-3 border-t border-gray-200 pt-3">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Memory</h3>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <dt class="text-gray-500">Free heap</dt>
+            <dd id="diagFreeHeap" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Min free heap</dt>
+            <dd id="diagMinHeap" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Heap size</dt>
+            <dd id="diagHeapSize" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">PSRAM size</dt>
+            <dd id="diagPsramSize" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Free PSRAM</dt>
+            <dd id="diagFreePsram" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Loop stack HWM</dt>
+            <dd id="diagStackHwm" class="font-mono text-gray-800">-</dd>
+          </dl>
+        </div>
+
+        <div class="mb-3 border-t border-gray-200 pt-3">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Flash &amp; Storage</h3>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <dt class="text-gray-500">Flash size</dt>
+            <dd id="diagFlashSize" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Flash speed</dt>
+            <dd id="diagFlashSpeed" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Sketch size</dt>
+            <dd id="diagSketchSize" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Free sketch space</dt>
+            <dd id="diagFreeSketch" class="font-mono text-gray-800">-</dd>
+          </dl>
+        </div>
+
+        <div class="mb-3 border-t border-gray-200 pt-3">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Chip</h3>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <dt class="text-gray-500">CPU frequency</dt>
+            <dd id="diagCpuFreq" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Chip temp</dt>
+            <dd id="diagChipTemp" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">SDK version</dt>
+            <dd id="diagSdk" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Uptime</dt>
+            <dd id="diagUptime" class="font-mono text-gray-800">-</dd>
+          </dl>
+        </div>
+
+        <div class="border-t border-gray-200 pt-3">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">LEDs</h3>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <dt class="text-gray-500">Brightness</dt>
+            <dd id="diagBrightness" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Grid LEDs</dt>
+            <dd id="diagLedGrid" class="font-mono text-gray-800">-</dd>
+            <dt class="text-gray-500">Total LEDs</dt>
+            <dd id="diagLedTotal" class="font-mono text-gray-800">-</dd>
+          </dl>
+        </div>
+
+        <p id="diagStatus" class="text-xs text-gray-400 mt-3"></p>
+      </div>
+
+      <div class="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
         <h2 class="text-xl font-semibold mb-2">Build info</h2>
         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           <dt class="text-gray-500">Firmware</dt>
@@ -569,6 +652,76 @@
     }
 
     loadLogSettings();
+
+    // Chip Diagnostics
+    async function loadDiagnostics() {
+      const status = document.getElementById('diagStatus');
+      if (status) status.textContent = 'Loading…';
+      try {
+        const res = await fetch('/api/diagnostics');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const d = await res.json();
+
+        const fmtBytes = (b) => {
+          if (b == null) return '-';
+          if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
+          if (b >= 1024) return Math.round(b / 1024) + ' KB';
+          return b + ' B';
+        };
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? '-'; };
+
+        // Power & Resets
+        const boEl = document.getElementById('diagBrownouts');
+        if (boEl) {
+          boEl.textContent = d.brownout_count ?? '-';
+          boEl.className = d.brownout_count > 0
+            ? 'font-mono text-red-600 font-semibold'
+            : 'font-mono text-gray-800';
+        }
+        set('diagResets', d.reset_count);
+        set('diagResetReason', d.reset_reason);
+        set('diagCurrentMa', d.estimated_current_ma != null ? d.estimated_current_ma + ' mA (max, full white)' : '-');
+        set('diagWifiTx', d.wifi_tx_power_dbm != null ? d.wifi_tx_power_dbm + ' dBm' : '-');
+
+        // Memory
+        set('diagFreeHeap', fmtBytes(d.free_heap));
+        set('diagMinHeap', fmtBytes(d.min_free_heap));
+        set('diagHeapSize', fmtBytes(d.heap_size));
+        set('diagPsramSize', d.psram_size > 0 ? fmtBytes(d.psram_size) : 'none');
+        set('diagFreePsram', d.psram_size > 0 ? fmtBytes(d.free_psram) : 'n/a');
+        set('diagStackHwm', fmtBytes(d.loop_task_stack_hwm_bytes));
+
+        // Flash
+        set('diagFlashSize', fmtBytes(d.flash_size));
+        set('diagFlashSpeed', d.flash_speed_mhz != null ? d.flash_speed_mhz + ' MHz' : '-');
+        set('diagSketchSize', fmtBytes(d.sketch_size));
+        set('diagFreeSketch', fmtBytes(d.free_sketch_space));
+
+        // Chip
+        set('diagCpuFreq', d.cpu_freq_mhz != null ? d.cpu_freq_mhz + ' MHz' : '-');
+        set('diagChipTemp', d.chip_temp_c != null ? d.chip_temp_c.toFixed(1) + ' °C' : '-');
+        set('diagSdk', d.sdk_version);
+        if (d.uptime_s != null) {
+          const h = Math.floor(d.uptime_s / 3600);
+          const m = Math.floor((d.uptime_s % 3600) / 60);
+          const s = d.uptime_s % 60;
+          set('diagUptime', h + 'h ' + m + 'm ' + s + 's');
+        }
+
+        // LEDs
+        set('diagBrightness', d.brightness != null ? d.brightness + ' / 255 (' + Math.round(d.brightness / 255 * 100) + '%)' : '-');
+        set('diagLedGrid', d.led_count_grid);
+        set('diagLedTotal', d.led_count_total);
+
+        if (status) status.textContent = 'Updated ' + new Date().toLocaleTimeString();
+      } catch (err) {
+        if (status) status.textContent = 'Failed: ' + err.message;
+      }
+    }
+
+    const diagRefreshBtn = document.getElementById('diagRefreshBtn');
+    if (diagRefreshBtn) diagRefreshBtn.addEventListener('click', loadDiagnostics);
+    loadDiagnostics();
 
     const registerBtn = document.getElementById('registerBtn');
     const registerStatus = document.getElementById('registerStatus');

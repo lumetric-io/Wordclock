@@ -41,6 +41,7 @@
 #include "device_identity.h"
 #include "device_registration.h"
 #include "ble_provisioning.h"
+#include "grid_layout.h"
 #include <WiFi.h>
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
@@ -1043,6 +1044,66 @@ void setupWebRoutes() {
 #if defined(ARDUINO_ARCH_ESP32)
     doc["temp_c"] = temperatureRead();
 #endif
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  // Chip diagnostics — no auth required; exposed in admin dashboard for voltage-drop debugging
+  server.on("/api/diagnostics", HTTP_GET, []() {
+    JsonDocument doc;
+
+    // Reset / boot stats (persisted in NVS)
+    doc["reset_count"]    = mqtt_get_reset_count();
+    doc["brownout_count"] = mqtt_get_brownout_count();
+    doc["reset_reason"]   = mqtt_get_reset_reason_str();
+    doc["reset_reason_code"] = (int)esp_reset_reason();
+
+    // Heap
+    doc["free_heap"]     = (uint32_t)ESP.getFreeHeap();
+    doc["min_free_heap"] = (uint32_t)ESP.getMinFreeHeap();
+    doc["heap_size"]     = (uint32_t)ESP.getHeapSize();
+
+    // PSRAM
+    doc["psram_size"] = (uint32_t)ESP.getPsramSize();
+    doc["free_psram"] = (uint32_t)ESP.getFreePsram();
+
+    // Flash
+    doc["flash_size"]     = (uint32_t)ESP.getFlashChipSize();
+    doc["flash_speed_mhz"] = (uint32_t)(ESP.getFlashChipSpeed() / 1000000UL);
+
+    // Sketch
+    doc["sketch_size"]       = (uint32_t)ESP.getSketchSize();
+    doc["free_sketch_space"] = (uint32_t)ESP.getFreeSketchSpace();
+
+    // CPU / chip
+    doc["cpu_freq_mhz"] = (uint32_t)ESP.getCpuFreqMHz();
+    doc["sdk_version"]  = ESP.getSdkVersion();
+#if defined(ARDUINO_ARCH_ESP32)
+    doc["chip_temp_c"]  = temperatureRead();
+#endif
+
+    // WiFi
+    doc["wifi_rssi"]        = (int)WiFi.RSSI();
+    doc["wifi_tx_power_dbm"] = (int)WiFi.getTxPower();
+    doc["wifi_channel"]     = (int)WiFi.channel();
+
+    // LEDs & estimated power draw
+    uint8_t  brightness = ledState.getBrightness();
+    uint16_t ledGrid    = getActiveLedCountGrid();
+    uint16_t ledTotal   = getActiveLedCountTotal();
+    doc["brightness"]      = brightness;
+    doc["led_count_grid"]  = ledGrid;
+    doc["led_count_total"] = ledTotal;
+    // ~60 mA per LED at full brightness (SK6812 RGBW / WS2812B, all channels max / full white)
+    doc["estimated_current_ma"] = (uint32_t)((brightness / 255.0f) * ledTotal * 60);
+
+    // FreeRTOS loop task stack headroom (high-water mark = minimum remaining words × 4)
+    doc["loop_task_stack_hwm_bytes"] = (uint32_t)uxTaskGetStackHighWaterMark(NULL) * 4;
+
+    // Uptime
+    doc["uptime_s"] = (uint32_t)(millis() / 1000UL);
+
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);
