@@ -321,7 +321,7 @@ const WordPosition* find_word(const char* name) {
 bool isLedUsedByActiveWords(uint16_t ledIndex) {
   const int idx = static_cast<int>(ledIndex);
   for (size_t w = 0; w < ACTIVE_WORD_COUNT; ++w) {
-    for (int i = 0; i < 32 && ACTIVE_WORDS[w].indices[i] != 0; ++i) {
+    for (int i = 0; i < ACTIVE_WORDS[w].count; ++i) {
       if (ACTIVE_WORDS[w].indices[i] == idx) {
         return true;
       }
