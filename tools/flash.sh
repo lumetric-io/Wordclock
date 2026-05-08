@@ -115,8 +115,16 @@ echo "Detected app offset: $APP_OFFSET"
 echo
 
 FLASH_FS=0
-if [ -n "$FS_OFFSET" ] && [ -f "$LITTLEFS" ]; then
-  FLASH_FS=1
+if [ -n "$FS_OFFSET" ]; then
+  if [ -f "$LITTLEFS" ]; then
+    FLASH_FS=1
+  else
+    echo "❌ Partition table has a filesystem partition but littlefs.bin is missing."
+    echo "   Build it on the VPS first:"
+    echo "     pio run -e $ENV_NAME -t buildfs"
+    echo "   Then re-run this script."
+    exit 1
+  fi
 fi
 
 echo "Erasing flash on $PORT (esp32s3)…"
