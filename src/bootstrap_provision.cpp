@@ -42,6 +42,12 @@ String g_statusMessage;
 String g_selectedProduct;
 String g_selectedChannel;
 TaskHandle_t g_provisionTask = nullptr;
+// Byte-level progress within the current phase. Both reset to 0 on phase
+// transition; total stays 0 outside download phases. ESP32 size_t is
+// 32-bit and same-task writes/cross-task reads are atomic enough for a
+// progress display (stale reads are fine).
+volatile size_t g_bytesDone = 0;
+volatile size_t g_bytesTotal = 0;
 
 void setState(BootstrapState s, const String& msg = String()) {
   g_state = s;
@@ -75,18 +81,14 @@ bool isValidChannel(const String& ch) {
 
 // FreeRTOS task: run the actual OTA install. installProductFirmware blocks
 // for the duration of two HTTP downloads (fs.bin + firmware.bin) and then
-// reboots — it never returns on success. So this task either reboots the
-// chip or marks the state as Failed and exits.
+// reboots — it never returns on success. installProductFirmware itself
+// emits phase transitions and byte-level progress via bootstrapEmitPhase /
+// bootstrapEmitProgress, so this task only handles failure bookkeeping.
 void provisionTaskFn(void* params) {
   String* args = static_cast<String*>(params);
   String productId = args[0];
   String channel = args[1];
   delete[] args;
-
-  // Coarse-grained state updates; installProductFirmware doesn't expose
-  // sub-step progress, so we transition through the states linearly and
-  // let the UI poll see DownloadingFs → DownloadingFirmware → Applying.
-  setState(BootstrapState::DownloadingFs, "Downloading filesystem image…");
 
   if (!installProductFirmware(productId, channel)) {
     setState(BootstrapState::Failed,
@@ -185,7 +187,13 @@ void handleProvisionStart() {
 
   g_selectedProduct = productId;
   g_selectedChannel = channel;
-  setState(BootstrapState::DownloadingFs, "Starting provisioning…");
+  // Pre-roll state shown until installProductFirmware emits its first
+  // phase (fetching-channels → downloading-fs → downloading-firmware →
+  // applying). Reusing FetchingChannels here is honest about what happens
+  // first inside installProductFirmware (channel manifest fetch).
+  g_bytesDone = 0;
+  g_bytesTotal = 0;
+  setState(BootstrapState::FetchingChannels, "Starting provisioning…");
 
   // Kick off the OTA work in a separate FreeRTOS task so the HTTP server
   // stays responsive for /api/provision/status polling. installProductFirmware
@@ -221,6 +229,8 @@ void handleProvisionStatus() {
   doc["message"] = g_statusMessage;
   doc["product"] = g_selectedProduct;
   doc["channel"] = g_selectedChannel;
+  doc["bytes_done"] = (uint32_t)g_bytesDone;
+  doc["bytes_total"] = (uint32_t)g_bytesTotal;
   String out;
   serializeJson(doc, out);
   server.send(200, "application/json", out);
@@ -235,6 +245,27 @@ BootstrapState bootstrapState() { return g_state; }
 String bootstrapStatusMessage() { return g_statusMessage; }
 String bootstrapSelectedProduct() { return g_selectedProduct; }
 String bootstrapSelectedChannel() { return g_selectedChannel; }
+size_t bootstrapBytesDone() { return g_bytesDone; }
+size_t bootstrapBytesTotal() { return g_bytesTotal; }
+
+void bootstrapEmitPhase(const char* phaseId, const char* message) {
+  BootstrapState s = g_state;
+  if      (phaseId && !strcmp(phaseId, "fetching-channels"))    s = BootstrapState::FetchingChannels;
+  else if (phaseId && !strcmp(phaseId, "downloading-fs"))       s = BootstrapState::DownloadingFs;
+  else if (phaseId && !strcmp(phaseId, "downloading-firmware")) s = BootstrapState::DownloadingFirmware;
+  else if (phaseId && !strcmp(phaseId, "applying"))             s = BootstrapState::Applying;
+  // Reset byte counters on every phase transition so the UI's progress bar
+  // restarts at 0% for each download. They get repopulated by
+  // bootstrapEmitProgress as Update.writeStream advances.
+  g_bytesDone = 0;
+  g_bytesTotal = 0;
+  setState(s, String(message ? message : ""));
+}
+
+void bootstrapEmitProgress(size_t bytesDone, size_t bytesTotal) {
+  g_bytesDone = bytesDone;
+  g_bytesTotal = bytesTotal;
+}
 
 void registerBootstrapRoutes(WebServer& srv) {
   // Parameter is unused — handlers reference the global `server` directly

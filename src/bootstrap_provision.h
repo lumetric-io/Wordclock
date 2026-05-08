@@ -39,6 +39,17 @@ BootstrapState bootstrapState();
 String bootstrapStatusMessage();
 String bootstrapSelectedProduct();
 String bootstrapSelectedChannel();
+size_t bootstrapBytesDone();
+size_t bootstrapBytesTotal();
+
+// Hooks called by ota_updater.cpp from inside installProductFirmware to
+// surface real phase boundaries and byte-level progress to the bootstrap
+// state machine (which would otherwise sit on a single coarse state for the
+// full 30s OTA). phaseId values: "fetching-channels", "downloading-fs",
+// "downloading-firmware", "applying". On phase change the byte counters
+// reset so the UI's progress bar restarts cleanly.
+void bootstrapEmitPhase(const char* phaseId, const char* message);
+void bootstrapEmitProgress(size_t bytesDone, size_t bytesTotal);
 
 // Register all bootstrap HTTP routes on the global WebServer instance.
 // Must be called after WebServer::begin().

@@ -206,6 +206,29 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .progress-bar {
+      width: 100%;
+      height: 3px;
+      background: var(--line);
+      margin: 16px 0 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--copper);
+      width: 0%;
+      transition: width 0.25s linear;
+    }
+    .progress-bytes {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: var(--graphite-60);
+      margin: 0;
+      text-align: right;
+    }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -257,6 +280,10 @@
       <p class="kicker" id="progressKicker">Provisioning</p>
       <h2 id="progressTitle">Installing…</h2>
       <p id="progressDetail">Starting…</p>
+      <div id="progressBar" class="progress-bar hidden">
+        <div class="progress-bar-fill" id="progressBarFill"></div>
+      </div>
+      <p id="progressBytes" class="progress-bytes hidden"></p>
       <p id="progressApLine" class="hidden" style="margin-top: 18px;">
         Look for Wi-Fi network
         <strong id="progressApName" style="font-weight: 500; color: var(--copper);"></strong>
@@ -286,6 +313,9 @@
       progressApLine: document.getElementById('progressApLine'),
       progressApName: document.getElementById('progressApName'),
       progressNote: document.getElementById('progressNote'),
+      progressBar: document.getElementById('progressBar'),
+      progressBarFill: document.getElementById('progressBarFill'),
+      progressBytes: document.getElementById('progressBytes'),
     };
 
     const state = {
@@ -434,6 +464,32 @@
       }
     }
 
+    // Format bytes as KB/MB with one decimal so a 1.2 MB firmware reads
+    // naturally next to a 64 KB chunk pointer rather than as raw bytes.
+    function formatBytes(n) {
+      if (!n || n <= 0) return '0 B';
+      if (n < 1024) return n + ' B';
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+      return (n / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function updateProgressBar(done, total) {
+      // Show the bar only during phases that report a known total; outside
+      // download phases (fetching manifest, applying, idle) the bytes field
+      // is 0 and we hide the bar so the eye doesn't read "stuck at 100%".
+      if (total > 0) {
+        const pct = Math.min(100, Math.round((done / total) * 100));
+        els.progressBar.classList.remove('hidden');
+        els.progressBytes.classList.remove('hidden');
+        els.progressBarFill.style.width = pct + '%';
+        els.progressBytes.textContent = formatBytes(done) + ' / ' + formatBytes(total) + '  ·  ' + pct + '%';
+      } else {
+        els.progressBar.classList.add('hidden');
+        els.progressBytes.classList.add('hidden');
+        els.progressBarFill.style.width = '0%';
+      }
+    }
+
     // Once the bootstrap reboots into the per-device firmware, the bootstrap
     // UI can no longer reach the device — by design, the new firmware does
     // its own fresh Wi-Fi enrollment (no credential handoff). So instead of
@@ -444,6 +500,8 @@
       const meta = state.productsById[state.product] || {};
       const apName = meta.ap_name || 'Wordclock_AP';
       els.progressSpinner.classList.add('hidden');
+      els.progressBar.classList.add('hidden');
+      els.progressBytes.classList.add('hidden');
       els.progressKicker.textContent = 'Reboot complete';
       els.progressTitle.textContent = 'Provisioning complete';
       els.progressDetail.textContent =
@@ -459,7 +517,7 @@
     async function pollStatus() {
       const labels = {
         'idle': 'Idle',
-        'fetching-channels': 'Probing…',
+        'fetching-channels': 'Fetching manifest…',
         'downloading-firmware': 'Downloading firmware…',
         'downloading-fs': 'Downloading UI image…',
         'applying': 'Applying update…',
@@ -475,6 +533,7 @@
           consecutiveErrors = 0;
           els.progressTitle.textContent = labels[body.state] || body.state;
           els.progressDetail.textContent = body.message || (body.product + ' / ' + body.channel);
+          updateProgressBar(body.bytes_done || 0, body.bytes_total || 0);
           if (body.state === 'done') {
             // Reboot is imminent; jump straight to the watch-for-AP terminus
             // so the user has a clear next-step rather than a brief "Done"

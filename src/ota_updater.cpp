@@ -4,6 +4,19 @@
 #include "led_events.h"
 #include "fs_compat.h"
 
+// Bootstrap-only progress hooks. Per-device builds compile installProductFirmware
+// (it's gated only on SUPPORT_OTA_V2, not WORDCLOCK_BOOTSTRAP) but never call it,
+// so the macros expand to no-ops there to avoid pulling bootstrap_provision.h
+// into per-device link.
+#ifdef WORDCLOCK_BOOTSTRAP
+#include "bootstrap_provision.h"
+#define BOOT_EMIT_PHASE(id, msg) bootstrapEmitPhase((id), (msg))
+#define BOOT_EMIT_PROGRESS(d, t) bootstrapEmitProgress((d), (t))
+#else
+#define BOOT_EMIT_PHASE(id, msg) ((void)0)
+#define BOOT_EMIT_PROGRESS(d, t) ((void)0)
+#endif
+
 #if !OTA_ENABLED
 
 String getUiVersion() {
@@ -897,6 +910,16 @@ void checkForFirmwareUpdate() {
 bool installProductFirmware(const String& productId, const String& channel) {
   logInfo(String("🔧 Bootstrap provisioning ") + productId + " (" + channel + ")");
 
+  // Update is a global singleton — registering once here means the same
+  // callback fires for both the fs and firmware writeStream() loops, with
+  // `total` automatically tracking whichever Update.begin(contentLength)
+  // call is currently in flight.
+  Update.onProgress([](size_t done, size_t total) {
+    BOOT_EMIT_PROGRESS(done, total);
+  });
+
+  BOOT_EMIT_PHASE("fetching-channels", "Fetching manifest…");
+
   std::unique_ptr<WiFiClient> client(new WiFiClient());
 
   JsonDocument channelDoc;
@@ -939,6 +962,8 @@ bool installProductFirmware(const String& productId, const String& channel) {
       logError("❌ Bootstrap: fs URL missing");
       return false;
     }
+    BOOT_EMIT_PHASE("downloading-fs", "Downloading filesystem image…");
+    BOOT_EMIT_PROGRESS(0, (size_t)fsSize);
     logInfo(String("⬇️ Bootstrap: downloading fs (") + fsVersion + ", " + String(fsSize) + " bytes)…");
     if (!performFilesystemUpdate(fsUrl, fsSize, *client)) {
       logError("❌ Bootstrap: fs update failed");
@@ -955,16 +980,20 @@ bool installProductFirmware(const String& productId, const String& channel) {
     return false;
   }
   const String fwUrl = artifactDoc["url"] | "";
+  const int fwSize = artifactDoc["filesize"] | 0;
   if (fwUrl.isEmpty()) {
     logError("❌ Bootstrap: firmware URL missing");
     return false;
   }
+  BOOT_EMIT_PHASE("downloading-firmware", "Downloading firmware…");
+  BOOT_EMIT_PROGRESS(0, (size_t)fwSize);
   logInfo(String("⬇️ Bootstrap: downloading firmware from ") + fwUrl);
   if (!performHttpOta(fwUrl, *client)) {
     logError("❌ Bootstrap: firmware update failed");
     return false;
   }
 
+  BOOT_EMIT_PHASE("applying", "Applying & rebooting…");
   logInfo("✅ Bootstrap: firmware applied; rebooting into product…");
   delay(500);
   safeRestart();
