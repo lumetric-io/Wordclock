@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wordclock — Update</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/chronolett.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="page">
+      <div class="container topbar-inner">
+        <a href="/dashboard-v2.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by">Update</span></a>
+        <nav class="topnav">
+          <a href="/dashboard-v2.html">Dashboard</a>
+          <a href="/admin-v2.html">Admin</a>
+          <a href="/update.html" class="toggle-classic">← Classic</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="container">
+
+      <section class="hero">
+        <p class="kicker">Manual update</p>
+        <h1>Two steps<span class="copper-dot">.</span></h1>
+        <p class="lede">Upload firmware and the UI image. The device reboots automatically after each step. Update firmware first if the new UI depends on it.</p>
+      </section>
+
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">01</span>
+          <h2 class="section-title">Firmware (app)</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">firmware.bin</span>
+          <div class="section-body">
+            <p class="help">Upload the firmware (firmware.bin). The device will reboot automatically after a successful upload.</p>
+            <form action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="field">
+              <input type="file" name="firmwareFile" accept=".bin" required />
+              <div class="slider-meta">
+                <button type="submit" class="btn">Upload firmware</button>
+                <a href="#step2" class="value-mono copper" style="text-decoration:none">Skip to step 2 →</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="chapter" id="step2">
+        <header class="section-head">
+          <span class="section-num">02</span>
+          <h2 class="section-title">UI (LittleFS)</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">littlefs.bin</span>
+          <div class="section-body">
+            <p class="help">Upload the UI image (littlefs.bin). The device will reboot automatically after this step as well.</p>
+            <form action="/uploadFs" method="POST" enctype="multipart/form-data" class="field">
+              <input type="file" name="fsFile" accept=".bin" required />
+              <button type="submit" class="btn">Upload UI image</button>
+            </form>
+            <p class="help">Updates are applied immediately per step. After reboot you'll return to the dashboard.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">03</span>
+          <h2 class="section-title">Versions</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">Current</span>
+          <div class="section-body">
+            <dl class="dl">
+              <dt>Firmware</dt><dd id="version">—</dd>
+              <dt>UI</dt><dd id="uiVersion">—</dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <div class="footer-sig">
+        <span>Chronolett<span class="copper">.</span></span>
+        <span>v2 — editorial preview</span>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    fetch('/version').then(r => r.text()).then(v => { const el = document.getElementById('version'); if (el) el.textContent = v; });
+    fetch('/uiversion').then(r => r.text()).then(v => { const el = document.getElementById('uiVersion'); if (el) el.textContent = v; });
+  </script>
+</body>
+</html>

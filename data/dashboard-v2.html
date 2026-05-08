@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wordclock — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/chronolett.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="page">
+      <div class="container topbar-inner">
+        <a href="/dashboard-v2.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by">Wordclock</span></a>
+        <nav class="topnav">
+          <a href="/mqtt-v2.html">MQTT</a>
+          <a href="/logs-v2.html">Logs</a>
+          <a href="/admin-v2.html">Admin</a>
+          <a href="/dashboard.html" class="toggle-classic" title="Switch to classic design">← Classic</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="container">
+
+      <section class="hero">
+        <p class="kicker">Dashboard</p>
+        <h1>Wordclock<span class="copper-dot">.</span></h1>
+        <p class="lede">Manage your clock — colour, brightness, schedule, and firmware. Settings save instantly.</p>
+      </section>
+
+      <!-- 01 — Status -->
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">01</span>
+          <h2 class="section-title">Status</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">State</span>
+          <div class="section-body">
+            <div class="status-row">
+              <div class="status-pill">
+                <span id="statusIndicator" class="dot off"></span>
+                <span id="statusText">—</span>
+              </div>
+            </div>
+            <div id="ledEventRow" class="event-row">
+              <span class="event-label">LED event</span>
+              <span id="ledEventText">—</span>
+            </div>
+            <div class="btn-row">
+              <button id="toggleClockOn" class="btn copper">On</button>
+              <button id="toggleClockOff" class="btn ghost">Off</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 02 — Colour -->
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">02</span>
+          <h2 class="section-title">Colour</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">Pick</span>
+          <div class="section-body">
+            <input type="color" id="colorPicker" />
+            <p class="help">Tap to choose the LED hue. Applied immediately.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 03 — Brightness -->
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">03</span>
+          <h2 class="section-title">Brightness</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">Level</span>
+          <div class="section-body">
+            <div class="slider-block">
+              <div class="slider-meta">
+                <span class="value-mono">Level <span id="brightnessValue2">—</span></span>
+                <input type="number" id="brightnessInput" min="0" max="255" step="1" class="input tight short" />
+                <div class="step-btns">
+                  <button id="brightnessDec" class="btn line small">−10</button>
+                  <button id="brightnessInc" class="btn line small">+10</button>
+                </div>
+              </div>
+              <input type="range" min="0" max="255" id="brightnessSlider" />
+            </div>
+            <div id="logoBrightnessSection" class="hidden">
+              <hr class="h-rule" style="margin: 16px 0" />
+              <span class="label">Logo brightness</span>
+              <div class="slider-block">
+                <div class="slider-meta">
+                  <span class="value-mono">Level <span id="logoBrightnessValue">—</span></span>
+                  <input type="number" id="logoBrightnessInput" min="0" max="255" step="1" class="input tight short" />
+                  <div class="step-btns">
+                    <button id="logoBrightnessDec" class="btn line small">−10</button>
+                    <button id="logoBrightnessInc" class="btn line small">+10</button>
+                  </div>
+                </div>
+                <input type="range" min="0" max="255" id="logoBrightness" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 04 — Nightmode -->
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">04</span>
+          <h2 class="section-title">Nightmode</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">Schedule</span>
+          <div class="section-body">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+              <label class="check-row">
+                <input type="checkbox" id="nightModeEnabled" />
+                <span>Enable nightmode</span>
+              </label>
+              <span id="nightModeStatus" class="value-mono muted">—</span>
+            </div>
+            <div class="field">
+              <span class="label">Effect</span>
+              <select id="nightModeEffect" class="select">
+                <option value="dim">Dim to percentage</option>
+                <option value="off">Fully off</option>
+              </select>
+            </div>
+            <div class="field" id="nightModeDimControls">
+              <span class="label">Dim percentage — <span id="nightModeDimValue" class="value-mono">—</span>%</span>
+              <div class="slider-meta">
+                <input type="range" min="0" max="100" value="20" id="nightModeDimSlider" style="flex:1" />
+                <input type="number" id="nightModeDimInput" min="0" max="100" step="1" class="input tight short" />
+              </div>
+              <p class="help">0% = fully off · 100% = original brightness</p>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <span class="label">Start</span>
+                <input type="time" id="nightModeStart" class="input" />
+              </div>
+              <div class="field">
+                <span class="label">End</span>
+                <input type="time" id="nightModeEnd" class="input" />
+              </div>
+            </div>
+            <p class="help">If end is earlier than start, nightmode runs over midnight.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 05 — Actions -->
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">05</span>
+          <h2 class="section-title">Actions</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">Run</span>
+          <div class="section-body">
+            <div class="btn-row three">
+              <button id="restartBtn" class="btn line">Restart</button>
+              <button id="resetWifiBtn" class="btn line">Reset Wi-Fi</button>
+              <button id="startSequenceBtn" class="btn line">Start sequence</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 06 — Firmware updates -->
+      <section class="chapter" id="firmwareUpdateSection">
+        <header class="section-head">
+          <span class="section-num">06</span>
+          <h2 class="section-title">Firmware</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">Channel</span>
+          <div class="section-body">
+            <div class="field">
+              <label class="check-row">
+                <input type="radio" name="updateChannel" value="stable" />
+                <span>Stable <span class="muted">(recommended)</span></span>
+              </label>
+              <label class="check-row">
+                <input type="radio" name="updateChannel" value="early" />
+                <span>Early <span class="muted">(experimental)</span></span>
+              </label>
+              <p id="updateChannelStatus" class="help">Default: stable. Early may be unstable.</p>
+            </div>
+            <hr class="h-rule" />
+            <span class="label">Automatic</span>
+            <label class="check-row">
+              <input type="checkbox" id="autoUpdate" />
+              <span>Automatic firmware updates</span>
+            </label>
+            <hr class="h-rule" />
+            <span class="label">Check</span>
+            <div class="slider-meta">
+              <button id="checkUpdateBtn" class="btn">Check for update</button>
+              <span id="updateSpinner" class="spinner hidden" aria-label="Update in progress"></span>
+              <span id="updateStatus" class="value-mono muted"></span>
+            </div>
+            <hr class="h-rule" />
+            <span class="label">Manual upload</span>
+            <form id="firmwareUploadForm" action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="field">
+              <input type="file" name="firmwareFile" accept=".bin" required />
+              <button type="submit" class="btn ghost">Upload firmware</button>
+            </form>
+            <p id="firmwareUploadStatus" class="help"></p>
+            <hr class="h-rule" />
+            <dl class="dl">
+              <dt>Firmware</dt><dd id="version">—</dd>
+              <dt>UI</dt><dd id="uiVersion">—</dd>
+              <dt>Grid</dt><dd id="gridVariantLabel">—</dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <!-- 07 — Display -->
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">07</span>
+          <h2 class="section-title">Display</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">Words</span>
+          <div class="section-body">
+            <label class="check-row">
+              <input type="checkbox" id="animateWords" />
+              <span>Word-by-word animation</span>
+            </label>
+            <div id="hetIsSection">
+              <hr class="h-rule" />
+              <label class="check-row">
+                <input type="checkbox" id="hetIsAlways2" />
+                <span>Always show "HET IS"</span>
+              </label>
+              <div class="field" style="margin-top:12px">
+                <span class="label">Show "HET IS" — <span id="hetIsDurationValue2" class="value-mono">30</span>s</span>
+                <div class="slider-meta">
+                  <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="input tight short" />
+                  <div class="step-btns">
+                    <button id="hetIsDec" class="btn line small">−5s</button>
+                    <button id="hetIsInc" class="btn line small">+5s</button>
+                  </div>
+                </div>
+                <input type="range" min="0" max="360" value="360" id="hetIsDuration2" />
+                <p class="help">0 = never · 360 = always</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 08 — Grid layout -->
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">08</span>
+          <h2 class="section-title">Grid layout</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">Variant</span>
+          <div class="section-body">
+            <select id="gridVariantPublic" class="select"></select>
+            <p class="help" id="gridVariantStatusPublic"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 09 — Logo LEDs (logo product only) -->
+      <section class="chapter hidden" id="logoLedsSection">
+        <header class="section-head">
+          <span class="section-num">09</span>
+          <h2 class="section-title">Logo LEDs</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">Pixels</span>
+          <div class="section-body">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="value-mono muted" id="logoStatus">—</span>
+            </div>
+            <div id="logoGrid" class="logo-color-grid"></div>
+            <div class="slider-meta">
+              <input type="color" id="logoAllColor" class="small" />
+              <button id="logoFillAll" class="btn line">Fill all</button>
+              <button id="logoApply" class="btn">Save</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 10 — Logs -->
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">10</span>
+          <h2 class="section-title">Logs</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label">Tail</span>
+          <div class="section-body">
+            <div class="field">
+              <span class="label">Log level</span>
+              <select id="logLevel" class="select">
+                <option value="ERROR">ERROR</option>
+                <option value="WARN">WARN</option>
+                <option value="INFO">INFO</option>
+                <option value="DEBUG">DEBUG</option>
+              </select>
+              <p id="logLevelStatus" class="help"></p>
+            </div>
+            <div class="value-mono muted">
+              Storage: <span id="logSummary">—</span> <span id="logSummaryStatus" class="muted"></span>
+            </div>
+            <pre id="logOutput" class="log-output"></pre>
+          </div>
+        </div>
+      </section>
+
+      <div class="footer-sig">
+        <span>Chronolett<span class="copper">.</span></span>
+        <span>v2 — editorial preview</span>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // === Identical logic to dashboard.html, with selector-only adjustments ===
+    class DataLoader {
+      constructor() {
+        this.loaders = new Map();
+        this.retryDelays = [1000, 2000, 5000];
+        this.intervals = new Map();
+      }
+      register(name, loaderFn, options = {}) {
+        this.loaders.set(name, {
+          fn: loaderFn,
+          loading: false, lastError: null, retryCount: 0,
+          interval: options.interval || null,
+          priority: options.priority || 0,
+          timeout: options.timeout || 5000,
+          onSuccess: options.onSuccess || null,
+          onError: options.onError || null,
+        });
+      }
+      async load(name) {
+        const loader = this.loaders.get(name);
+        if (!loader || loader.loading) return;
+        loader.loading = true; loader.lastError = null;
+        try {
+          const result = await Promise.race([
+            loader.fn(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), loader.timeout))
+          ]);
+          loader.retryCount = 0;
+          if (loader.onSuccess) loader.onSuccess(result);
+          return result;
+        } catch (error) {
+          loader.lastError = error;
+          if (loader.onError) loader.onError(error);
+          if (loader.retryCount < this.retryDelays.length) {
+            const delay = this.retryDelays[loader.retryCount];
+            loader.retryCount++;
+            setTimeout(() => this.load(name), delay);
+          }
+        } finally { loader.loading = false; }
+      }
+      async loadAll() {
+        const sorted = Array.from(this.loaders.entries()).sort((a, b) => b[1].priority - a[1].priority);
+        const high = sorted.filter(([_, l]) => l.priority >= 5);
+        await Promise.allSettled(high.map(([n]) => this.load(n)));
+        const rest = sorted.filter(([_, l]) => l.priority < 5);
+        await Promise.allSettled(rest.map(([n]) => this.load(n)));
+      }
+      startInterval(name) {
+        const loader = this.loaders.get(name);
+        if (!loader || !loader.interval) return;
+        if (this.intervals.has(name)) { clearInterval(this.intervals.get(name)); this.intervals.delete(name); }
+        const self = this;
+        this.load(name);
+        const id = setInterval(() => self.load(name), loader.interval);
+        this.intervals.set(name, id);
+      }
+    }
+
+    function setLoadingState(id, loading) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (loading) el.setAttribute('data-loading', 'true');
+      else el.removeAttribute('data-loading');
+    }
+    function setErrorState(id, error, fallbackText = '—') {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.add('text-err');
+      el.setAttribute('title', `Error: ${error.message || error}`);
+      if (el.tagName === 'SPAN' || el.tagName === 'P' || el.tagName === 'DIV') el.textContent = fallbackText;
+    }
+    function clearErrorState(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove('text-err');
+      el.removeAttribute('title');
+    }
+
+    const dataLoader = new DataLoader();
+    let isLogoProduct = false;
+    let isMiniProduct = false;
+    const logoBrightnessSection = document.getElementById('logoBrightnessSection');
+    const logoLedsSection = document.getElementById('logoLedsSection');
+    const hetIsSection = document.getElementById('hetIsSection');
+    const setLogoSectionsVisible = (v) => {
+      if (logoBrightnessSection) logoBrightnessSection.classList.toggle('hidden', !v);
+      if (logoLedsSection) logoLedsSection.classList.toggle('hidden', !v);
+    };
+    const setHetIsSectionVisible = (v) => {
+      if (hetIsSection) hetIsSection.classList.toggle('hidden', !v);
+    };
+
+    const formatVariantLabel = (v) => {
+      if (!v) return '';
+      const base = v.label || v.key || '';
+      const lang = v.language ? v.language.toUpperCase() : '';
+      const ver = v.version ? v.version.toUpperCase() : '';
+      const suffix = [lang, ver].filter(Boolean).join(' ');
+      return suffix ? `${base} [${suffix}]` : base;
+    };
+
+    const gridSelectPublic = document.getElementById('gridVariantPublic');
+    const gridStatusPublic = document.getElementById('gridVariantStatusPublic');
+    const loadGridVariantsPublic = async () => {
+      if (!gridSelectPublic) return;
+      try {
+        const res = await fetch('/listGridVariants');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const variants = await res.json();
+        gridSelectPublic.innerHTML = '';
+        variants.forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v.id;
+          opt.textContent = formatVariantLabel(v);
+          if (v.active) opt.selected = true;
+          gridSelectPublic.appendChild(opt);
+        });
+        if (gridStatusPublic) {
+          const active = variants.find(v => v.active);
+          gridStatusPublic.textContent = active ? `Active grid: ${formatVariantLabel(active)}` : '';
+        }
+      } catch (err) {
+        if (gridStatusPublic) gridStatusPublic.textContent = 'Could not load grid variants';
+      }
+    };
+    if (gridSelectPublic) {
+      dataLoader.register('gridVariantsList', loadGridVariantsPublic, { priority: 5 });
+      gridSelectPublic.addEventListener('change', async () => {
+        const id = gridSelectPublic.value;
+        if (gridStatusPublic) gridStatusPublic.textContent = 'Saving…';
+        try {
+          const res = await fetch(`/setGridVariant?id=${encodeURIComponent(id)}`);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const body = await res.json();
+          if (gridStatusPublic) gridStatusPublic.textContent = `Active grid: ${formatVariantLabel(body)}`;
+          if (isLogoProduct && dataLoader.loaders.has('logoState')) dataLoader.load('logoState');
+        } catch (err) {
+          if (gridStatusPublic) gridStatusPublic.textContent = 'Save failed';
+        }
+      });
+    }
+
+    const LED_EVENT_LABELS = {
+      FirmwareCheck: 'Idle',
+      FirmwareAvailable: 'Firmware available',
+      FirmwareDownloading: 'Firmware downloading',
+      FirmwareApplying: 'Firmware applying',
+      NtpFailed: 'NTP failed',
+      MqttDisconnected: 'MQTT disconnected',
+      BleProvisioning: 'BLE provisioning',
+      WifiManagerPortal: 'Wi-Fi manager portal'
+    };
+
+    dataLoader.register('status', async () => {
+      const res = await fetch('/status');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    }, {
+      priority: 10, interval: 30000,
+      onSuccess: (status) => {
+        clearErrorState('statusText');
+        const on = status === 'on';
+        const ind = document.getElementById('statusIndicator');
+        if (ind) ind.className = 'dot ' + (on ? 'on' : 'off');
+        const st = document.getElementById('statusText');
+        if (st) st.textContent = on ? 'Wordclock on' : 'Wordclock off';
+      },
+      onError: (err) => setErrorState('statusText', err, 'Error loading status')
+    });
+
+    dataLoader.register('ledEvent', async () => {
+      const res = await fetch('/api/led/event');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }, {
+      priority: 10, interval: 30000,
+      onSuccess: (data) => {
+        const el = document.getElementById('ledEventText');
+        const row = document.getElementById('ledEventRow');
+        if (!el || !row) return;
+        const name = (data && data.event) ? data.event : 'FirmwareCheck';
+        el.textContent = LED_EVENT_LABELS[name] || name;
+        row.classList.toggle('active', name !== 'FirmwareCheck');
+      },
+      onError: () => { const el = document.getElementById('ledEventText'); if (el) el.textContent = '—'; }
+    });
+
+    const autoUpdCb = document.getElementById('autoUpdate');
+    const channelRadios = document.querySelectorAll('input[name="updateChannel"]');
+    const channelStatus = document.getElementById('updateChannelStatus');
+    const applyChannelGuard = (ch) => {
+      const disabled = (ch === 'develop');
+      if (autoUpdCb) {
+        if (disabled) { autoUpdCb.checked = false; autoUpdCb.disabled = true; }
+        else { autoUpdCb.disabled = false; }
+      }
+      if (channelStatus) channelStatus.textContent = `Current channel: ${ch}${disabled ? ' (automatic updates disabled)' : ''}`;
+    };
+    const loadChannel = async () => {
+      if (channelStatus) channelStatus.textContent = 'Loading channel…';
+      try {
+        const res = await fetch('/api/update/channel');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const body = await res.json();
+        const ch = (body && body.channel) ? body.channel : 'stable';
+        channelRadios.forEach(r => { r.checked = (r.value === ch); });
+        applyChannelGuard(ch);
+      } catch (err) {
+        channelRadios.forEach(r => { if (r.value === 'stable') r.checked = true; });
+        applyChannelGuard('stable');
+      }
+    };
+    dataLoader.register('channel', loadChannel, { priority: 5 });
+    channelRadios.forEach(r => {
+      r.addEventListener('change', async () => {
+        if (!r.checked) return;
+        const ch = r.value;
+        if (ch === 'develop') {
+          const ok = window.confirm('Use the develop channel? This may make the clock unusable; recovery is not guaranteed.');
+          if (!ok) {
+            r.checked = false;
+            const stable = Array.from(channelRadios).find(x => x.value === 'stable');
+            if (stable) stable.checked = true;
+            applyChannelGuard('stable');
+            return;
+          }
+        }
+        if (channelStatus) channelStatus.textContent = 'Saving…';
+        try {
+          const res = await fetch('/api/update/channel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channel: ch })
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          applyChannelGuard(ch);
+        } catch (err) {
+          if (channelStatus) channelStatus.textContent = 'Save failed; keeping previous value';
+          await loadChannel();
+        }
+      });
+    });
+    dataLoader.load('channel');
+
+    document.getElementById('toggleClockOn').onclick = () => fetch('/toggle?state=on').then(() => dataLoader.load('status'));
+    document.getElementById('toggleClockOff').onclick = () => fetch('/toggle?state=off').then(() => dataLoader.load('status'));
+
+    document.getElementById('colorPicker').oninput = (e) => {
+      const hex = e.target.value.substring(1);
+      fetch(`/setColor?color=${hex}`);
+    };
+
+    const brightnessSlider = document.getElementById('brightnessSlider');
+    const brightnessInput = document.getElementById('brightnessInput');
+    const brightnessDec = document.getElementById('brightnessDec');
+    const brightnessInc = document.getElementById('brightnessInc');
+    let brightnessTimer = null;
+    const sendBrightnessDebounced = (val) => {
+      if (brightnessTimer) clearTimeout(brightnessTimer);
+      brightnessTimer = setTimeout(() => { fetch(`/setBrightness?level=${val}`); brightnessTimer = null; }, 200);
+    };
+    const setBrightness = (v) => {
+      brightnessSlider.value = v;
+      if (brightnessInput) brightnessInput.value = v;
+      const lbl = document.getElementById('brightnessValue2');
+      if (lbl) lbl.textContent = v;
+      sendBrightnessDebounced(v);
+    };
+    brightnessSlider.oninput = (e) => setBrightness(e.target.value);
+    if (brightnessInput) {
+      brightnessInput.addEventListener('change', () => {
+        let v = parseInt(brightnessInput.value, 10); if (isNaN(v)) v = 0;
+        v = Math.max(0, Math.min(255, v));
+        setBrightness(v);
+      });
+    }
+    if (brightnessDec) brightnessDec.addEventListener('click', () => {
+      let v = parseInt(brightnessSlider.value || '0', 10) - 10; v = Math.max(0, v); setBrightness(v);
+    });
+    if (brightnessInc) brightnessInc.addEventListener('click', () => {
+      let v = parseInt(brightnessSlider.value || '0', 10) + 10; v = Math.min(255, v); setBrightness(v);
+    });
+
+    let logoControlsInitialized = false;
+    const initLogoControls = () => {
+      if (logoControlsInitialized || !isLogoProduct) return;
+      logoControlsInitialized = true;
+      const DEFAULT_LOGO_COUNT = 50;
+      const logoGrid = document.getElementById('logoGrid');
+      const logoPickers = [];
+      const syncLogoGrid = (count) => {
+        if (!logoGrid) return;
+        const target = Math.max(1, Math.min(500, parseInt(count, 10) || DEFAULT_LOGO_COUNT));
+        while (logoPickers.length < target) {
+          const input = document.createElement('input');
+          input.type = 'color'; input.value = '#000000';
+          logoGrid.appendChild(input);
+          logoPickers.push(input);
+        }
+        while (logoPickers.length > target) {
+          const input = logoPickers.pop();
+          if (input && input.parentElement === logoGrid) logoGrid.removeChild(input);
+        }
+        const cols = Math.max(1, Math.min(10, Math.ceil(target / 5)));
+        logoGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+      };
+      if (logoGrid) syncLogoGrid(DEFAULT_LOGO_COUNT);
+      const logoBrightness = document.getElementById('logoBrightness');
+      const logoBrightnessInput = document.getElementById('logoBrightnessInput');
+      const logoBrightnessDec = document.getElementById('logoBrightnessDec');
+      const logoBrightnessInc = document.getElementById('logoBrightnessInc');
+      const logoBrightnessValue = document.getElementById('logoBrightnessValue');
+      const logoStatus = document.getElementById('logoStatus');
+      let logoBrightnessTimer = null;
+      const sendLogoBrightnessDebounced = (val) => {
+        if (logoBrightnessTimer) clearTimeout(logoBrightnessTimer);
+        logoBrightnessTimer = setTimeout(() => {
+          const level = parseInt(val, 10) || 0;
+          fetch('/logo/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ brightness: Math.max(0, Math.min(255, level)) })
+          });
+        }, 200);
+      };
+      const setLogoStatus = (msg, error) => {
+        if (!logoStatus) return;
+        logoStatus.textContent = msg;
+        logoStatus.classList.toggle('text-err', !!error);
+      };
+      const renderLogoState = (data) => {
+        syncLogoGrid(data && data.count);
+        if (logoBrightness && data.brightness !== undefined) {
+          logoBrightness.value = data.brightness;
+          if (logoBrightnessValue) logoBrightnessValue.textContent = data.brightness;
+          if (logoBrightnessInput) logoBrightnessInput.value = data.brightness;
+        }
+        if (Array.isArray(data.colors)) {
+          data.colors.forEach((hex, idx) => {
+            if (idx < logoPickers.length && typeof hex === 'string' && hex.length === 6) {
+              logoPickers[idx].value = '#' + hex;
+            }
+          });
+        }
+      };
+      const setLogo = (v) => {
+        if (logoBrightness) logoBrightness.value = v;
+        if (logoBrightnessInput) logoBrightnessInput.value = v;
+        if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+        sendLogoBrightnessDebounced(v);
+      };
+      if (logoBrightness) logoBrightness.addEventListener('input', () => setLogo(logoBrightness.value));
+      if (logoBrightnessInput) logoBrightnessInput.addEventListener('change', () => {
+        let v = parseInt(logoBrightnessInput.value, 10); if (isNaN(v)) v = 0;
+        v = Math.max(0, Math.min(255, v));
+        setLogo(v);
+      });
+      if (logoBrightnessDec) logoBrightnessDec.addEventListener('click', () => {
+        let v = parseInt(logoBrightness ? logoBrightness.value : '0', 10) - 10;
+        v = Math.max(0, v); setLogo(v);
+      });
+      if (logoBrightnessInc) logoBrightnessInc.addEventListener('click', () => {
+        let v = parseInt(logoBrightness ? logoBrightness.value : '0', 10) + 10;
+        v = Math.min(255, v); setLogo(v);
+      });
+      const loadLogoState = async () => {
+        if (!logoGrid) return;
+        setLogoStatus('Loading…');
+        try {
+          const res = await fetch('/logo/state');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          renderLogoState(data);
+          setLogoStatus('Saved');
+        } catch (err) { setLogoStatus('Load failed', true); }
+      };
+      if (logoGrid) dataLoader.register('logoState', loadLogoState, { priority: 5 });
+      const saveLogoState = async () => {
+        if (!logoGrid) return;
+        setLogoStatus('Saving…');
+        const payload = {
+          brightness: parseInt(logoBrightness ? logoBrightness.value : '0', 10) || 0,
+          colors: logoPickers.map(p => (p.value || '#000000').replace('#', '').toUpperCase())
+        };
+        try {
+          const res = await fetch('/logo/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          renderLogoState(data);
+          setLogoStatus('Saved');
+        } catch (err) { setLogoStatus('Save failed', true); }
+      };
+      const logoApplyBtn = document.getElementById('logoApply');
+      if (logoApplyBtn) logoApplyBtn.addEventListener('click', saveLogoState);
+      const logoFillAll = document.getElementById('logoFillAll');
+      const logoAllColor = document.getElementById('logoAllColor');
+      if (logoFillAll) logoFillAll.addEventListener('click', () => {
+        if (!logoAllColor) return;
+        const val = logoAllColor.value || '#000000';
+        logoPickers.forEach(p => { p.value = val; });
+      });
+    };
+
+    // Nightmode
+    const nightModeEnabled = document.getElementById('nightModeEnabled');
+    const nightModeEffect = document.getElementById('nightModeEffect');
+    const nightModeDimSlider = document.getElementById('nightModeDimSlider');
+    const nightModeDimInput = document.getElementById('nightModeDimInput');
+    const nightModeDimValue = document.getElementById('nightModeDimValue');
+    const nightModeStatus = document.getElementById('nightModeStatus');
+    const nightModeStart = document.getElementById('nightModeStart');
+    const nightModeEnd = document.getElementById('nightModeEnd');
+    let nightModeCurrent = null;
+    const setNightModeSaving = () => { if (nightModeStatus) nightModeStatus.textContent = 'Saving…'; };
+    const setNightModeError = () => { if (nightModeStatus) nightModeStatus.textContent = 'Save failed'; };
+    const setNightModeDimDisabled = (disabled) => {
+      if (nightModeDimSlider) nightModeDimSlider.disabled = disabled;
+      if (nightModeDimInput) nightModeDimInput.disabled = disabled;
+      if (nightModeDimValue) nightModeDimValue.classList.toggle('muted', disabled);
+    };
+    const formatNightModeStatus = (cfg) => {
+      if (!cfg) return '—';
+      const parts = [];
+      parts.push(cfg.active ? 'Active' : 'Inactive');
+      if (cfg.override === 'force_on') parts.push('manual on');
+      else if (cfg.override === 'force_off') parts.push('manual off');
+      else if (cfg.schedule_active) parts.push('on schedule');
+      else parts.push('waiting');
+      if (!cfg.time_synced) parts.push('time unknown');
+      return parts.join(' · ');
+    };
+    const applyNightModeConfig = (cfg) => {
+      if (!cfg) return;
+      nightModeCurrent = cfg;
+      if (nightModeEnabled) nightModeEnabled.checked = !!cfg.enabled;
+      if (nightModeEffect) nightModeEffect.value = cfg.effect || 'dim';
+      const dim = (typeof cfg.dim_percent === 'number') ? cfg.dim_percent : 0;
+      if (nightModeDimSlider) nightModeDimSlider.value = dim;
+      if (nightModeDimInput) nightModeDimInput.value = dim;
+      if (nightModeDimValue) nightModeDimValue.textContent = dim;
+      setNightModeDimDisabled((cfg.effect || 'dim') === 'off');
+      if (nightModeStart && cfg.start) nightModeStart.value = cfg.start;
+      if (nightModeEnd && cfg.end) nightModeEnd.value = cfg.end;
+      if (nightModeStatus) nightModeStatus.textContent = formatNightModeStatus(cfg);
+    };
+    const updateNightMode = async (payload) => {
+      try {
+        const res = await fetch('/setNightModeConfig', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const cfg = await res.json();
+        applyNightModeConfig(cfg);
+      } catch (err) {
+        setNightModeError();
+        setTimeout(() => loadNightMode(), 1500);
+      }
+    };
+    const loadNightMode = async () => {
+      if (!nightModeEnabled) return;
+      try {
+        const res = await fetch('/getNightModeConfig');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        applyNightModeConfig(await res.json());
+      } catch (err) { setNightModeError(); }
+    };
+    if (nightModeEnabled) dataLoader.register('nightMode', loadNightMode, { priority: 5 });
+    if (nightModeEnabled) nightModeEnabled.addEventListener('change', () => { setNightModeSaving(); updateNightMode({ enabled: nightModeEnabled.checked }); });
+    if (nightModeEffect) nightModeEffect.addEventListener('change', () => {
+      const eff = nightModeEffect.value;
+      setNightModeDimDisabled(eff === 'off');
+      setNightModeSaving();
+      updateNightMode({ effect: eff });
+    });
+    if (nightModeDimSlider) {
+      nightModeDimSlider.addEventListener('input', () => {
+        const v = parseInt(nightModeDimSlider.value || '0', 10);
+        if (nightModeDimValue) nightModeDimValue.textContent = v;
+        if (nightModeDimInput) nightModeDimInput.value = v;
+      });
+      nightModeDimSlider.addEventListener('change', () => {
+        const v = parseInt(nightModeDimSlider.value || '0', 10);
+        setNightModeSaving();
+        updateNightMode({ dim_percent: v });
+      });
+    }
+    if (nightModeDimInput) nightModeDimInput.addEventListener('change', () => {
+      let v = parseInt(nightModeDimInput.value || '0', 10); if (isNaN(v)) v = 0;
+      v = Math.max(0, Math.min(100, v));
+      nightModeDimInput.value = v;
+      if (nightModeDimSlider) nightModeDimSlider.value = v;
+      if (nightModeDimValue) nightModeDimValue.textContent = v;
+      setNightModeSaving();
+      updateNightMode({ dim_percent: v });
+    });
+    if (nightModeStart) nightModeStart.addEventListener('change', () => {
+      if (!nightModeStart.value) {
+        if (nightModeCurrent && nightModeCurrent.start) nightModeStart.value = nightModeCurrent.start;
+        return;
+      }
+      setNightModeSaving();
+      updateNightMode({ start: nightModeStart.value });
+    });
+    if (nightModeEnd) nightModeEnd.addEventListener('change', () => {
+      if (!nightModeEnd.value) {
+        if (nightModeCurrent && nightModeCurrent.end) nightModeEnd.value = nightModeCurrent.end;
+        return;
+      }
+      setNightModeSaving();
+      updateNightMode({ end: nightModeEnd.value });
+    });
+
+    document.getElementById('restartBtn').onclick = () => { if (confirm('Restart Wordclock?')) fetch('/restart'); };
+    document.getElementById('resetWifiBtn').onclick = () => { if (confirm('Reset Wi-Fi?')) fetch('/resetwifi'); };
+    document.getElementById('startSequenceBtn').onclick = () => fetch('/startSequence');
+
+    // OTA check
+    const checkBtn = document.getElementById('checkUpdateBtn');
+    const updateStatusEl = document.getElementById('updateStatus');
+    const updateSpinner = document.getElementById('updateSpinner');
+    if (checkBtn) {
+      const fetchWithTimeout = async (url, options = {}, timeoutMs = 5000) => {
+        const c = new AbortController();
+        const id = setTimeout(() => c.abort(), timeoutMs);
+        try { return await fetch(url, { ...options, signal: c.signal, cache: 'no-store' }); }
+        finally { clearTimeout(id); }
+      };
+      const getDeviceInfo = async () => { const r = await fetchWithTimeout('/api/device/info'); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
+      const getVersion = async () => { const r = await fetchWithTimeout('/version'); if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); };
+      const waitForUpdateCompletion = async (preUptime, preVersion) => {
+        const start = Date.now(); const maxMs = 180000; let sawOffline = false;
+        while (Date.now() - start < maxMs) {
+          await new Promise(r => setTimeout(r, 3000));
+          try {
+            const res = await fetchWithTimeout('/api/update/status');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const body = await res.json();
+            if (body.running) continue;
+            let uptime = null, version = null;
+            try { const info = await getDeviceInfo(); uptime = info.uptime_ms; } catch (e) {}
+            try { version = await getVersion(); } catch (e) {}
+            if (preUptime !== null && uptime !== null && uptime < preUptime) return 'reboot';
+            if (preVersion && version && version.trim() !== preVersion.trim()) return 'version';
+            if (sawOffline) return 'reboot';
+            return 'no-update';
+          } catch (e) { sawOffline = true; }
+        }
+        return 'timeout';
+      };
+      checkBtn.addEventListener('click', async () => {
+        updateStatusEl.textContent = 'Checking for updates…';
+        if (updateSpinner) updateSpinner.classList.remove('hidden');
+        checkBtn.disabled = true; checkBtn.classList.add('disabled');
+        try {
+          let preUptime = null, preVersion = null;
+          try { const info = await getDeviceInfo(); preUptime = info.uptime_ms; } catch (e) {}
+          try { preVersion = await getVersion(); } catch (e) {}
+          const r = await fetch('/checkForUpdate');
+          if (r.ok) {
+            updateStatusEl.textContent = 'Update started (if available).';
+            const result = await waitForUpdateCompletion(preUptime, preVersion);
+            if (result === 'reboot' || result === 'version') { location.reload(); return; }
+            updateStatusEl.textContent = (result === 'no-update') ? 'No update applied.' : 'Update may still be running.';
+            if (updateSpinner) updateSpinner.classList.add('hidden');
+          } else {
+            updateStatusEl.textContent = 'Update check failed';
+            if (updateSpinner) updateSpinner.classList.add('hidden');
+          }
+        } catch (e) {
+          updateStatusEl.textContent = 'Network error during update check';
+          if (updateSpinner) updateSpinner.classList.add('hidden');
+        } finally {
+          checkBtn.disabled = false; checkBtn.classList.remove('disabled');
+        }
+      });
+    }
+
+    if (autoUpdCb) {
+      autoUpdCb.addEventListener('change', async () => {
+        const desired = autoUpdCb.checked;
+        try {
+          const res = await fetch(`/setAutoUpdate?state=${desired ? 'on' : 'off'}`);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+        } catch (e) {
+          autoUpdCb.checked = !desired;
+          if (updateStatusEl) updateStatusEl.textContent = 'Saving automatic updates failed';
+        }
+      });
+    }
+
+    // Manual firmware upload
+    const manualUploadForm = document.getElementById('firmwareUploadForm');
+    const manualUploadStatusEl = document.getElementById('firmwareUploadStatus');
+    if (manualUploadForm) {
+      const submitBtn = manualUploadForm.querySelector('button[type="submit"]');
+      const fileInput = manualUploadForm.querySelector('input[name="firmwareFile"]');
+      const setManualStatus = (msg) => { if (manualUploadStatusEl) manualUploadStatusEl.textContent = msg || ''; };
+      const setButtonDisabled = (disabled) => {
+        if (!submitBtn) return;
+        submitBtn.disabled = disabled;
+        submitBtn.classList.toggle('disabled', disabled);
+      };
+      manualUploadForm.addEventListener('submit', (evt) => {
+        evt.preventDefault();
+        if (!fileInput || fileInput.files.length === 0) { setManualStatus('Select a firmware file (.bin) first.'); return; }
+        const formData = new FormData();
+        formData.append('firmwareFile', fileInput.files[0]);
+        setButtonDisabled(true);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', manualUploadForm.action || '/uploadFirmware');
+        xhr.responseType = 'text';
+        xhr.upload.addEventListener('loadstart', () => setManualStatus('Upload started…'));
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable && event.total > 0) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setManualStatus(`Uploading… ${percent}%`);
+          } else setManualStatus('Uploading…');
+        });
+        xhr.upload.addEventListener('load', () => setManualStatus('File sent. Verifying firmware…'));
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            setManualStatus('Upload complete. Clock will restart shortly. Page reloads in 15s.');
+            setTimeout(() => location.reload(), 15000);
+          } else {
+            setManualStatus(`Upload failed (${xhr.status} ${xhr.statusText || ''}).`);
+            setButtonDisabled(false);
+          }
+        });
+        xhr.addEventListener('error', () => { setManualStatus('Network error during upload.'); setButtonDisabled(false); });
+        xhr.addEventListener('abort', () => { setManualStatus('Upload aborted.'); setButtonDisabled(false); });
+        xhr.send(formData);
+      });
+    }
+
+    dataLoader.register('brightness', async () => {
+      const res = await fetch('/getBrightness');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    }, {
+      priority: 5,
+      onSuccess: (val) => {
+        if (brightnessSlider) brightnessSlider.value = val;
+        if (brightnessInput) brightnessInput.value = val;
+        const lbl = document.getElementById('brightnessValue2');
+        if (lbl) lbl.textContent = val;
+      },
+      onError: (err) => setErrorState('brightnessValue2', err, '—')
+    });
+
+    dataLoader.register('versions', async () => {
+      const [fwRes, uiRes] = await Promise.all([
+        fetch('/version', { cache: 'no-store' }),
+        fetch('/uiversion', { cache: 'no-store' })
+      ]);
+      if (!fwRes.ok || !uiRes.ok) throw new Error('Version fetch failed');
+      return { firmware: await fwRes.text(), ui: await uiRes.text() };
+    }, {
+      priority: 1, interval: 30000,
+      onSuccess: ({ firmware, ui }) => {
+        const fwEl = document.getElementById('version'); if (fwEl) fwEl.textContent = firmware;
+        const uiEl = document.getElementById('uiVersion'); if (uiEl) uiEl.textContent = ui;
+      },
+      onError: () => {
+        const fwEl = document.getElementById('version'); if (fwEl) fwEl.textContent = '—';
+        const uiEl = document.getElementById('uiVersion'); if (uiEl) uiEl.textContent = '—';
+      }
+    });
+
+    dataLoader.register('gridVariant', async () => {
+      const res = await fetch('/getGridVariant');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }, {
+      priority: 5,
+      onSuccess: (v) => {
+        const el = document.getElementById('gridVariantLabel');
+        if (el) el.textContent = v.label || v.key || ('ID ' + v.id);
+      },
+      onError: () => {
+        const el = document.getElementById('gridVariantLabel'); if (el) el.textContent = 'n/a';
+      }
+    });
+
+    dataLoader.register('color', async () => {
+      const res = await fetch('/getColor');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    }, {
+      priority: 5,
+      onSuccess: (hex) => {
+        const cp = document.getElementById('colorPicker');
+        if (cp && hex && hex.length === 6) cp.value = '#' + hex;
+      }
+    });
+
+    if (autoUpdCb) {
+      dataLoader.register('autoUpdate', async () => {
+        const res = await fetch('/getAutoUpdate');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, {
+        priority: 5,
+        onSuccess: (v) => { if (!autoUpdCb.disabled) autoUpdCb.checked = (v.trim() === 'on'); },
+        onError: () => { if (!autoUpdCb.disabled) autoUpdCb.checked = true; }
+      });
+    }
+
+    const animateCb = document.getElementById('animateWords');
+    if (animateCb) {
+      dataLoader.register('animate', async () => {
+        const res = await fetch('/getAnimate');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, {
+        priority: 5,
+        onSuccess: (v) => { animateCb.checked = (v.trim() === 'on'); },
+        onError: () => { animateCb.checked = false; }
+      });
+    }
+
+    // HET IS duration
+    const durSlider2 = document.getElementById('hetIsDuration2');
+    const durValue2 = document.getElementById('hetIsDurationValue2');
+    const alwaysCb2 = document.getElementById('hetIsAlways2');
+    const durInput = document.getElementById('hetIsDurationInput');
+    if (durSlider2) {
+      dataLoader.register('hetIsDuration', async () => {
+        const res = await fetch('/getHetIsDuration');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, {
+        priority: 5,
+        onSuccess: (secStr) => {
+          const sec = parseInt(secStr, 10) || 30;
+          durSlider2.value = sec;
+          if (durValue2) durValue2.textContent = sec;
+          if (durInput) durInput.value = sec;
+          if (alwaysCb2) alwaysCb2.checked = sec >= 360;
+          durSlider2.disabled = alwaysCb2 ? alwaysCb2.checked : false;
+          if (durInput) durInput.disabled = alwaysCb2 ? alwaysCb2.checked : false;
+        }
+      });
+    }
+
+    // Log level + summary + tail
+    const logLevelSel = document.getElementById('logLevel');
+    const logLevelStatus = document.getElementById('logLevelStatus');
+    if (logLevelSel) {
+      dataLoader.register('logLevel', async () => {
+        const res = await fetch('/getLogLevel');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, {
+        priority: 1,
+        onSuccess: (lvl) => {
+          if (logLevelSel) logLevelSel.value = lvl || 'INFO';
+          if (logLevelStatus) logLevelStatus.textContent = `Current log level: ${lvl || 'INFO'}`;
+        }
+      });
+    }
+
+    const logSummaryEl = document.getElementById('logSummary');
+    const logSummaryStatus = document.getElementById('logSummaryStatus');
+    const formatBytes = (n) => {
+      if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+      if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
+      return n + ' B';
+    };
+    const setLogSummaryColor = (bytes) => {
+      if (!logSummaryEl) return;
+      logSummaryEl.classList.remove('text-ok', 'text-warn', 'text-err');
+      if (bytes < 200 * 1024) logSummaryEl.classList.add('text-ok');
+      else if (bytes < 500 * 1024) logSummaryEl.classList.add('text-warn');
+      else logSummaryEl.classList.add('text-err');
+    };
+    if (logSummaryEl) {
+      dataLoader.register('logSummary', async () => {
+        const res = await fetch('/api/logs/summary');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      }, {
+        priority: 1,
+        onSuccess: (j) => {
+          const total = j.total_bytes || 0;
+          logSummaryEl.textContent = `${formatBytes(total)} (${j.count || 0} files)`;
+          setLogSummaryColor(total);
+          if (logSummaryStatus) logSummaryStatus.textContent = '';
+        },
+        onError: () => {
+          logSummaryEl.textContent = '—';
+          if (logSummaryStatus) logSummaryStatus.textContent = 'Failed to load log summary';
+        }
+      });
+    }
+
+    let lastLogMarker = null;
+    const loadLog = async () => {
+      try {
+        const res = await fetch('/log');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        const rawLines = text.split(/\r?\n/).filter(l => l.length > 0);
+        const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const renderLine = (line) => {
+          const m = line.match(/\[(DEBUG|INFO|WARN|ERROR)\]/);
+          const level = m ? m[1] : 'INFO';
+          return `<span class="log-line lvl-${level}">${esc(line)}</span>`;
+        };
+        const el = document.getElementById('logOutput');
+        if (el) {
+          const atBottom = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 4);
+          let appended = false;
+          if (lastLogMarker) {
+            const idx = rawLines.lastIndexOf(lastLogMarker);
+            if (idx >= 0 && idx < rawLines.length - 1) {
+              const additions = rawLines.slice(idx + 1);
+              const addHtml = additions.map(renderLine).join('\n');
+              if (el.innerHTML && addHtml) el.innerHTML += '\n' + addHtml;
+              else el.innerHTML = addHtml;
+              appended = true;
+            }
+          }
+          if (!appended) el.innerHTML = rawLines.map(renderLine).join('\n');
+          if (rawLines.length > 0) lastLogMarker = rawLines[rawLines.length - 1];
+          if (atBottom) el.scrollTop = el.scrollHeight;
+        }
+      } catch (error) {}
+    };
+    dataLoader.register('logs', loadLog, { priority: 2, interval: 30000 });
+
+    async function initializeDashboard() {
+      try {
+        if (dataLoader.loaders.size === 0) return;
+        try {
+          const buildRes = await fetch('/buildinfo');
+          if (buildRes.ok) {
+            const buildInfo = await buildRes.json();
+            const env = (buildInfo.environment || '').toLowerCase();
+            isLogoProduct = env.indexOf('wordclock-logo') !== -1;
+            isMiniProduct = env.indexOf('wordclock-mini') !== -1;
+            setLogoSectionsVisible(isLogoProduct);
+            setHetIsSectionVisible(!isMiniProduct);
+            const updateSection = document.getElementById('firmwareUpdateSection');
+            if (buildInfo.ota_enabled === false && updateSection) updateSection.classList.add('hidden');
+            if (isLogoProduct) initLogoControls();
+            if (isMiniProduct) dataLoader.loaders.delete('hetIsDuration');
+          }
+        } catch (err) {}
+        dataLoader.loadAll().catch(() => {});
+        const statusLoader = dataLoader.loaders.get('status');
+        const logsLoader = dataLoader.loaders.get('logs');
+        const versionsLoader = dataLoader.loaders.get('versions');
+        const ledEventLoader = dataLoader.loaders.get('ledEvent');
+        if (statusLoader && statusLoader.interval) dataLoader.startInterval('status');
+        if (ledEventLoader && ledEventLoader.interval) dataLoader.startInterval('ledEvent');
+        if (logsLoader && logsLoader.interval) dataLoader.startInterval('logs');
+        if (versionsLoader && versionsLoader.interval) dataLoader.startInterval('versions');
+      } catch (error) {}
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeDashboard);
+    else initializeDashboard();
+
+    // HET IS controls
+    const hetIsDec = document.getElementById('hetIsDec');
+    const hetIsInc = document.getElementById('hetIsInc');
+    if (animateCb) animateCb.addEventListener('change', () => fetch('/setAnimate?state=' + (animateCb.checked ? 'on' : 'off')));
+    if (durSlider2) {
+      durSlider2.addEventListener('input', () => {
+        const sec = parseInt(durSlider2.value, 10);
+        if (durValue2) durValue2.textContent = sec;
+        if (durInput) durInput.value = sec;
+      });
+      durSlider2.addEventListener('change', () => {
+        const sec = parseInt(durSlider2.value, 10);
+        fetch(`/setHetIsDuration?seconds=${sec}`);
+        if (alwaysCb2) alwaysCb2.checked = sec >= 360;
+        durSlider2.disabled = alwaysCb2 ? alwaysCb2.checked : false;
+        if (durInput) durInput.disabled = alwaysCb2 ? alwaysCb2.checked : false;
+      });
+    }
+    if (alwaysCb2) {
+      alwaysCb2.addEventListener('change', () => {
+        if (alwaysCb2.checked) {
+          if (durSlider2) { durSlider2.disabled = true; durSlider2.value = 360; }
+          if (durValue2) durValue2.textContent = 360;
+          if (durInput) { durInput.disabled = true; durInput.value = 360; }
+          fetch('/setHetIsDuration?seconds=360');
+        } else {
+          if (durSlider2) { durSlider2.disabled = false; durSlider2.value = 30; }
+          if (durInput) { durInput.disabled = false; durInput.value = 30; }
+          if (durValue2) durValue2.textContent = 30;
+          fetch('/setHetIsDuration?seconds=30');
+        }
+      });
+    }
+    function setHetIsSeconds(sec) {
+      sec = Math.max(0, Math.min(360, sec));
+      if (durSlider2) durSlider2.value = sec;
+      if (durInput) durInput.value = sec;
+      if (durValue2) durValue2.textContent = sec;
+      fetch(`/setHetIsDuration?seconds=${sec}`);
+      if (alwaysCb2) alwaysCb2.checked = sec >= 360;
+      if (durSlider2) durSlider2.disabled = alwaysCb2 ? alwaysCb2.checked : false;
+      if (durInput) durInput.disabled = alwaysCb2 ? alwaysCb2.checked : false;
+    }
+    if (hetIsDec) hetIsDec.addEventListener('click', () => {
+      if (alwaysCb2 && alwaysCb2.checked) { alwaysCb2.checked = false; if (durSlider2) durSlider2.disabled = false; if (durInput) durInput.disabled = false; }
+      let sec = parseInt(durSlider2 ? durSlider2.value || '0' : '0', 10) - 5;
+      setHetIsSeconds(sec);
+    });
+    if (hetIsInc) hetIsInc.addEventListener('click', () => {
+      if (alwaysCb2 && alwaysCb2.checked) { alwaysCb2.checked = false; if (durSlider2) durSlider2.disabled = false; if (durInput) durInput.disabled = false; }
+      let sec = parseInt(durSlider2 ? durSlider2.value || '0' : '0', 10) + 5;
+      setHetIsSeconds(sec);
+    });
+    if (durInput) durInput.addEventListener('change', () => {
+      let sec = parseInt(durInput.value, 10); if (isNaN(sec)) sec = 0;
+      sec = Math.max(0, Math.min(360, sec));
+      durInput.value = sec;
+      if (durSlider2) durSlider2.value = sec;
+      if (durValue2) durValue2.textContent = sec;
+      fetch(`/setHetIsDuration?seconds=${sec}`);
+      if (alwaysCb2) alwaysCb2.checked = sec >= 360;
+      if (durSlider2) durSlider2.disabled = alwaysCb2 ? alwaysCb2.checked : false;
+      durInput.disabled = alwaysCb2 ? alwaysCb2.checked : false;
+    });
+
+    function setLogLevelUI(lvl) {
+      if (logLevelSel) logLevelSel.value = lvl;
+      if (logLevelStatus) logLevelStatus.textContent = `Current log level: ${lvl}`;
+    }
+    if (logLevelSel) {
+      logLevelSel.addEventListener('change', () => {
+        const lvl = logLevelSel.value;
+        fetch('/setLogLevel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `level=${encodeURIComponent(lvl)}`
+        }).then(r => r.text())
+          .then(() => setLogLevelUI(lvl))
+          .catch(() => alert('Failed to change log level'));
+      });
+    }
+  </script>
+</body>
+</html>
