@@ -12,6 +12,9 @@ String getUiVersion() {
 
 void checkForFirmwareUpdate() {}
 
+bool installProductFirmware(const String&, const String&) { return false; }
+bool listAvailableChannels(const String&, std::vector<String>& out) { out.clear(); return false; }
+
 #if SUPPORT_OTA_V2 == 0
 void syncFilesFromManifest() {}
 void syncUiFilesFromConfiguredVersion() {}
@@ -281,10 +284,15 @@ static bool fetchJsonByUrl(JsonDocument& doc, WiFiClient& client, const String& 
   return true;
 }
 
-static bool fetchOta2Channel(JsonDocument& doc, WiFiClient& client, const String& channel) {
-  const String url = buildOta2ChannelUrl(PRODUCT_ID, channel);
-  const GridVariantInfo* info = getGridVariantInfo(displaySettings.getGridVariant());
-  logDebug(String("OTA product: ") + PRODUCT_ID + " (grid: " + (info ? info->key : "unknown") + ")");
+// Fetch the channel JSON for an arbitrary productId/channel. Used both by
+// the device's per-product OTA loop (productId == PRODUCT_ID) and by the
+// nextgen-bootstrap firmware (productId chosen by the operator at first
+// flash). Caller is responsible for any product-specific logging since
+// bootstrap has no grid/displaySettings to query.
+static bool fetchOta2Channel(JsonDocument& doc, WiFiClient& client,
+                             const String& productId, const String& channel) {
+  const String url = buildOta2ChannelUrl(productId, channel);
+  logDebug(String("OTA product: ") + productId);
   logDebug("OTA channel URL: " + url);
   return fetchJsonByUrl(doc, client, url, "channel info");
 }
@@ -744,6 +752,10 @@ static void checkForFirmwareUpdateLegacy() {
 
 #endif
 
+#ifndef WORDCLOCK_BOOTSTRAP
+// Per-device OTA loop: depends on displaySettings (channel selection) and
+// grid_layout (debug log only). Excluded from the bootstrap build because
+// bootstrap doesn't link those singletons.
 static void checkForFirmwareUpdateV2() {
   logInfo("🔍 Checking for new firmware...");
   ledEventPulse(LedEvent::FirmwareCheck);
@@ -752,8 +764,11 @@ static void checkForFirmwareUpdateV2() {
 
   String requestedChannel = normalizeChannel(displaySettings.getUpdateChannel());
 
+  const GridVariantInfo* info = getGridVariantInfo(displaySettings.getGridVariant());
+  logDebug(String("OTA grid: ") + (info ? info->key : "unknown"));
+
   JsonDocument channelDoc;
-  if (!fetchOta2Channel(channelDoc, *client, requestedChannel)) return;
+  if (!fetchOta2Channel(channelDoc, *client, PRODUCT_ID, requestedChannel)) return;
 
   JsonVariant target = channelDoc["target"];
   if (target.isNull()) {
@@ -855,6 +870,13 @@ static void checkForFirmwareUpdateV2() {
   safeRestart();
 }
 
+#endif  // !WORDCLOCK_BOOTSTRAP — close gate around checkForFirmwareUpdateV2
+
+#ifdef WORDCLOCK_BOOTSTRAP
+// Bootstrap firmware never auto-checks for updates; provisioning is driven
+// by installProductFirmware() called from the operator's product picker.
+void checkForFirmwareUpdate() {}
+#else
 void checkForFirmwareUpdate() {
 #if SUPPORT_OTA_V2
   checkForFirmwareUpdateV2();
@@ -862,4 +884,111 @@ void checkForFirmwareUpdate() {
   checkForFirmwareUpdateLegacy();
 #endif
 }
+#endif
+
+// ─────────────────────────────────────────────────────────────────────
+// Bootstrap-only OTA: install firmware + fs for an explicitly chosen
+// product/channel, ignoring any per-device state (no FIRMWARE_VERSION
+// comparison, no grid/displaySettings dependencies). Used by the
+// nextgen-bootstrap firmware on first-flash provisioning.
+// ─────────────────────────────────────────────────────────────────────
+
+#if SUPPORT_OTA_V2
+bool installProductFirmware(const String& productId, const String& channel) {
+  logInfo(String("🔧 Bootstrap provisioning ") + productId + " (" + channel + ")");
+
+  std::unique_ptr<WiFiClient> client(new WiFiClient());
+
+  JsonDocument channelDoc;
+  if (!fetchOta2Channel(channelDoc, *client, productId, channel)) {
+    logError("❌ Bootstrap: failed to fetch channel manifest");
+    return false;
+  }
+
+  JsonVariant target = channelDoc["target"];
+  if (target.isNull()) {
+    logError(String("❌ Bootstrap: channel '") + channel + "' has no target for " + productId);
+    return false;
+  }
+
+  const String manifestUrl = target["manifest_url"] | "";
+  const String fsManifestUrl = target["fs_manifest_url"] | "";
+  if (manifestUrl.isEmpty()) {
+    logError("❌ Bootstrap: manifest_url missing");
+    return false;
+  }
+
+  // Filesystem first. If firmware succeeds but fs fails, the new product
+  // firmware would boot without its UI — a worse failure mode than the
+  // reverse (bootstrap survives if fs OTA fails before firmware OTA starts).
+  if (!fsManifestUrl.isEmpty()) {
+    JsonDocument fsDoc;
+    if (!fetchOta2Artifact(fsDoc, *client, fsManifestUrl)) {
+      logError("❌ Bootstrap: failed to fetch fs manifest");
+      return false;
+    }
+    const String fsType = fsDoc["fs"] | "";
+    const int fsSize = fsDoc["filesize"] | 0;
+    const String fsUrl = fsDoc["url"] | "";
+    const String fsVersion = fsDoc["version"] | "";
+    if (fsType != "littlefs") {
+      logError(String("❌ Bootstrap: unsupported fs type: ") + fsType);
+      return false;
+    }
+    if (fsUrl.isEmpty()) {
+      logError("❌ Bootstrap: fs URL missing");
+      return false;
+    }
+    logInfo(String("⬇️ Bootstrap: downloading fs (") + fsVersion + ", " + String(fsSize) + " bytes)…");
+    if (!performFilesystemUpdate(fsUrl, fsSize, *client)) {
+      logError("❌ Bootstrap: fs update failed");
+      return false;
+    }
+    if (fsVersion.length()) writeFsImageVersion(fsVersion);
+    logInfo("✅ Bootstrap: fs updated");
+  }
+
+  // Firmware
+  JsonDocument artifactDoc;
+  if (!fetchOta2Artifact(artifactDoc, *client, manifestUrl)) {
+    logError("❌ Bootstrap: failed to fetch firmware manifest");
+    return false;
+  }
+  const String fwUrl = artifactDoc["url"] | "";
+  if (fwUrl.isEmpty()) {
+    logError("❌ Bootstrap: firmware URL missing");
+    return false;
+  }
+  logInfo(String("⬇️ Bootstrap: downloading firmware from ") + fwUrl);
+  if (!performHttpOta(fwUrl, *client)) {
+    logError("❌ Bootstrap: firmware update failed");
+    return false;
+  }
+
+  logInfo("✅ Bootstrap: firmware applied; rebooting into product…");
+  delay(500);
+  safeRestart();
+  return true;  // not reached
+}
+
+bool listAvailableChannels(const String& productId, std::vector<String>& out) {
+  out.clear();
+  std::unique_ptr<WiFiClient> client(new WiFiClient());
+  static const char* kCandidates[] = { "stable", "early", "develop" };
+  for (const char* ch : kCandidates) {
+    JsonDocument doc;
+    if (!fetchOta2Channel(doc, *client, productId, String(ch))) continue;
+    // Channel exists if the JSON has a non-null "target".
+    JsonVariant target = doc["target"];
+    if (!target.isNull()) {
+      out.push_back(String(ch));
+    }
+  }
+  return !out.empty();
+}
+#else
+bool installProductFirmware(const String&, const String&) { return false; }
+bool listAvailableChannels(const String&, std::vector<String>& out) { out.clear(); return false; }
+#endif
+
 #endif // OTA_ENABLED
