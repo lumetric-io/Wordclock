@@ -7,18 +7,15 @@
 const int GRID_WIDTH = 11;
 const int GRID_HEIGHT = 11;
 
+// Numeric values are NVS-stable. Devices in the field have grid_id stored under
+// these IDs; reusing or shifting them would silently misinterpret the stored value.
+// Add new variants with new unused IDs.
 enum class GridVariant : uint8_t {
-  NL_V1 = 0,
-  NL_V2,
-  NL_V3,
-  NL_V4,
-  NL_50x50_V1,
-  NL_50x50_V2,
-  NL_50x50_V3,
-  NL_55x50_LOGO_V1,
-  NL_20x20_V1,
-  NL_20x20_V0,
-  NL_100x100_LOGO_V1,
+  NL_V4 = 3,
+  NL_50x50_V3 = 6,
+  NL_55x50_LOGO_V1 = 7,
+  NL_20x20_V1 = 8,
+  NL_100x100_LOGO_V1 = 10,
 };
 
 struct GridVariantInfo {

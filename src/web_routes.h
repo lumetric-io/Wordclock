@@ -1030,10 +1030,8 @@ void setupWebRoutes() {
     doc["product"] = "logo";
 #elif defined(PRODUCT_VARIANT_NEXTGEN)
     doc["product"] = "nextgen";
-#elif defined(PRODUCT_VARIANT_LEGACY)
-    doc["product"] = "legacy";
 #else
-    doc["product"] = "legacy";
+    doc["product"] = PRODUCT_ID;
 #endif
 #if defined(ARDUINO_ARCH_ESP32)
     doc["hardware_id"] = get_hardware_id();

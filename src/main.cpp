@@ -78,9 +78,7 @@ void setup() {
 
   // Load persisted display settings (e.g. auto-update preference) before running dependent flows
   displaySettings.begin();
-  const bool hasLegacyConfig = SETUP_ASSUME_DONE_IF_LEGACY_CONFIG &&
-                               displaySettings.hasPersistedGridVariant();
-  setupState.begin(hasLegacyConfig);
+  setupState.begin(false);
   nightMode.begin();
 
   // Mount filesystem (LittleFS)

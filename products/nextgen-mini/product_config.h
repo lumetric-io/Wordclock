@@ -1,0 +1,16 @@
+#pragma once
+
+#define PRODUCT_ID "nextgen-mini"
+#define FIRMWARE_VERSION "nextgen-mini-0.1.0-dev.0"
+#define UI_VERSION "ui-nextgen-mini-0.1.0-dev.0"
+#define PRODUCT_VARIANT_MINI 1
+#define DATA_PIN 4
+#define SUPPORT_MINUTE_LEDS 0
+#define SUPPORT_OTA_V2 1
+#define BLE_PROVISIONING_ENABLED 0
+#define WIFI_MANAGER_ENABLED 1
+#define OTA_ENABLED 1
+#define LED_STATUS_EVENTS_ENABLED 1
+#define LED_STATUS_EVENT_USE_MINUTE_LEDS 0
+#define LED_STATUS_EVENT_LED_COUNT 4
+#define LED_STATUS_EVENT_LED_IDS 0,8,96,104

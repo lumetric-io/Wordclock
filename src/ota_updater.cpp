@@ -244,33 +244,6 @@ static String buildOta2ChannelUrl(const String& productId, const String& channel
   return url;
 }
 
-// Map grid variant to grid-specific product ID for OTA updates
-// This allows multi-grid firmware to migrate to grid-specific OTA
-static String getEffectiveOtaProductId() {
-  const GridVariantInfo* info = getGridVariantInfo(displaySettings.getGridVariant());
-  const char* gridKey = info ? info->key : "unknown";
-
-#if defined(PRODUCT_VARIANT_LEGACY)
-  // Legacy multi-grid product mapping (keys are uppercase)
-  if (strcmp(gridKey, "NL_V1") == 0) return "wordclock-legacy-nl-v1";
-  if (strcmp(gridKey, "NL_V2") == 0) return "wordclock-legacy-nl-v2";
-  if (strcmp(gridKey, "NL_V3") == 0) return "wordclock-legacy-nl-v3";
-  if (strcmp(gridKey, "NL_V4") == 0) return "wordclock-legacy-nl-v4";
-  if (strcmp(gridKey, "NL_50x50_V1") == 0) return "wordclock-legacy-nl-50x50-v1";
-  if (strcmp(gridKey, "NL_50x50_V2") == 0) return "wordclock-legacy-nl-50x50-v2";
-  if (strcmp(gridKey, "NL_50x50_V3") == 0) return "wordclock-legacy-nl-50x50-v3";
-  logWarn(String("Unknown grid variant for OTA mapping: ") + gridKey);
-#elif defined(PRODUCT_VARIANT_LOGO)
-  // Logo multi-grid product mapping (keys are uppercase)
-  if (strcmp(gridKey, "NL_55x50_LOGO_V1") == 0) return "wordclock-logo-nl-55x50-v1";
-  if (strcmp(gridKey, "NL_100x100_LOGO_V1") == 0) return "wordclock-logo-nl-100x100-v1";
-  logWarn(String("Unknown grid variant for OTA mapping: ") + gridKey);
-#endif
-
-  // For single-grid products or fallback, use compile-time product ID
-  return PRODUCT_ID;
-}
-
 static bool fetchJsonByUrl(JsonDocument& doc, WiFiClient& client, const String& url, const char* label) {
   HTTPClient http;
   http.setTimeout(15000);
@@ -310,10 +283,9 @@ static bool fetchJsonByUrl(JsonDocument& doc, WiFiClient& client, const String& 
 }
 
 static bool fetchOta2Channel(JsonDocument& doc, WiFiClient& client, const String& channel) {
-  const String effectiveProductId = getEffectiveOtaProductId();
-  const String url = buildOta2ChannelUrl(effectiveProductId, channel);
+  const String url = buildOta2ChannelUrl(PRODUCT_ID, channel);
   const GridVariantInfo* info = getGridVariantInfo(displaySettings.getGridVariant());
-  logDebug("OTA product: " + effectiveProductId + " (grid: " + String(info ? info->key : "unknown") + ")");
+  logDebug(String("OTA product: ") + PRODUCT_ID + " (grid: " + (info ? info->key : "unknown") + ")");
   logDebug("OTA channel URL: " + url);
   return fetchJsonByUrl(doc, client, url, "channel info");
 }
