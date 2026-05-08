@@ -40,7 +40,7 @@ DIST_DIR="$PROJECT_ROOT/dist"
 MODE="full"
 SUDO_MODE="${SUDO_MODE:-auto}" # auto|always|never
 
-VALID_PRODUCTS=("nextgen-30x30" "nextgen-50x50" "nextgen-logo-55x50" "nextgen-logo-100x100" "nextgen-mini")
+VALID_PRODUCTS=("nextgen-30x30" "nextgen-50x50" "nextgen-logo-55x50" "nextgen-logo-100x100" "nextgen-mini" "nextgen-bootstrap")
 
 # When set, release builds all listed products in one go (same version base, one tag/release, multiple binaries)
 BUILD_ALL_PRODUCTS=()
@@ -441,13 +441,15 @@ prompt_product_channel() {
         echo "  3) nextgen-logo-55x50"
         echo "  4) nextgen-logo-100x100"
         echo "  5) nextgen-mini"
-        read -p "Product number (1-5): " -r
+        echo "  6) nextgen-bootstrap   (first-flash provisioning)"
+        read -p "Product number (1-6): " -r
         case $REPLY in
             1) PRODUCT="nextgen-30x30" ;;
             2) PRODUCT="nextgen-50x50" ;;
             3) PRODUCT="nextgen-logo-55x50" ;;
             4) PRODUCT="nextgen-logo-100x100" ;;
             5) PRODUCT="nextgen-mini" ;;
+            6) PRODUCT="nextgen-bootstrap" ;;
             *) print_error "Invalid product"; exit 1 ;;
         esac
     fi

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wordclock — First-flash provisioning</title>
+  <style>
+    /* Inline brand CSS — bootstrap fs.bin gets replaced after provisioning,
+       so there's no point sharing /chronolett.css. Kept tight on purpose. */
+    :root {
+      --ink: #0E0E0E;
+      --bone: #F5F2ED;
+      --paper: #FFFFFF;
+      --copper: #B87333;
+      --rust: #8B4513;
+      --graphite: #2F2F2F;
+      --graphite-60: rgba(47,47,47,0.60);
+      --graphite-40: rgba(47,47,47,0.40);
+      --line: rgba(14,14,14,0.10);
+      --line-strong: rgba(14,14,14,0.40);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-weight: 300;
+      letter-spacing: -0.01em;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--paper);
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { padding: clamp(20px, 5vw, 56px); max-width: 760px; margin: 0 auto; }
+    .topbar {
+      border-bottom: 1px solid var(--line);
+      padding: 14px 0;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--graphite-60);
+      display: flex;
+      justify-content: space-between;
+    }
+    .topbar .copper { color: var(--copper); }
+    .hero { padding: clamp(48px, 10vw, 96px) 0 clamp(32px, 6vw, 56px); border-bottom: 1px solid var(--line); }
+    .kicker {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--copper); margin: 0 0 20px;
+    }
+    h1 {
+      font-size: clamp(40px, 8vw, 88px);
+      font-weight: 200;
+      letter-spacing: -0.035em;
+      line-height: 0.95;
+      margin: 0 0 16px;
+    }
+    h1 .copper { color: var(--copper); }
+    .lede {
+      font-size: clamp(16px, 2vw, 19px);
+      font-weight: 300;
+      line-height: 1.55;
+      color: var(--graphite);
+      max-width: 52ch;
+      margin: 0;
+    }
+    .step { padding: clamp(40px, 7vw, 72px) 0; border-bottom: 1px solid var(--line); }
+    .step:last-of-type { border-bottom: none; }
+    .step-head {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: clamp(16px, 4vw, 40px);
+      align-items: baseline;
+      margin-bottom: clamp(20px, 3vw, 32px);
+    }
+    @media (max-width: 640px) {
+      .step-head { grid-template-columns: 1fr; gap: 8px; }
+    }
+    .step-num {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--graphite-60);
+    }
+    .step-title {
+      font-size: clamp(22px, 3.4vw, 32px);
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin: 0;
+    }
+
+    /* Product cards */
+    .cards { display: grid; gap: 12px; }
+    .card {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      padding: 20px 22px;
+      border: 1px solid var(--line-strong);
+      background: var(--paper);
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      text-align: left;
+      width: 100%;
+      font-family: inherit;
+      color: inherit;
+      letter-spacing: inherit;
+    }
+    .card:hover, .card.selected {
+      background: var(--bone);
+      border-color: var(--copper);
+    }
+    .card .label { font-size: 17px; font-weight: 400; letter-spacing: -0.015em; }
+    .card .desc {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--graphite-60);
+    }
+
+    /* Channel picker */
+    .channel-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      cursor: pointer;
+    }
+    .channel-row:hover { border-color: var(--copper); }
+    .channel-row input { accent-color: var(--copper); width: 16px; height: 16px; margin: 0; }
+    .channel-row .name { font-weight: 400; font-size: 15px; }
+    .channel-row .hint {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--graphite-60);
+      margin-left: auto;
+    }
+    .channel-row .danger { color: var(--rust); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: var(--paper);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px; font-weight: 500;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 0;
+      transition: background .15s, border-color .15s;
+    }
+    .btn:hover { background: var(--graphite); border-color: var(--graphite); }
+    .btn.ghost { background: var(--paper); color: var(--ink); }
+    .btn.ghost:hover { background: var(--ink); color: var(--paper); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .help { font-size: 12px; line-height: 1.5; color: var(--graphite-60); margin: 6px 0 0; }
+    .err { color: var(--rust); }
+
+    .progress-overlay {
+      position: fixed; inset: 0;
+      background: rgba(255,255,255,0.95);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .progress-overlay.show { display: flex; }
+    .progress-card {
+      max-width: 460px;
+      padding: 40px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      text-align: center;
+    }
+    .progress-card .kicker { color: var(--copper); margin-bottom: 16px; }
+    .progress-card h2 {
+      font-size: 24px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px;
+    }
+    .progress-card p {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      color: var(--graphite);
+      margin: 12px 0 0;
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid var(--line);
+      border-top-color: var(--copper);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="page" style="padding: 0; display: flex; justify-content: space-between; width: 100%;">
+      <span>Chronolett<span class="copper">.</span></span>
+      <span>Bootstrap</span>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <p class="kicker">First flash</p>
+      <h1>Pick product<span class="copper">.</span></h1>
+      <p class="lede">This device runs the bootstrap firmware. Choose the product it should become; the matching firmware and UI image will be downloaded and installed automatically.</p>
+    </section>
+
+    <!-- Step 1 — product -->
+    <section class="step">
+      <header class="step-head">
+        <span class="step-num">01</span>
+        <h2 class="step-title">Product</h2>
+      </header>
+      <div id="productCards" class="cards"></div>
+      <p id="productError" class="help err"></p>
+    </section>
+
+    <!-- Step 2 — channel (hidden until product chosen) -->
+    <section class="step hidden" id="channelStep">
+      <header class="step-head">
+        <span class="step-num">02</span>
+        <h2 class="step-title">Channel</h2>
+      </header>
+      <p class="help" id="channelHint">Probing channels…</p>
+      <div id="channelOptions" class="cards" style="margin-top: 12px;"></div>
+      <p id="channelError" class="help err"></p>
+      <div class="btn-row" style="margin-top: 24px;">
+        <button id="installBtn" class="btn" disabled>Install</button>
+        <button id="backBtn" class="btn ghost">Back</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Progress overlay -->
+  <div id="progressOverlay" class="progress-overlay">
+    <div class="progress-card">
+      <div class="spinner"></div>
+      <p class="kicker" id="progressKicker">Provisioning</p>
+      <h2 id="progressTitle">Installing…</h2>
+      <p id="progressDetail">Starting…</p>
+      <p id="progressNote" class="help" style="margin-top: 18px;">
+        Do not power off the device. The clock will reboot automatically when finished.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const els = {
+      productCards: document.getElementById('productCards'),
+      productError: document.getElementById('productError'),
+      channelStep: document.getElementById('channelStep'),
+      channelHint: document.getElementById('channelHint'),
+      channelOptions: document.getElementById('channelOptions'),
+      channelError: document.getElementById('channelError'),
+      installBtn: document.getElementById('installBtn'),
+      backBtn: document.getElementById('backBtn'),
+      progressOverlay: document.getElementById('progressOverlay'),
+      progressKicker: document.getElementById('progressKicker'),
+      progressTitle: document.getElementById('progressTitle'),
+      progressDetail: document.getElementById('progressDetail'),
+    };
+
+    const state = {
+      product: null,        // selected product id
+      channel: null,        // selected channel
+      channels: [],         // channels available for the selected product
+    };
+
+    // Step 1: load and render products
+    async function loadProducts() {
+      try {
+        const res = await fetch('/api/products');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const products = await res.json();
+        renderProducts(products);
+      } catch (err) {
+        els.productError.textContent = 'Failed to load product list: ' + err.message;
+      }
+    }
+
+    function renderProducts(products) {
+      els.productCards.innerHTML = '';
+      products.forEach(p => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'card';
+        btn.dataset.id = p.id;
+        btn.innerHTML =
+          '<span><span class="label">' + p.label + '</span><br>' +
+          '<span class="desc">' + p.description + '</span></span>' +
+          '<span class="desc">' + p.id + '</span>';
+        btn.addEventListener('click', () => selectProduct(p.id, btn));
+        els.productCards.appendChild(btn);
+      });
+    }
+
+    async function selectProduct(id, cardEl) {
+      state.product = id;
+      state.channel = null;
+      state.channels = [];
+      els.productCards.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+      cardEl.classList.add('selected');
+      els.channelStep.classList.remove('hidden');
+      els.channelHint.textContent = 'Probing channels…';
+      els.channelOptions.innerHTML = '';
+      els.channelError.textContent = '';
+      els.installBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/provision/channels?product=' + encodeURIComponent(id));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const body = await res.json();
+        state.channels = body.channels || [];
+        renderChannels();
+      } catch (err) {
+        els.channelHint.textContent = '';
+        els.channelError.textContent = 'Failed to probe channels: ' + err.message;
+      }
+    }
+
+    function renderChannels() {
+      if (state.channels.length === 0) {
+        els.channelHint.textContent = 'No channels available for this product. Check OTA server.';
+        return;
+      }
+      els.channelHint.textContent = 'Choose which release channel to install:';
+
+      const HINTS = {
+        stable:  { hint: 'Recommended', danger: false },
+        early:   { hint: 'Experimental', danger: false },
+        develop: { hint: 'May render the clock unusable', danger: true },
+      };
+      const ORDER = ['stable', 'early', 'develop'];
+
+      els.channelOptions.innerHTML = '';
+      ORDER.filter(c => state.channels.includes(c)).forEach(ch => {
+        const meta = HINTS[ch] || { hint: '', danger: false };
+        const row = document.createElement('label');
+        row.className = 'channel-row';
+        row.innerHTML =
+          '<input type="radio" name="channel" value="' + ch + '">' +
+          '<span class="name">' + ch + '</span>' +
+          '<span class="hint' + (meta.danger ? ' danger' : '') + '">' + meta.hint + '</span>';
+        const input = row.querySelector('input');
+        input.addEventListener('change', () => onChannelPicked(ch));
+        els.channelOptions.appendChild(row);
+      });
+    }
+
+    function onChannelPicked(ch) {
+      if (ch === 'develop') {
+        const ok = window.confirm(
+          'Use the develop channel? This may render the clock unusable; ' +
+          'recovery is not guaranteed.'
+        );
+        if (!ok) {
+          // Uncheck the radio and bail
+          const radios = els.channelOptions.querySelectorAll('input[name="channel"]');
+          radios.forEach(r => { r.checked = false; });
+          state.channel = null;
+          els.installBtn.disabled = true;
+          return;
+        }
+      }
+      state.channel = ch;
+      els.installBtn.disabled = false;
+    }
+
+    // Back to step 1
+    els.backBtn.addEventListener('click', () => {
+      state.channel = null;
+      els.channelStep.classList.add('hidden');
+      els.installBtn.disabled = true;
+    });
+
+    // Install button: kick off provisioning
+    els.installBtn.addEventListener('click', startProvision);
+
+    async function startProvision() {
+      if (!state.product || !state.channel) return;
+      const ok = window.confirm(
+        'Install ' + state.product + ' (' + state.channel + ') on this device?\n\n' +
+        'The device will download firmware and UI, then reboot. Do not power off.'
+      );
+      if (!ok) return;
+
+      els.progressOverlay.classList.add('show');
+      els.progressTitle.textContent = 'Starting…';
+      els.progressDetail.textContent = state.product + ' / ' + state.channel;
+
+      try {
+        const params = new URLSearchParams();
+        params.set('product', state.product);
+        params.set('channel', state.channel);
+        const res = await fetch('/api/provision/start?' + params.toString(), { method: 'POST' });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error('HTTP ' + res.status + ': ' + text);
+        }
+        pollStatus();
+      } catch (err) {
+        els.progressTitle.textContent = 'Failed to start';
+        els.progressDetail.textContent = err.message;
+      }
+    }
+
+    // Poll provisioning status. The device reboots on success — fetch will
+    // eventually fail with a network error, which we treat as "done".
+    async function pollStatus() {
+      const labels = {
+        'idle': 'Idle',
+        'fetching-channels': 'Probing…',
+        'downloading-firmware': 'Downloading firmware…',
+        'downloading-fs': 'Downloading UI image…',
+        'applying': 'Applying update…',
+        'done': 'Done — rebooting',
+        'failed': 'Failed',
+      };
+      let consecutiveErrors = 0;
+      while (true) {
+        try {
+          const res = await fetch('/api/provision/status');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const body = await res.json();
+          consecutiveErrors = 0;
+          els.progressTitle.textContent = labels[body.state] || body.state;
+          els.progressDetail.textContent = body.message || (body.product + ' / ' + body.channel);
+          if (body.state === 'done') {
+            // Device should reboot any moment now.
+            return;
+          }
+          if (body.state === 'failed') {
+            els.progressTitle.textContent = 'Failed';
+            return;
+          }
+        } catch (err) {
+          // Reboot in progress — server is unreachable. After a few
+          // consecutive errors, assume the new firmware is starting up.
+          consecutiveErrors++;
+          if (consecutiveErrors >= 4) {
+            els.progressTitle.textContent = 'Rebooting';
+            els.progressDetail.textContent = 'Device is restarting into the new firmware. ' +
+              'You may need to reconnect to the new product\'s Wi-Fi or wordclock.local.';
+            return;
+          }
+        }
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>

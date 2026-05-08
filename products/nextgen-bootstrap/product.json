@@ -1,0 +1,6 @@
+{
+  "id": "nextgen-bootstrap",
+  "label": "Wordclock Bootstrap (first-flash provisioning)",
+  "grids": [],
+  "notes": "First-flash provisioning firmware. Has no grid; downloads the chosen product's firmware + fs over OTA on first boot."
+}
