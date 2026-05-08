@@ -57,6 +57,16 @@ const WordPosition* ACTIVE_WORDS = WORDS_TEST;
 size_t ACTIVE_WORD_COUNT = WORDS_TEST_COUNT;
 const uint16_t* EXTRA_MINUTE_LEDS = EXTRA_MINUTES_TEST;
 size_t EXTRA_MINUTE_LED_COUNT = EXTRA_MINUTES_TEST_COUNT;
+// Group size of 1 = each minute LED is its own symbol (matches the legacy
+// per-LED behavior). Tests that exercise time mapping don't depend on the
+// grouped variant, so 1 keeps the existing assertions valid.
+size_t EXTRA_MINUTE_LED_GROUP_SIZE = 1;
+
+// Stub for the LED-events system. time_mapper.cpp consults this when
+// LED_STATUS_EVENT_USE_MINUTE_LEDS is enabled (defaults to 1) to suppress
+// minute LEDs while a status event is animating. Tests don't drive the
+// events system, so reporting "no event active" is correct.
+inline bool ledEventIsActive() { return false; }
 
 // Helper to find a word in the test grid
 inline const WordPosition* find_word(const char* name) {

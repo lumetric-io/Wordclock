@@ -53,6 +53,21 @@ protected:
         if (err) return false;
         return doc[key].is<const char*>() || doc[key].is<int>() || doc[key].is<bool>();
     }
+
+    bool jsonArrayContains(const String& json, const String& key, const String& value) {
+        JsonDocument doc;
+        std::string jsonStr = json.c_str();
+        DeserializationError err = deserializeJson(doc, jsonStr);
+        if (err) return false;
+        JsonArrayConst arr = doc[key].as<JsonArrayConst>();
+        if (arr.isNull()) return false;
+        for (JsonVariantConst v : arr) {
+            if (v.is<const char*>() && strcmp(v.as<const char*>(), value.c_str()) == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 // Constructor and Setup Tests
@@ -103,7 +118,7 @@ TEST_F(MqttDiscoveryBuilderTest, AddLight_CreatesLightEntity) {
     ASSERT_TRUE(jsonContains(payload, "stat_t", "light/state"));
     ASSERT_TRUE(jsonContains(payload, "cmd_t", "light/set"));
     ASSERT_TRUE(jsonContainsKey(payload, "brightness"));
-    ASSERT_TRUE(jsonContainsKey(payload, "rgb"));
+    ASSERT_TRUE(jsonArrayContains(payload, "supported_color_modes", "rgbw"));
 }
 
 // Switch Entity Tests

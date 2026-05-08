@@ -231,7 +231,7 @@ bool ledEventsTick(unsigned long nowMs) {
                   g_eventStates[static_cast<uint8_t>(LedEvent::MqttDisconnected)].active;
 
   if (!hasEvent) {
-    return handleSetupBlink(nowMs);
+    return false;
   }
 
   if (next != g_currentEvent) {

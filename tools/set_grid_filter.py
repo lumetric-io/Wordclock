@@ -35,7 +35,11 @@ config = _load_product_config(env)
 if config:
     grids = config.get("grids")
     if grids:
-        src_filter = ["+<*>", "-<grid_variants/*>"]
+        # Bootstrap sources define their own setup()/loop()/server, so they'd
+        # collide with main.cpp if linked into a per-device build. Bootstrap
+        # has its own (grids-less) env that builds those files explicitly via
+        # platformio.env.ini, so it never reaches this branch.
+        src_filter = ["+<*>", "-<grid_variants/*>", "-<bootstrap_*.cpp>"]
         defines = []
         for grid in grids:
             mapping = GRID_MAP.get(grid)
