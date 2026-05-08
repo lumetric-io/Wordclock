@@ -6,7 +6,7 @@
 #
 # Requires (locally):
 #   - ssh access to $VPS_HOST (default: ron@vps-vpn — override via env var)
-#   - rsync, esptool.py, python3
+#   - rsync, esptool (>=5.0), python3
 #
 # Override the VPS host without editing this file:
 #   VPS_HOST=ron@my-other-vps ./tools/flash.sh
@@ -17,7 +17,7 @@ VPS_HOST="${VPS_HOST:-ron@vps-vpn}"
 VPS_PROJECT_PATH="${VPS_PROJECT_PATH:-/home/ron/repos/wordclock}"
 LOCAL_PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_CACHE="$LOCAL_PROJECT_ROOT/build_cache"
-ESPTOOL="${ESPTOOL:-esptool.py}"
+ESPTOOL="${ESPTOOL:-esptool}"
 CHIP="esp32s3"
 
 mkdir -p "$BUILD_CACHE"
@@ -120,7 +120,7 @@ if [ -n "$FS_OFFSET" ] && [ -f "$LITTLEFS" ]; then
 fi
 
 echo "Erasing flash on $PORT (esp32s3)…"
-$ESPTOOL --chip "$CHIP" --port "$PORT" erase_flash
+$ESPTOOL --chip "$CHIP" --port "$PORT" erase-flash
 echo
 
 # ESP32-S3 bootloader is at offset 0x0 (vs 0x1000 on classic ESP32).
@@ -134,13 +134,13 @@ if [ "$FLASH_FS" -eq 1 ]; then
 fi
 
 echo "Flashing…"
-$ESPTOOL --chip "$CHIP" --port "$PORT" --baud 460800 --after no_reset write_flash -z "${FLASH_ARGS[@]}"
+$ESPTOOL --chip "$CHIP" --port "$PORT" --baud 460800 --after no-reset write-flash -z "${FLASH_ARGS[@]}"
 echo
 
-$ESPTOOL --chip "$CHIP" --port "$PORT" verify_flash "${FLASH_ARGS[@]}"
+$ESPTOOL --chip "$CHIP" --port "$PORT" verify-flash "${FLASH_ARGS[@]}"
 echo
 
-$ESPTOOL --chip "$CHIP" --port "$PORT" --after hard_reset run
+$ESPTOOL --chip "$CHIP" --port "$PORT" --after hard-reset run
 
 echo
 echo "✅ Flash completed."
