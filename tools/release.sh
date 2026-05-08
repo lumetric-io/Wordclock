@@ -1676,27 +1676,38 @@ main() {
     prompt_version
     prompt_release_notes
     
-    # Run unit tests (quality gate)
-    read -p "Run unit tests? (Y/n): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-        run_unit_tests
-        TESTS_RUN=true
-    else
-        print_warning "Skipping unit tests (NOT RECOMMENDED for releases)"
+    # Bootstrap firmware exercises only WiFi + minimal HTTP plumbing already
+    # covered by per-product tests; there's nothing bootstrap-specific in
+    # the native test suite. Skip both prompts so the factory flow is fully
+    # non-interactive past the version confirm.
+    if [[ "$PRODUCT" == "nextgen-bootstrap" ]]; then
         TESTS_SKIPPED=true
-        echo ""
-    fi
-    
-    # Generate coverage report (optional)
-    read -p "Generate code coverage report? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        generate_coverage_report
-    else
-        print_info "Skipping coverage report"
         COVERAGE_GENERATED=false
+        print_info "Skipping unit tests and coverage (nextgen-bootstrap)"
         echo ""
+    else
+        # Run unit tests (quality gate)
+        read -p "Run unit tests? (Y/n): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            run_unit_tests
+            TESTS_RUN=true
+        else
+            print_warning "Skipping unit tests (NOT RECOMMENDED for releases)"
+            TESTS_SKIPPED=true
+            echo ""
+        fi
+
+        # Generate coverage report (optional)
+        read -p "Generate code coverage report? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            generate_coverage_report
+        else
+            print_info "Skipping coverage report"
+            COVERAGE_GENERATED=false
+            echo ""
+        fi
     fi
     
     # Pre-release build check (skip in build-all: we build all in release_build and would duplicate first product)
