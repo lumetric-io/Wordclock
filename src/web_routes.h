@@ -36,7 +36,6 @@
 #include "mqtt_client.h"
 #include "night_mode.h"
 #include "build_info.h"
-#include "setup_state.h"
 #include "system_utils.h"
 #include "device_identity.h"
 #include "device_registration.h"
@@ -114,31 +113,6 @@ static bool ensureAdminAuth() {
 // UI is now open; only admin pages are protected
 static bool ensureUiAuth() {
   return true;
-}
-
-static void sendSetupStatus() {
-  JsonDocument doc;
-  doc["completed"] = setupState.isComplete();
-  doc["version"] = setupState.getVersion();
-  doc["migrated"] = setupState.wasMigrated();
-  bool staConnected = (WiFi.status() == WL_CONNECTED) || isWiFiConnected() || WiFi.isConnected();
-  String ssid = staConnected ? WiFi.SSID() : WiFi.softAPSSID();
-  IPAddress ip = staConnected ? WiFi.localIP() : WiFi.softAPIP();
-  bool hasSavedSsid = WiFi.SSID().length() > 0;
-  bool hasIp = ip != IPAddress(0, 0, 0, 0);
-  doc["wifi_connected"] = staConnected || hasIp;
-  doc["wifi_configured"] = staConnected || g_wifiHadCredentialsAtBoot || hasSavedSsid || hasIp;
-  doc["wifi_ssid"] = ssid.length() ? ssid : (staConnected ? "unknown" : "AP/Portal");
-  doc["wifi_ip"] = hasIp ? ip.toString() : "";
-  GridVariant active = displaySettings.getGridVariant();
-  doc["grid_variant_id"] = gridVariantToId(active);
-  if (const auto* info = getGridVariantInfo(active)) {
-    doc["grid_variant_key"] = info->key;
-    doc["grid_variant_label"] = info->label;
-  }
-  String out;
-  serializeJson(doc, out);
-  server.send(200, "application/json", out);
 }
 
 static const char* nightEffectToStr(NightModeEffect effect) {
@@ -292,11 +266,6 @@ void setupWebRoutes() {
       logWarn("[API] /dashboard.html: Auth failed");
       return;
     }
-    if (!setupState.isComplete()) {
-      server.sendHeader("Location", "/setup.html", true);
-      server.send(302, "text/plain", "");
-      return;
-    }
     serveFile("/dashboard.html", "text/html");
   });
 
@@ -401,28 +370,8 @@ void setupWebRoutes() {
     serveFile("/logs.html", "text/html");
   });
 
-  // Setup page (public). Used when the wizard has not completed yet.
-  server.on("/setup.html", HTTP_GET, []() {
-    File f = FS_IMPL.open("/setup.html", "r");
-    if (!f) {
-      server.send(404, "text/plain", "setup.html not found");
-      return;
-    }
-    f.close();
-    serveFile("/setup.html", "text/html");
-  });
-
-  // Public landing page: go straight to dashboard (or setup if incomplete)
+  // Public landing page: go straight to dashboard
   server.on("/", HTTP_GET, []() {
-    if (!setupState.isComplete()) {
-      File sf = FS_IMPL.open("/setup.html", "r");
-      if (sf) {
-        sf.close();
-        serveFile("/setup.html", "text/html");
-        return;
-      }
-      logWarn("[API] /: setup.html not found");
-    }
     File f = FS_IMPL.open("/dashboard.html", "r");
     if (!f) {
       logError("[API] /: dashboard.html not found");
@@ -433,23 +382,8 @@ void setupWebRoutes() {
     serveFile("/dashboard.html", "text/html");
   });
 
-  server.on("/api/setup/status", HTTP_GET, []() {
-    sendSetupStatus();
-  });
-
-  server.on("/api/setup/complete", HTTP_POST, []() {
-    setupState.markComplete();
-    struct tm timeinfo;
-    if (getLocalTime(&timeinfo)) {
-      wordclock_force_animation_for_time(&timeinfo);
-    }
-    server.send(200, "text/plain", "OK");
-  });
-
   server.on("/api/ble/start", HTTP_POST, []() {
-    if (setupState.isComplete()) {
-      if (!ensureUiAuth()) return;
-    }
+    if (!ensureUiAuth()) return;
     if (isBleProvisioningActive()) {
       server.send(409, "text/plain", "BLE provisioning already active");
       return;
@@ -468,86 +402,10 @@ void setupWebRoutes() {
     server.send(200, "application/json", out);
   });
 
-  // Grid endpoints for the setup flow (open when setup is pending; require auth afterwards)
-  server.on("/api/setup/grid", HTTP_GET, []() {
-    JsonDocument doc;
-    JsonArray arr = doc["variants"].to<JsonArray>();
-    size_t count = 0;
-    const GridVariantInfo* infos = getGridVariantInfos(count);
-    GridVariant active = displaySettings.getGridVariant();
-    for (size_t i = 0; i < count; ++i) {
-      JsonObject o = arr.add<JsonObject>();
-      o["id"] = gridVariantToId(infos[i].variant);
-      o["key"] = infos[i].key;
-      o["label"] = infos[i].label;
-      o["language"] = infos[i].language;
-      o["version"] = infos[i].version;
-      o["active"] = (infos[i].variant == active);
-    }
-    doc["completed"] = setupState.isComplete();
-    String out;
-    serializeJson(doc, out);
-    server.send(200, "application/json", out);
-  });
-
-  server.on("/api/setup/grid", HTTP_POST, []() {
-    if (setupState.isComplete()) {
-      if (!ensureUiAuth()) return;
-    }
-
-    bool updated = false;
-    if (server.hasArg("id")) {
-      uint8_t id = static_cast<uint8_t>(server.arg("id").toInt());
-      size_t count = 0;
-      getGridVariantInfos(count);
-      if (id < count) {
-        GridVariant variant = gridVariantFromId(id);
-        displaySettings.setGridVariant(variant);
-        updated = true;
-      }
-    } else if (server.hasArg("key")) {
-      String key = server.arg("key");
-      GridVariant variant = gridVariantFromKey(key.c_str());
-      const GridVariantInfo* info = getGridVariantInfo(variant);
-      if (info && key == info->key) {
-        displaySettings.setGridVariant(variant);
-        updated = true;
-      }
-    }
-
-    if (!updated) {
-      server.send(400, "text/plain", "Invalid grid variant");
-      return;
-    }
-
-    if (const GridVariantInfo* info = getGridVariantInfo(displaySettings.getGridVariant())) {
-      logInfo(String("🧩 Grid variant updated (setup) to ") + info->label + " (" + info->key + ")");
-    }
-
-    JsonDocument doc;
-    GridVariant variant = displaySettings.getGridVariant();
-    doc["id"] = gridVariantToId(variant);
-    if (const GridVariantInfo* info = getGridVariantInfo(variant)) {
-      doc["key"] = info->key;
-      doc["label"] = info->label;
-      doc["language"] = info->language;
-      doc["version"] = info->version;
-    }
-    doc["completed"] = setupState.isComplete();
-    String out;
-    serializeJson(doc, out);
-    server.send(200, "application/json", out);
-  });
-
 #if OTA_ENABLED
   // Update page (protected)
   server.on("/update.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
-    if (!setupState.isComplete()) {
-      server.sendHeader("Location", "/setup.html", true);
-      server.send(302, "text/plain", "");
-      return;
-    }
     serveFile("/update.html", "text/html");
   });
 #endif
@@ -555,11 +413,6 @@ void setupWebRoutes() {
   // MQTT settings page (protected)
   server.on("/mqtt.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
-    if (!setupState.isComplete()) {
-      server.sendHeader("Location", "/setup.html", true);
-      server.send(302, "text/plain", "");
-      return;
-    }
     serveFile("/mqtt.html", "text/html");
   });
 

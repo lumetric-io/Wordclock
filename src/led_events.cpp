@@ -7,7 +7,6 @@
 
 #include "config.h"
 #include "led_controller.h"
-#include "setup_state.h"
 
 #if LED_STATUS_EVENTS_ENABLED && LED_STATUS_EVENT_USE_MINUTE_LEDS
 #include "grid_layout.h"
@@ -136,56 +135,6 @@ bool runBlinkPattern(unsigned long nowMs,
   return true;
 }
 
-bool handleSetupBlink(unsigned long nowMs) {
-#if !LED_STATUS_EVENTS_ENABLED
-  (void)nowMs;
-  return false;
-#else
-  const std::vector<uint16_t>& eventLeds = getEventLedVector();
-  if (eventLeds.empty()) {
-    return false;
-  }
-  static bool lastHasWifiConfig = false;
-  static unsigned long greenUntilMs = 0;
-  static BlinkState setupBlinkState;
-
-  const bool complete = setupState.isComplete();
-
-  if (complete && setupState.takeCompletionPulse()) {
-    greenUntilMs = nowMs + 1000;
-    setLedsColorOverlay(eventLeds, 0, scaleChannel(255, kBlinkScale), 0, 0);
-    return true;
-  }
-
-  if (greenUntilMs != 0) {
-    if (nowMs >= greenUntilMs) {
-      greenUntilMs = 0;
-      setLedsColorOverlay(eventLeds, 0, 0, 0, 0);
-      return false;
-    }
-    return true;
-  }
-
-  if (complete) {
-    return false;
-  }
-
-  const bool hasSavedSsid = WiFi.SSID().length() > 0;
-  const bool hasWifiConfig = g_wifiHadCredentialsAtBoot || hasSavedSsid;
-  if (hasWifiConfig != lastHasWifiConfig) {
-    lastHasWifiConfig = hasWifiConfig;
-    setupBlinkState = BlinkState{};
-  }
-
-  const uint8_t r = 255;
-  const uint8_t g = hasWifiConfig ? 140 : 0;
-  const uint8_t b = 0;
-
-  return runBlinkPattern(nowMs, eventLeds, r, g, b,
-                         200, 200, 2, 5000, true, setupBlinkState);
-#endif
-}
-
 LedEvent pickHighestPriorityEvent() {
   if (g_eventStates[static_cast<uint8_t>(LedEvent::BleProvisioning)].active) {
     return LedEvent::BleProvisioning;
@@ -270,12 +219,6 @@ bool ledEventsTick(unsigned long nowMs) {
   (void)nowMs;
   return false;
 #else
-  if (!setupState.isComplete() &&
-      !g_eventStates[static_cast<uint8_t>(LedEvent::BleProvisioning)].active &&
-      !g_eventStates[static_cast<uint8_t>(LedEvent::WifiManagerPortal)].active) {
-    return handleSetupBlink(nowMs);
-  }
-
   LedEvent next = pickHighestPriorityEvent();
   bool hasEvent = g_pulseFirmwareCheck ||
                   g_eventStates[static_cast<uint8_t>(LedEvent::BleProvisioning)].active ||

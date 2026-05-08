@@ -28,7 +28,6 @@
 #include "display_settings.h"
 #include "ui_auth.h"
 #include "night_mode.h"
-#include "setup_state.h"
 #include "settings_migration.h"
 #include "system_utils.h"
 #include "ble_provisioning.h"
@@ -78,7 +77,6 @@ void setup() {
 
   // Load persisted display settings (e.g. auto-update preference) before running dependent flows
   displaySettings.begin();
-  setupState.begin(false);
   nightMode.begin();
 
   // Mount filesystem (LittleFS)

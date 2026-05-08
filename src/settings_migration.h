@@ -25,7 +25,6 @@ public:
         migrateLedState();
         migrateDisplaySettings();
         migrateNightMode();
-        migrateSetupState();
         migrateLogSettings();
         
         // Mark as migrated
@@ -157,33 +156,6 @@ private:
         oldPrefs.end();
         
         logInfo("  ✓ Night mode migrated");
-    }
-    
-    static void migrateSetupState() {
-        Preferences oldPrefs, newPrefs;
-        
-        if (!oldPrefs.begin("setup", true)) {
-            return;  // No old data
-        }
-        
-        // Check if old namespace has any data
-        if (!oldPrefs.isKey("done") && !oldPrefs.isKey("ver")) {
-            oldPrefs.end();
-            return;  // No data to migrate
-        }
-        
-        newPrefs.begin("wc_setup", false);
-        newPrefs.putBool("done", oldPrefs.getBool("done", false));
-        newPrefs.putUChar("ver", oldPrefs.getUChar("ver", 0));
-        newPrefs.end();
-        oldPrefs.end();
-        
-        // Clear old namespace
-        oldPrefs.begin("setup", false);
-        oldPrefs.clear();
-        oldPrefs.end();
-        
-        logInfo("  ✓ Setup state migrated");
     }
     
     static void migrateLogSettings() {

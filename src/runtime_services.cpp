@@ -23,7 +23,6 @@
 #include "network_init.h"
 #include "night_mode.h"
 #include "ota_updater.h"
-#include "setup_state.h"
 #include "startup_sequence_init.h"
 #include "time_sync.h"
 #include "webserver_init.h"
@@ -134,7 +133,6 @@ bool runtimeHandleNoWifiLoop(unsigned long nowMs) {
       ledState.loop();
       displaySettings.loop();
       nightMode.loop();
-      setupState.loop();
       g_lastSettingsFlushPortalMs = nowMs;
     }
     return true;
@@ -196,7 +194,6 @@ void runtimeHandlePeriodicSettings(unsigned long nowMs, unsigned long intervalMs
     ledState.loop();
     displaySettings.loop();
     nightMode.loop();
-    setupState.loop();
     g_lastSettingsFlushMs = nowMs;
   }
 }

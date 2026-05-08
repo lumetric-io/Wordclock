@@ -17,7 +17,6 @@
 #include "night_mode.h"
 #include "ota_updater.h"
 #include "secrets.h"
-#include "setup_state.h"
 
 // Retry interval after failure (5 minutes)
 #define HEARTBEAT_RETRY_INTERVAL_MS (5 * 60 * 1000UL)
@@ -203,7 +202,9 @@ bool sendHeartbeat() {
   // Wordclock state
   req["brightness"] = ledState.getBrightness();
   req["nightModeActive"] = nightMode.isActive();
-  req["setupComplete"] = setupState.isComplete();
+  // TODO: server expects this field; with the setup wizard removed, hardcoded true.
+  // Drop the field once the heartbeat server tolerates its absence.
+  req["setupComplete"] = true;
   
   String payload;
   serializeJson(req, payload);

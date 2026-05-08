@@ -2,7 +2,6 @@
 #include "led_controller.h"
 #include "led_events.h"
 #include "led_state.h"
-#include "setup_state.h"
 #include "night_mode.h"
 #include "time_sync.h"
 #include "grid_layout.h"
@@ -82,14 +81,7 @@ bool ClockDisplay::checkClockEnabled() {
         resetNoTimeIndicator();
         return false;
     }
-    
-    if (!setupState.isComplete()) {
-        animation_.active = false;
-        showLeds({});
-        resetNoTimeIndicator();
-        return false;
-    }
-    
+
     return true;
 }
 

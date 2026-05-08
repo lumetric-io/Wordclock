@@ -44,7 +44,6 @@ static const char* UI_FILES[] = {
   "dashboard.html",
   "logs.html",
   "mqtt.html",
-  "setup.html",
   "update.html",
 };
 
