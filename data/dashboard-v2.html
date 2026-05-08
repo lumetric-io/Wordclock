@@ -378,18 +378,21 @@
         } finally { loader.loading = false; }
       }
       async loadAll() {
+        // Serialized: ESP32 WebServer is single-threaded. Firing 10+
+        // concurrent fetches on a stressed/near-full FS can saturate the
+        // TCP table and hang the chip. One at a time keeps it responsive.
         const sorted = Array.from(this.loaders.entries()).sort((a, b) => b[1].priority - a[1].priority);
-        const high = sorted.filter(([_, l]) => l.priority >= 5);
-        await Promise.allSettled(high.map(([n]) => this.load(n)));
-        const rest = sorted.filter(([_, l]) => l.priority < 5);
-        await Promise.allSettled(rest.map(([n]) => this.load(n)));
+        for (const [name] of sorted) {
+          try { await this.load(name); } catch (e) {}
+        }
       }
       startInterval(name) {
         const loader = this.loaders.get(name);
         if (!loader || !loader.interval) return;
         if (this.intervals.has(name)) { clearInterval(this.intervals.get(name)); this.intervals.delete(name); }
         const self = this;
-        this.load(name);
+        // No immediate load() — loadAll() already populated initial values.
+        // Avoids a second burst of concurrent requests right after init.
         const id = setInterval(() => self.load(name), loader.interval);
         this.intervals.set(name, id);
       }
@@ -1191,15 +1194,18 @@
             if (isMiniProduct) dataLoader.loaders.delete('hetIsDuration');
           }
         } catch (err) {}
-        dataLoader.loadAll().catch(() => {});
-        const statusLoader = dataLoader.loaders.get('status');
-        const logsLoader = dataLoader.loaders.get('logs');
-        const versionsLoader = dataLoader.loaders.get('versions');
-        const ledEventLoader = dataLoader.loaders.get('ledEvent');
-        if (statusLoader && statusLoader.interval) dataLoader.startInterval('status');
-        if (ledEventLoader && ledEventLoader.interval) dataLoader.startInterval('ledEvent');
-        if (logsLoader && logsLoader.interval) dataLoader.startInterval('logs');
-        if (versionsLoader && versionsLoader.interval) dataLoader.startInterval('versions');
+        // loadAll runs sequentially now; await it so intervals only start
+        // once the initial population has finished and the chip is idle.
+        await dataLoader.loadAll().catch(() => {});
+        // Stagger interval starts so the four pollers don't hit the
+        // single-threaded server simultaneously every cycle.
+        const intervalNames = ['status', 'ledEvent', 'logs', 'versions'];
+        for (let i = 0; i < intervalNames.length; i++) {
+          const name = intervalNames[i];
+          const loader = dataLoader.loaders.get(name);
+          if (loader && loader.interval) dataLoader.startInterval(name);
+          await new Promise(r => setTimeout(r, 250));
+        }
       } catch (error) {}
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeDashboard);
