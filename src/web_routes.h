@@ -300,6 +300,33 @@ void setupWebRoutes() {
     serveFile("/dashboard.html", "text/html");
   });
 
+  // ── Chronolett v2 (editorial redesign) ────────────────────────────
+  // Default UI remains classic (served at "/"). v2 pages live next to
+  // the classic ones; users opt in via the "Try new design" link.
+  server.on("/dashboard-v2.html", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    serveFile("/dashboard-v2.html", "text/html");
+  });
+  server.on("/admin-v2.html", HTTP_GET, []() {
+    if (!ensureAdminAuth()) return;
+    serveFile("/admin-v2.html", "text/html");
+  });
+  server.on("/mqtt-v2.html", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    serveFile("/mqtt-v2.html", "text/html");
+  });
+  server.on("/logs-v2.html", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    serveFile("/logs-v2.html", "text/html");
+  });
+  server.on("/update-v2.html", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    serveFile("/update-v2.html", "text/html");
+  });
+  server.on("/chronolett.css", HTTP_GET, []() {
+    serveFile("/chronolett.css", "text/css");
+  });
+
   // Favicon placeholder to avoid 404 noise
   server.on("/favicon.ico", HTTP_GET, []() {
     server.send(204);
@@ -795,11 +822,13 @@ void setupWebRoutes() {
     if (server.hasArg("id")) {
       uint8_t id = static_cast<uint8_t>(server.arg("id").toInt());
       size_t count = 0;
-      getGridVariantInfos(count);
-      if (id < count) {
-        GridVariant variant = gridVariantFromId(id);
-        displaySettings.setGridVariant(variant);
-        updated = true;
+      const GridVariantInfo* infos = getGridVariantInfos(count);
+      for (size_t i = 0; i < count; ++i) {
+        if (gridVariantToId(infos[i].variant) == id) {
+          displaySettings.setGridVariant(infos[i].variant);
+          updated = true;
+          break;
+        }
       }
     } else if (server.hasArg("key")) {
       String key = server.arg("key");

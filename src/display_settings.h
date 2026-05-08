@@ -18,7 +18,24 @@ public:
     animationMode_ = WordAnimationMode::Classic; // Only Classic mode available
     
     autoUpdate_ = prefs_.getBool("auto_upd", true);
-    const uint8_t defaultVariantId = gridVariantToId(FIRMWARE_DEFAULT_GRID_VARIANT);
+
+    // Pick the boot default from the variants actually compiled into this
+    // firmware. FIRMWARE_DEFAULT_GRID_VARIANT is the preferred choice when
+    // available; otherwise fall back to the first compiled variant. Without
+    // this, products that don't include NL_V4 would persist an unreachable
+    // ID on first boot and report "No info found for variant ID 3" forever.
+    size_t variantCount = 0;
+    const GridVariantInfo* variantInfos = getGridVariantInfos(variantCount);
+    GridVariant defaultVariant = FIRMWARE_DEFAULT_GRID_VARIANT;
+    if (variantCount > 0) {
+      bool defaultCompiled = false;
+      for (size_t i = 0; i < variantCount; ++i) {
+        if (variantInfos[i].variant == defaultVariant) { defaultCompiled = true; break; }
+      }
+      if (!defaultCompiled) defaultVariant = variantInfos[0].variant;
+    }
+    const uint8_t defaultVariantId = gridVariantToId(defaultVariant);
+
     const bool hasGridKey = prefs_.isKey("grid_id");
     // Track whether a grid variant was already stored so we can detect migrations
     if (!initialized_) {
@@ -33,7 +50,12 @@ public:
 
     gridVariant_ = gridVariantFromId(storedVariant);
     if (!setActiveGridVariant(gridVariant_)) {
-      gridVariant_ = FIRMWARE_DEFAULT_GRID_VARIANT;
+      // Persisted ID isn't compiled into this firmware (e.g. NVS inherited
+      // from a different product). Self-heal: use the chosen default and
+      // overwrite NVS so the warning doesn't recur.
+      logWarn(String("⚠️ Persisted grid ID ") + storedVariant +
+              " not compiled in; falling back to ID " + defaultVariantId);
+      gridVariant_ = defaultVariant;
       setActiveGridVariant(gridVariant_);
       prefs_.begin("wc_display", false);
       prefs_.putUChar("grid_id", defaultVariantId);
@@ -139,11 +161,13 @@ public:
 
   void setGridVariantById(uint8_t id) {
     size_t count = 0;
-    getGridVariantInfos(count);
-    if (id >= count) {
-      return;
+    const GridVariantInfo* infos = getGridVariantInfos(count);
+    for (size_t i = 0; i < count; ++i) {
+      if (gridVariantToId(infos[i].variant) == id) {
+        setGridVariant(infos[i].variant);
+        return;
+      }
     }
-    setGridVariant(gridVariantFromId(id));
   }
 
   /**
