@@ -253,10 +253,15 @@
   <!-- Progress overlay -->
   <div id="progressOverlay" class="progress-overlay">
     <div class="progress-card">
-      <div class="spinner"></div>
+      <div class="spinner" id="progressSpinner"></div>
       <p class="kicker" id="progressKicker">Provisioning</p>
       <h2 id="progressTitle">Installing…</h2>
       <p id="progressDetail">Starting…</p>
+      <p id="progressApLine" class="hidden" style="margin-top: 18px;">
+        Look for Wi-Fi network
+        <strong id="progressApName" style="font-weight: 500; color: var(--copper);"></strong>
+        on your phone within ~30&nbsp;seconds — that confirms the new firmware booted.
+      </p>
       <p id="progressNote" class="help" style="margin-top: 18px;">
         Do not power off the device. The clock will reboot automatically when finished.
       </p>
@@ -277,12 +282,17 @@
       progressKicker: document.getElementById('progressKicker'),
       progressTitle: document.getElementById('progressTitle'),
       progressDetail: document.getElementById('progressDetail'),
+      progressSpinner: document.getElementById('progressSpinner'),
+      progressApLine: document.getElementById('progressApLine'),
+      progressApName: document.getElementById('progressApName'),
+      progressNote: document.getElementById('progressNote'),
     };
 
     const state = {
       product: null,        // selected product id
       channel: null,        // selected channel
       channels: [],         // channels available for the selected product
+      productsById: {},     // id → product metadata (ap_name, label, …)
     };
 
     // Step 1: load and render products
@@ -291,6 +301,7 @@
         const res = await fetch('/api/products');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const products = await res.json();
+        products.forEach(p => { state.productsById[p.id] = p; });
         renderProducts(products);
       } catch (err) {
         els.productError.textContent = 'Failed to load product list: ' + err.message;
@@ -423,6 +434,26 @@
       }
     }
 
+    // Once the bootstrap reboots into the per-device firmware, the bootstrap
+    // UI can no longer reach the device — by design, the new firmware does
+    // its own fresh Wi-Fi enrollment (no credential handoff). So instead of
+    // probing for "is it back?", we tell the operator what to look for: the
+    // SSID the new firmware will broadcast for its own enrollment portal.
+    // SSID-appearing-on-phone is the load-bearing positive signal.
+    function showRebootSuccess() {
+      const meta = state.productsById[state.product] || {};
+      const apName = meta.ap_name || 'Wordclock_AP';
+      els.progressSpinner.classList.add('hidden');
+      els.progressKicker.textContent = 'Reboot complete';
+      els.progressTitle.textContent = 'Provisioning complete';
+      els.progressDetail.textContent =
+        'Bootstrap has handed off to ' + state.product + ' (' + state.channel + ').';
+      els.progressApName.textContent = apName;
+      els.progressApLine.classList.remove('hidden');
+      els.progressNote.textContent =
+        'If the network does not appear within 60 seconds, the OTA likely failed — power-cycle the device and retry.';
+    }
+
     // Poll provisioning status. The device reboots on success — fetch will
     // eventually fail with a network error, which we treat as "done".
     async function pollStatus() {
@@ -445,7 +476,10 @@
           els.progressTitle.textContent = labels[body.state] || body.state;
           els.progressDetail.textContent = body.message || (body.product + ' / ' + body.channel);
           if (body.state === 'done') {
-            // Device should reboot any moment now.
+            // Reboot is imminent; jump straight to the watch-for-AP terminus
+            // so the user has a clear next-step rather than a brief "Done"
+            // that we'd otherwise replace once the connection drops.
+            showRebootSuccess();
             return;
           }
           if (body.state === 'failed') {
@@ -454,12 +488,10 @@
           }
         } catch (err) {
           // Reboot in progress — server is unreachable. After a few
-          // consecutive errors, assume the new firmware is starting up.
+          // consecutive errors, the new firmware is starting up.
           consecutiveErrors++;
           if (consecutiveErrors >= 4) {
-            els.progressTitle.textContent = 'Rebooting';
-            els.progressDetail.textContent = 'Device is restarting into the new firmware. ' +
-              'You may need to reconnect to the new product\'s Wi-Fi or wordclock.local.';
+            showRebootSuccess();
             return;
           }
         }

@@ -17,10 +17,18 @@ enum class BootstrapState : uint8_t {
 };
 
 // Hardcoded product table. Order matches the picker UI.
+//
+// `apName` is the Wi-Fi SSID the per-device firmware will broadcast for its
+// own enrollment portal after the OTA reboot. The bootstrap UI surfaces it
+// to the operator as a positive completion signal: once that SSID appears
+// on their phone, the new firmware has booted. The bootstrap can't probe
+// the device directly because per-device firmware does its own fresh Wi-Fi
+// enrollment (no credential handoff from bootstrap, by design).
 struct BootstrapProduct {
   const char* id;
   const char* label;
   const char* description;
+  const char* apName;
 };
 
 extern const BootstrapProduct kBootstrapProducts[];

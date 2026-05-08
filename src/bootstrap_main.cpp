@@ -114,6 +114,14 @@ void setup() {
   logInfo("");
   logInfo(String("=== nextgen-bootstrap ") + FIRMWARE_VERSION + " ===");
 
+  // Bootstrap Wi-Fi credentials must NOT outlive this firmware. Disabling
+  // persistence stops ESP-IDF from writing SSID/password to nvs.net80211 on
+  // any subsequent WiFi.begin() (including those WiFiManager makes
+  // internally). The per-device firmware that takes over after OTA must
+  // always do its own enrollment from scratch — see also the explicit
+  // disconnect(eraseAP=true) in safeRestart() under WORDCLOCK_BOOTSTRAP.
+  WiFi.persistent(false);
+
   mountFs();
   connectWifi();
   startMdns();

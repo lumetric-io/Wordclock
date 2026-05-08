@@ -18,11 +18,20 @@ void flushAllSettings() {
   nightMode.flush();
   logDebug("Settings flush complete");
 }
+#else
+#include <WiFi.h>
 #endif
 
 void safeRestart() {
 #ifndef WORDCLOCK_BOOTSTRAP
   flushAllSettings();
+#else
+  // Belt-and-suspenders for the persistent(false) call in bootstrap_main:
+  // on the way out, explicitly erase any Wi-Fi credentials that may have
+  // landed in nvs.net80211 (e.g. from prior firmwares before persistence
+  // was disabled). The per-device firmware that boots next must enroll
+  // fresh — bootstrap creds must never carry over.
+  WiFi.disconnect(true /* wifioff */, true /* eraseAP */);
 #endif
   delay(100);  // Allow flash write to complete
   ESP.restart();
