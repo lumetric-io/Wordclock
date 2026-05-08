@@ -233,7 +233,7 @@ void initLogSettings() {
   prefs.begin("wc_log", true);
   uint8_t lvl = prefs.getUChar("level", (uint8_t)DEFAULT_LOG_LEVEL);
   LOG_RETENTION_DAYS = prefs.getUInt("retention", 1);
-  LOG_DELETE_ON_BOOT = prefs.getBool("delOnBoot", false);
+  LOG_DELETE_ON_BOOT = prefs.getBool("delOnBoot", true);
   prefs.end();
 
   if (lvl <= LOG_LEVEL_ERROR) {
@@ -247,31 +247,52 @@ void initLogSettings() {
   tzset();
 }
 
+static void wipeLogsDirectory() {
+  File dir = FS_IMPL.open("/logs");
+  if (!dir) return;
+  while (true) {
+    File entry = dir.openNextFile();
+    if (!entry) break;
+    if (!entry.isDirectory()) {
+      String full = entry.name();
+      entry.close();
+      FS_IMPL.remove(full);
+    } else {
+      entry.close();
+    }
+  }
+  dir.close();
+}
+
 void logEnableFileSink() {
   if (LOG_DELETE_ON_BOOT) {
-    File dir = FS_IMPL.open("/logs");
-    if (dir) {
-      while (true) {
-        File entry = dir.openNextFile();
-        if (!entry) break;
-        if (!entry.isDirectory()) {
-          String full = entry.name();
-          entry.close();
-          FS_IMPL.remove(full);
-        } else {
-          entry.close();
-        }
-      }
-      dir.close();
-    }
+    wipeLogsDirectory();
 #ifdef ENABLE_DEBUG_LOGGING
     Serial.println("[log] Deleted all logs on boot as per settings.");
+#endif
+  }
+
+  // Low-space recovery: if the filesystem is nearly full (e.g. wordclock-mini's
+  // 1.25 MB partition has filled with old logs because delete-on-boot was off),
+  // wipe /logs unconditionally so the device can recover on its own.
+  bool recoveredFromLowSpace = false;
+  size_t total = FS_IMPL.totalBytes();
+  size_t used = FS_IMPL.usedBytes();
+  if (total > 0 && (total - used) < (64UL * 1024UL)) {
+    wipeLogsDirectory();
+    recoveredFromLowSpace = true;
+#ifdef ENABLE_DEBUG_LOGGING
+    Serial.printf("[log] Low filesystem space (%u/%u bytes used); wiped /logs to recover.\n",
+                  (unsigned)used, (unsigned)total);
 #endif
   }
 
   fileSinkEnabled = true;
   currentLogTag = "";
   ensureLogFile();
+  if (recoveredFromLowSpace) {
+    logWarn("/logs wiped: filesystem was nearly full");
+  }
 }
 
 void logCloseFile() {

@@ -1,8 +1,8 @@
 #pragma once
 
-#define PRODUCT_ID "wordclock-mini"
-#define FIRMWARE_VERSION "mini-26.4.24"
-#define UI_VERSION "ui-mini-26.4.24"
+#define PRODUCT_ID "wordclock-mini-nl-20x20-v0"
+#define FIRMWARE_VERSION "mini-nl-20x20-v0-26.4.27"
+#define UI_VERSION "ui-mini-nl-20x20-v0-26.4.27"
 #define PRODUCT_VARIANT_MINI 1
 #define DATA_PIN 4
 #define SETUP_ASSUME_DONE_IF_LEGACY_CONFIG 0
@@ -14,7 +14,8 @@
 #define LED_STATUS_EVENTS_ENABLED 1
 #define LED_STATUS_EVENT_USE_MINUTE_LEDS 0
 #define LED_STATUS_EVENT_LED_COUNT 4
-#define LED_STATUS_EVENT_LED_IDS 0,8,96,104
+// Corner LEDs of the visible 9x9 grid, shifted +1 vs nl_20x20_v1 because LED 0 is dark on this hardware.
+#define LED_STATUS_EVENT_LED_IDS 1,9,97,105
 
 // Log level: LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_WARN, LOG_LEVEL_ERROR
 // #define DEFAULT_LOG_LEVEL LOG_LEVEL_ERROR

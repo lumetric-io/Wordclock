@@ -17,7 +17,7 @@ std::vector<uint16_t> get_leds_for_word(const char* word) {
   std::vector<uint16_t> result;
   const WordPosition* w = find_word(word);
   if (w) {
-    for (int i = 0; i < 32 && w->indices[i] != 0; ++i) {
+    for (int i = 0; i < w->count; ++i) {
       result.push_back(static_cast<uint16_t>(w->indices[i]));
     }
   }

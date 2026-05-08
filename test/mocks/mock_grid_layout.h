@@ -22,29 +22,28 @@ const char* const LETTER_GRID_TEST[] = {
 };
 
 // Test word definitions - minimal set for testing
-// Note: indices use 1-based for word detection, 0 = terminator
 const WordPosition WORDS_TEST[] = {
-    {"HET", {1, 2, 3, 0}},
-    {"IS", {5, 6, 0}},
-    {"VIJF_M", {8, 9, 10, 11, 0}},
-    {"TIEN_M", {12, 13, 14, 15, 0}},
-    {"VOOR", {19, 20, 21, 22, 0}},
-    {"OVER", {23, 24, 25, 26, 0}},
-    {"KWART", {29, 30, 31, 32, 33, 0}},
-    {"HALF", {34, 35, 36, 37, 0}},
-    {"EEN", {56, 57, 58, 0}},
-    {"TWEE", {60, 61, 62, 63, 0}},
-    {"DRIE", {64, 65, 66, 67, 0}},
-    {"VIER", {67, 68, 69, 70, 0}},
-    {"VIJF", {72, 73, 74, 75, 0}},
-    {"ZES", {76, 77, 78, 0}},
-    {"ZEVEN", {78, 79, 80, 81, 82, 0}},
-    {"ACHT", {89, 90, 91, 92, 0}},
-    {"NEGEN", {85, 86, 87, 88, 89, 0}},
-    {"TIEN", {93, 94, 95, 96, 0}},
-    {"ELF", {100, 101, 102, 0}},
-    {"TWAALF", {103, 104, 105, 106, 107, 108, 0}},
-    {"UUR", {109, 110, 111, 0}},
+    WPOS("HET",    1, 2, 3),
+    WPOS("IS",     5, 6),
+    WPOS("VIJF_M", 8, 9, 10, 11),
+    WPOS("TIEN_M", 12, 13, 14, 15),
+    WPOS("VOOR",   19, 20, 21, 22),
+    WPOS("OVER",   23, 24, 25, 26),
+    WPOS("KWART",  29, 30, 31, 32, 33),
+    WPOS("HALF",   34, 35, 36, 37),
+    WPOS("EEN",    56, 57, 58),
+    WPOS("TWEE",   60, 61, 62, 63),
+    WPOS("DRIE",   64, 65, 66, 67),
+    WPOS("VIER",   67, 68, 69, 70),
+    WPOS("VIJF",   72, 73, 74, 75),
+    WPOS("ZES",    76, 77, 78),
+    WPOS("ZEVEN",  78, 79, 80, 81, 82),
+    WPOS("ACHT",   89, 90, 91, 92),
+    WPOS("NEGEN",  85, 86, 87, 88, 89),
+    WPOS("TIEN",   93, 94, 95, 96),
+    WPOS("ELF",    100, 101, 102),
+    WPOS("TWAALF", 103, 104, 105, 106, 107, 108),
+    WPOS("UUR",    109, 110, 111),
 };
 
 const size_t WORDS_TEST_COUNT = sizeof(WORDS_TEST) / sizeof(WORDS_TEST[0]);
@@ -76,4 +75,3 @@ inline uint16_t getActiveLedCountExtra() { return 4; }
 inline uint16_t getActiveLedCountTotal() { return 115; }
 
 #endif // MOCK_GRID_LAYOUT_H
-

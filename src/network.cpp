@@ -225,10 +225,21 @@ void processNetwork() {
     if (disconnectedSinceMs == 0) disconnectedSinceMs = now;
 
     // Periodically attempt to reconnect using stored credentials.
-    // WiFi.begin() (no args) reuses NVS-stored credentials without calling disconnect first,
-    // avoiding the reconnect-storm that WiFi.reconnect() caused by resetting the connection
-    // attempt every 15s via esp_wifi_disconnect(). setAutoReconnect(true) alone is not
-    // sufficient when WiFiManager is active, as it overrides the auto-reconnect behaviour.
+    //
+    // Two cases depending on whether the WiFiManager config portal is active:
+    //
+    // Portal NOT active: WiFi is in STA mode. WiFi.begin() (no args) is sufficient — it
+    //   calls esp_wifi_start() which, combined with setAutoReconnect(true), lets the ESP32's
+    //   internal reconnect machinery do the work. Avoid WiFi.reconnect() here: it calls
+    //   esp_wifi_disconnect() which resets the 15s internal retry timer, causing a
+    //   reconnect-storm when auto-reconnect is also running.
+    //
+    // Portal IS active (AP+STA mode): WiFiManager suppresses setAutoReconnect, and
+    //   WiFi.begin() (no args) is a no-op — WiFi is already started (esp_wifi_start() does
+    //   nothing when the driver is running). WiFi.reconnect() must be used instead: it
+    //   explicitly calls esp_wifi_disconnect() + esp_wifi_connect() on the STA interface
+    //   without affecting the AP. No reconnect-storm here because WiFiManager has suppressed
+    //   auto-reconnect.
     //
     // After each attempt, stop the active scan after WIFI_RECONNECT_WINDOW_MS to prevent
     // the WiFi stack from scanning indefinitely, which causes LED flickering via DMA contention.
@@ -238,7 +249,16 @@ void processNetwork() {
     }
     if (lastReconnectAttemptMs == 0 || now - lastReconnectAttemptMs >= WIFI_RECONNECT_INTERVAL_MS) {
       logInfo("🔄 Attempting WiFi reconnect...");
-      WiFi.begin(); // begin() reuses stored credentials without disconnecting first
+#if WIFI_MANAGER_ENABLED
+      if (g_wifiManagerStarted) {
+        // Portal active in AP+STA mode: WiFi.begin() is a no-op; use reconnect() instead.
+        WiFi.reconnect();
+      } else {
+        WiFi.begin(); // begin() reuses stored credentials without disconnecting first
+      }
+#else
+      WiFi.begin();
+#endif
       lastReconnectAttemptMs = now;
       reconnectWindowStartMs = now;
     }
