@@ -74,8 +74,13 @@
         <div class="section-aside">
           <span class="label" data-i18n="dashboard.colour.label">Pick</span>
           <div class="section-body">
-            <input type="color" id="colorPicker" />
-            <p class="help" data-i18n="dashboard.colour.help">Tap to choose the LED hue. Applied immediately.</p>
+            <div class="swatch-grid" id="colorSwatches" aria-label="Color presets"></div>
+            <div class="swatch-custom-row">
+              <button type="button" class="btn line small" id="colorCustomBtn" data-i18n="dashboard.colour.custom">Custom…</button>
+              <input type="color" id="colorPicker" tabindex="-1" />
+              <span class="value-mono muted" id="colorValue">—</span>
+            </div>
+            <p class="help" data-i18n="dashboard.colour.help">Tap a swatch to set the LED hue. Applied immediately.</p>
           </div>
         </div>
       </section>
@@ -545,10 +550,55 @@
     document.getElementById('toggleClockOn').onclick = () => fetch('/toggle?state=on').then(() => dataLoader.load('status'));
     document.getElementById('toggleClockOff').onclick = () => fetch('/toggle?state=off').then(() => dataLoader.load('status'));
 
-    document.getElementById('colorPicker').oninput = (e) => {
-      const hex = e.target.value.substring(1);
-      fetch(`/setColor?color=${hex}`);
-    };
+    // ─── Color swatches + custom-hex fallback ───────────────────────
+    // 12 brand-curated swatches plus a hidden native picker reachable via
+    // the "Custom…" button. Replaces the bare <input type="color"> whose
+    // rendering differs per-browser and drops out of the brand entirely.
+    const COLOR_SWATCHES = [
+      '#FFE4B5', '#F5F2ED', '#FFA500', '#FF7043',
+      '#B87333', '#E8A0A0', '#B22222', '#6B85A8',
+      '#B5DEFF', '#88C8A0', '#2D5F3F', '#6B3F70',
+    ];
+    const colorSwatchEl = document.getElementById('colorSwatches');
+    const colorPickerEl = document.getElementById('colorPicker');
+    const colorValueEl = document.getElementById('colorValue');
+    const colorCustomBtn = document.getElementById('colorCustomBtn');
+
+    function paintSelectedSwatch(hexUpper) {
+      colorSwatchEl.querySelectorAll('.swatch').forEach((s) => {
+        s.classList.toggle('selected', s.dataset.color.toUpperCase() === hexUpper);
+      });
+      if (colorValueEl) colorValueEl.textContent = hexUpper;
+    }
+
+    function applyColor(hex) {
+      const clean = hex.replace('#', '').toUpperCase();
+      // Update the hidden native picker so a subsequent "Custom…" press
+      // opens with the right starting colour.
+      if (colorPickerEl && clean.length === 6) colorPickerEl.value = '#' + clean;
+      paintSelectedSwatch('#' + clean);
+      fetch(`/setColor?color=${clean}`);
+    }
+
+    if (colorSwatchEl) {
+      COLOR_SWATCHES.forEach((hex) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'swatch';
+        btn.dataset.color = hex;
+        btn.style.background = hex;
+        btn.title = hex;
+        btn.setAttribute('aria-label', hex);
+        btn.addEventListener('click', () => applyColor(hex));
+        colorSwatchEl.appendChild(btn);
+      });
+    }
+    if (colorCustomBtn && colorPickerEl) {
+      colorCustomBtn.addEventListener('click', () => colorPickerEl.click());
+    }
+    if (colorPickerEl) {
+      colorPickerEl.addEventListener('input', (e) => applyColor(e.target.value));
+    }
 
     const brightnessSlider = document.getElementById('brightnessSlider');
     const brightnessInput = document.getElementById('brightnessInput');
@@ -985,8 +1035,10 @@
     }, {
       priority: 5,
       onSuccess: (hex) => {
-        const cp = document.getElementById('colorPicker');
-        if (cp && hex && hex.length === 6) cp.value = '#' + hex;
+        if (!hex || hex.length !== 6) return;
+        const upper = hex.toUpperCase();
+        if (colorPickerEl) colorPickerEl.value = '#' + upper;
+        paintSelectedSwatch('#' + upper);
       }
     });
 

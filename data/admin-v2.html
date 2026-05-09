@@ -152,7 +152,12 @@
             <hr class="h-rule" />
             <div class="field">
               <span class="label" data-i18n="admin.display.colour">Colour</span>
-              <input type="color" id="adminColorPicker" />
+              <div class="swatch-grid" id="adminColorSwatches" aria-label="Color presets"></div>
+              <div class="swatch-custom-row">
+                <button type="button" class="btn line small" id="adminColorCustomBtn" data-i18n="dashboard.colour.custom">Custom…</button>
+                <input type="color" id="adminColorPicker" tabindex="-1" />
+                <span class="value-mono muted" id="adminColorValue">—</span>
+              </div>
             </div>
           </div>
         </div>
@@ -401,11 +406,58 @@
       });
     }
 
-    // Color
-    const acp = document.getElementById('adminColorPicker');
-    if (acp) {
-      fetch('/getColor').then(r => r.text()).then(hex => { if (hex && hex.length === 6) acp.value = '#' + hex; });
-      acp.addEventListener('input', (e) => fetch(`/setColor?color=${e.target.value.substring(1)}`));
+    // ─── Color swatches + custom-hex fallback (mirror of dashboard-v2)
+    const COLOR_SWATCHES = [
+      '#FFE4B5', '#F5F2ED', '#FFA500', '#FF7043',
+      '#B87333', '#E8A0A0', '#B22222', '#6B85A8',
+      '#B5DEFF', '#88C8A0', '#2D5F3F', '#6B3F70',
+    ];
+    const adminColorSwatchEl = document.getElementById('adminColorSwatches');
+    const adminColorPickerEl = document.getElementById('adminColorPicker');
+    const adminColorValueEl = document.getElementById('adminColorValue');
+    const adminColorCustomBtn = document.getElementById('adminColorCustomBtn');
+
+    function adminPaintSelectedSwatch(hexUpper) {
+      if (!adminColorSwatchEl) return;
+      adminColorSwatchEl.querySelectorAll('.swatch').forEach((s) => {
+        s.classList.toggle('selected', s.dataset.color.toUpperCase() === hexUpper);
+      });
+      if (adminColorValueEl) adminColorValueEl.textContent = hexUpper;
+    }
+
+    function adminApplyColor(hex) {
+      const clean = hex.replace('#', '').toUpperCase();
+      if (adminColorPickerEl && clean.length === 6) adminColorPickerEl.value = '#' + clean;
+      adminPaintSelectedSwatch('#' + clean);
+      fetch(`/setColor?color=${clean}`);
+    }
+
+    if (adminColorSwatchEl) {
+      COLOR_SWATCHES.forEach((hex) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'swatch';
+        btn.dataset.color = hex;
+        btn.style.background = hex;
+        btn.title = hex;
+        btn.setAttribute('aria-label', hex);
+        btn.addEventListener('click', () => adminApplyColor(hex));
+        adminColorSwatchEl.appendChild(btn);
+      });
+    }
+    if (adminColorCustomBtn && adminColorPickerEl) {
+      adminColorCustomBtn.addEventListener('click', () => adminColorPickerEl.click());
+    }
+    if (adminColorPickerEl) {
+      adminColorPickerEl.addEventListener('input', (e) => adminApplyColor(e.target.value));
+      // Initial paint from device state.
+      fetch('/getColor').then(r => r.text()).then(hex => {
+        if (hex && hex.length === 6) {
+          const upper = hex.toUpperCase();
+          adminColorPickerEl.value = '#' + upper;
+          adminPaintSelectedSwatch('#' + upper);
+        }
+      });
     }
 
     // Factory reset

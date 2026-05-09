@@ -815,6 +815,69 @@ input[type="file"]::file-selector-button {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ─── Color swatch palette (replaces <input type="color">) ────────────
+   Native <input type="color"> renders differently in every browser
+   (Safari = system dialog, Chrome = popover, Firefox = swatch box, iOS
+   = its own thing) and drops out of the brand entirely. Replace with a
+   curated 12-swatch grid; native picker hangs behind a "Custom…" button
+   for the rare power-user who needs a precise hex. */
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.swatch {
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: transform .15s ease, border-color .15s ease;
+  /* Buttons inherit body background by default; we want only the inline
+     style (the swatch's own colour) to show. */
+  background-clip: padding-box;
+}
+
+.swatch:hover {
+  transform: scale(1.04);
+  border-color: var(--graphite-40);
+}
+
+.swatch.selected {
+  /* Copper inset ring + ink outer border reads as "selected" without
+     overlapping the swatch colour. The double frame is intentional. */
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--copper) inset, 0 0 0 1px var(--paper) inset;
+}
+
+.swatch:focus-visible {
+  outline: 2px solid var(--copper);
+  outline-offset: 3px;
+}
+
+.swatch-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* Hide the native color input visually but keep it focusable + clickable
+   from JS. Position absolute so it doesn't take layout space. */
+.swatch-custom-row input[type="color"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
+}
+
 /* ─── Logo grid (color pickers) ──────────────────────── */
 .logo-color-grid {
   display: grid;
