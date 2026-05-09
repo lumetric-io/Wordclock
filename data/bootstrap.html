@@ -570,17 +570,53 @@
         'done': 'Done — rebooting',
         'failed': 'Failed',
       };
+
+      // Last download phase's total — kept around so we can flush the bar
+      // visually to 100% on phase change. The server resets bytes_total=0
+      // immediately when transitioning out of a downloading-* state, and
+      // ESP32 Update.onProgress doesn't reliably fire for the final chunk,
+      // so without this the bar typically stalls at 90-98% before being
+      // hidden by the next state change.
+      let lastDownloadTotal = 0;
+
+      const flushBarTo100 = async () => {
+        if (lastDownloadTotal > 0) {
+          updateProgressBar(lastDownloadTotal, lastDownloadTotal);
+          // Brief beat so the eye registers the 100% snapshot before
+          // anything else writes over the title/bar.
+          await new Promise(r => setTimeout(r, 400));
+          lastDownloadTotal = 0;
+        }
+      };
+
       let consecutiveErrors = 0;
       while (true) {
         try {
-          const res = await fetch('/api/provision/status');
+          const res = await fetch('/api/provision/status', { cache: 'no-store' });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const body = await res.json();
           consecutiveErrors = 0;
+
+          const isDownload = body.state === 'downloading-fs' ||
+                             body.state === 'downloading-firmware';
+
+          // Just left a downloading phase — flush the bar to 100% before
+          // we let the new state's title/bar take over. Otherwise the user
+          // sees the bar disappear from a stalled-looking 94-98%.
+          if (!isDownload && lastDownloadTotal > 0) {
+            await flushBarTo100();
+          }
+
           els.progressTitle.textContent = labels[body.state] || body.state;
           els.progressDetail.textContent = body.message || (body.product + ' / ' + body.channel);
           updateProgressBar(body.bytes_done || 0, body.bytes_total || 0);
+
+          if (isDownload && body.bytes_total > 0) {
+            lastDownloadTotal = body.bytes_total;
+          }
+
           if (body.state === 'done') {
+            await flushBarTo100();
             // Reboot is imminent; jump straight to the watch-for-AP terminus
             // so the user has a clear next-step rather than a brief "Done"
             // that we'd otherwise replace once the connection drops.
@@ -596,6 +632,9 @@
           // consecutive errors, the new firmware is starting up.
           consecutiveErrors++;
           if (consecutiveErrors >= 4) {
+            // Reboot detected mid-download means the firmware download
+            // succeeded; show 100% before the success terminus.
+            await flushBarTo100();
             showRebootSuccess();
             return;
           }
