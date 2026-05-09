@@ -65,6 +65,29 @@
       max-width: 52ch;
       margin: 0;
     }
+    /* Horizontal step carousel: product (step 1) and channel (step 2) live
+       in a track that slides left when the user picks a product. Both
+       panels occupy the same viewport height/width so step 2 never falls
+       below the fold on small screens. */
+    .steps {
+      overflow: hidden;
+      position: relative;
+    }
+    .steps-track {
+      display: flex;
+      width: 200%;
+      transition: transform 0.4s ease;
+    }
+    .steps-track.show-channel {
+      transform: translateX(-50%);
+    }
+    .steps-track > .step {
+      width: 50%;
+      flex: 0 0 50%;
+      /* Remove inter-step border since the steps never co-exist visually. */
+      border-bottom: none;
+    }
+
     .step { padding: clamp(40px, 7vw, 72px) 0; border-bottom: 1px solid var(--line); }
     .step:last-of-type { border-bottom: none; }
     .step-head {
@@ -247,30 +270,36 @@
       <p class="lede">This device runs the bootstrap firmware. Choose the product it should become; the matching firmware and UI image will be downloaded and installed automatically.</p>
     </section>
 
-    <!-- Step 1 — product -->
-    <section class="step">
-      <header class="step-head">
-        <span class="step-num">01</span>
-        <h2 class="step-title">Product</h2>
-      </header>
-      <div id="productCards" class="cards"></div>
-      <p id="productError" class="help err"></p>
-    </section>
+    <!-- Step carousel: step 1 and step 2 share the same viewport region;
+         picking a product slides the track left to reveal step 2. -->
+    <div class="steps">
+      <div class="steps-track" id="stepsTrack">
+        <!-- Step 1 — product -->
+        <section class="step" id="stepProduct">
+          <header class="step-head">
+            <span class="step-num">01</span>
+            <h2 class="step-title">Product</h2>
+          </header>
+          <div id="productCards" class="cards"></div>
+          <p id="productError" class="help err"></p>
+        </section>
 
-    <!-- Step 2 — channel (hidden until product chosen) -->
-    <section class="step hidden" id="channelStep">
-      <header class="step-head">
-        <span class="step-num">02</span>
-        <h2 class="step-title">Channel</h2>
-      </header>
-      <p class="help" id="channelHint">Probing channels…</p>
-      <div id="channelOptions" class="cards" style="margin-top: 12px;"></div>
-      <p id="channelError" class="help err"></p>
-      <div class="btn-row" style="margin-top: 24px;">
-        <button id="installBtn" class="btn" disabled>Install</button>
-        <button id="backBtn" class="btn ghost">Back</button>
+        <!-- Step 2 — channel (revealed by sliding the track) -->
+        <section class="step" id="stepChannel">
+          <header class="step-head">
+            <span class="step-num">02</span>
+            <h2 class="step-title">Channel</h2>
+          </header>
+          <p class="help" id="channelHint">Probing channels…</p>
+          <div id="channelOptions" class="cards" style="margin-top: 12px;"></div>
+          <p id="channelError" class="help err"></p>
+          <div class="btn-row" style="margin-top: 24px;">
+            <button id="installBtn" class="btn" disabled>Install</button>
+            <button id="backBtn" class="btn ghost">Back</button>
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   </main>
 
   <!-- Progress overlay -->
@@ -299,7 +328,8 @@
     const els = {
       productCards: document.getElementById('productCards'),
       productError: document.getElementById('productError'),
-      channelStep: document.getElementById('channelStep'),
+      stepsTrack: document.getElementById('stepsTrack'),
+      stepChannel: document.getElementById('stepChannel'),
       channelHint: document.getElementById('channelHint'),
       channelOptions: document.getElementById('channelOptions'),
       channelError: document.getElementById('channelError'),
@@ -360,11 +390,15 @@
       state.channels = [];
       els.productCards.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
       cardEl.classList.add('selected');
-      els.channelStep.classList.remove('hidden');
       els.channelHint.textContent = 'Probing channels…';
       els.channelOptions.innerHTML = '';
       els.channelError.textContent = '';
       els.installBtn.disabled = true;
+      // Slide the carousel to step 2 and scroll up so the new step header
+      // is at the top of the viewport (otherwise the user lands halfway
+      // through the channel options on smaller screens).
+      els.stepsTrack.classList.add('show-channel');
+      els.stepChannel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       try {
         const res = await fetch('/api/provision/channels?product=' + encodeURIComponent(id));
@@ -429,8 +463,11 @@
     // Back to step 1
     els.backBtn.addEventListener('click', () => {
       state.channel = null;
-      els.channelStep.classList.add('hidden');
+      els.stepsTrack.classList.remove('show-channel');
       els.installBtn.disabled = true;
+      // Match the forward transition: scroll to the top of the steps area
+      // so the user sees the product picker from the top.
+      els.stepsTrack.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     // Install button: kick off provisioning
