@@ -127,6 +127,38 @@ main {
   border-color: var(--copper);
 }
 
+/* Language toggle — two pill-buttons (EN | NL) sharing one frame.
+   Designed to read as a single control rather than two separate links. */
+.lang-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.lang-toggle a {
+  padding: 6px 10px;
+  color: var(--graphite-60);
+  text-decoration: none;
+  transition: color .15s, background .15s;
+  cursor: pointer;
+}
+
+.lang-toggle a + a {
+  border-left: 1px solid var(--line);
+}
+
+.lang-toggle a:hover {
+  color: var(--copper);
+}
+
+.lang-toggle a.active {
+  color: var(--paper);
+  background: var(--copper);
+}
+
 @media (max-width: 640px) {
   .topnav { gap: 12px; }
   .topnav a:not(.toggle-classic) { display: none; }

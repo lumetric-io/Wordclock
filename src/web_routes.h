@@ -295,6 +295,17 @@ void setupWebRoutes() {
   server.on("/chronolett.css", HTTP_GET, []() {
     serveFile("/chronolett.css", "text/css");
   });
+  // i18n: shared loader + per-language dictionaries (EN/NL).
+  // Lives in /i18n/ so future languages slot in next to the existing JSON.
+  server.on("/i18n/i18n.js", HTTP_GET, []() {
+    serveFile("/i18n/i18n.js", "application/javascript");
+  });
+  server.on("/i18n/en.json", HTTP_GET, []() {
+    serveFile("/i18n/en.json", "application/json");
+  });
+  server.on("/i18n/nl.json", HTTP_GET, []() {
+    serveFile("/i18n/nl.json", "application/json");
+  });
 
   // Favicon placeholder to avoid 404 noise
   server.on("/favicon.ico", HTTP_GET, []() {

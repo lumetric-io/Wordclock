@@ -8,16 +8,21 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/chronolett.css" />
+  <script src="/i18n/i18n.js" defer></script>
 </head>
 <body>
   <header class="topbar">
     <div class="page">
       <div class="container topbar-inner">
-        <a href="/dashboard-v2.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by">Update</span></a>
+        <a href="/dashboard-v2.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by" data-i18n="common.brand.update">Update</span></a>
         <nav class="topnav">
-          <a href="/dashboard-v2.html">Dashboard</a>
-          <a href="/admin-v2.html">Admin</a>
-          <a href="/update.html" class="toggle-classic">← Classic</a>
+          <a href="/dashboard-v2.html" data-i18n="common.nav.dashboard">Dashboard</a>
+          <a href="/admin-v2.html" data-i18n="common.nav.admin">Admin</a>
+          <span class="lang-toggle">
+            <a href="#" data-lang-toggle="en" data-i18n="common.lang.en">EN</a>
+            <a href="#" data-lang-toggle="nl" data-i18n="common.lang.nl">NL</a>
+          </span>
+          <a href="/update.html" class="toggle-classic" data-i18n="common.nav.classic">← Classic</a>
         </nav>
       </div>
     </div>
@@ -27,25 +32,25 @@
     <div class="container">
 
       <section class="hero">
-        <p class="kicker">Manual update</p>
-        <h1>Two steps<span class="copper-dot">.</span></h1>
-        <p class="lede">Upload firmware and the UI image. The device reboots automatically after each step. Update firmware first if the new UI depends on it.</p>
+        <p class="kicker" data-i18n="update.kicker">Manual update</p>
+        <h1><span data-i18n="update.title">Two steps</span><span class="copper-dot">.</span></h1>
+        <p class="lede" data-i18n="update.lede">Upload firmware and the UI image. The device reboots automatically after each step. Update firmware first if the new UI depends on it.</p>
       </section>
 
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">01</span>
-          <h2 class="section-title">Firmware (app)</h2>
+          <h2 class="section-title" data-i18n="update.step1.title">Firmware (app)</h2>
         </header>
         <div class="section-aside">
           <span class="label">firmware.bin</span>
           <div class="section-body">
-            <p class="help">Upload the firmware (firmware.bin). The device will reboot automatically after a successful upload.</p>
+            <p class="help" data-i18n="update.step1.help">Upload the firmware (firmware.bin). The device will reboot automatically after a successful upload.</p>
             <form action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="field">
               <input type="file" name="firmwareFile" accept=".bin" required />
               <div class="slider-meta">
-                <button type="submit" class="btn">Upload firmware</button>
-                <a href="#step2" class="value-mono copper" style="text-decoration:none">Skip to step 2 →</a>
+                <button type="submit" class="btn" data-i18n="update.step1.button">Upload firmware</button>
+                <a href="#step2" class="value-mono copper" style="text-decoration:none" data-i18n="update.step1.skip">Skip to step 2 →</a>
               </div>
             </form>
           </div>
@@ -55,17 +60,17 @@
       <section class="chapter" id="step2">
         <header class="section-head">
           <span class="section-num">02</span>
-          <h2 class="section-title">UI (LittleFS)</h2>
+          <h2 class="section-title" data-i18n="update.step2.title">UI (LittleFS)</h2>
         </header>
         <div class="section-aside">
           <span class="label">littlefs.bin</span>
           <div class="section-body">
-            <p class="help">Upload the UI image (littlefs.bin). The device will reboot automatically after this step as well.</p>
+            <p class="help" data-i18n="update.step2.help">Upload the UI image (littlefs.bin). The device will reboot automatically after this step as well.</p>
             <form action="/uploadFs" method="POST" enctype="multipart/form-data" class="field">
               <input type="file" name="fsFile" accept=".bin" required />
-              <button type="submit" class="btn">Upload UI image</button>
+              <button type="submit" class="btn" data-i18n="update.step2.button">Upload UI image</button>
             </form>
-            <p class="help">Updates are applied immediately per step. After reboot you'll return to the dashboard.</p>
+            <p class="help" data-i18n="update.step2.note">Updates are applied immediately per step. After reboot you'll return to the dashboard.</p>
           </div>
         </div>
       </section>
@@ -73,14 +78,14 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">03</span>
-          <h2 class="section-title">Versions</h2>
+          <h2 class="section-title" data-i18n="update.versions.title">Versions</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Current</span>
+          <span class="label" data-i18n="update.versions.label">Current</span>
           <div class="section-body">
             <dl class="dl">
-              <dt>Firmware</dt><dd id="version">—</dd>
-              <dt>UI</dt><dd id="uiVersion">—</dd>
+              <dt data-i18n="update.versions.firmware">Firmware</dt><dd id="version">—</dd>
+              <dt data-i18n="update.versions.ui">UI</dt><dd id="uiVersion">—</dd>
             </dl>
           </div>
         </div>
@@ -88,7 +93,7 @@
 
       <div class="footer-sig">
         <span>Chronolett<span class="copper">.</span></span>
-        <span>v2 — editorial preview</span>
+        <span data-i18n="common.footer.preview">v2 — editorial preview</span>
       </div>
 
     </div>

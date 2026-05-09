@@ -1,0 +1,25 @@
+{
+  "common.brand.update": "Update",
+  "common.nav.dashboard": "Dashboard",
+  "common.nav.admin": "Beheer",
+  "common.nav.classic": "← Klassiek",
+  "common.lang.en": "EN",
+  "common.lang.nl": "NL",
+  "common.footer.preview": "v2 — editorial preview",
+
+  "update.kicker": "Handmatige update",
+  "update.title": "Twee stappen",
+  "update.lede": "Upload firmware en het UI-image. Het apparaat herstart automatisch na elke stap. Werk eerst de firmware bij als de nieuwe UI daarvan afhankelijk is.",
+  "update.step1.title": "Firmware (app)",
+  "update.step1.help": "Upload de firmware (firmware.bin). Het apparaat herstart automatisch na een geslaagde upload.",
+  "update.step1.button": "Upload firmware",
+  "update.step1.skip": "Door naar stap 2 →",
+  "update.step2.title": "UI (LittleFS)",
+  "update.step2.help": "Upload het UI-image (littlefs.bin). Het apparaat herstart ook na deze stap automatisch.",
+  "update.step2.button": "Upload UI-image",
+  "update.step2.note": "Updates worden per stap direct toegepast. Na de herstart kom je terug op het dashboard.",
+  "update.versions.title": "Versies",
+  "update.versions.label": "Huidig",
+  "update.versions.firmware": "Firmware",
+  "update.versions.ui": "UI"
+}
