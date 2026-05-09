@@ -6,8 +6,8 @@
 // to MQTT; most of that code is excluded via build_src_filter.
 
 #define PRODUCT_ID "nextgen-bootstrap"
-#define FIRMWARE_VERSION "nextgen-bootstrap-0.1.5"
-#define UI_VERSION "ui-nextgen-bootstrap-0.1.5"
+#define FIRMWARE_VERSION "nextgen-bootstrap-0.1.6"
+#define UI_VERSION "ui-nextgen-bootstrap-0.1.6"
 
 // Marker used by gated code in shared sources (ota_updater.cpp,
 // system_utils.cpp) to compile out per-device dependencies that
