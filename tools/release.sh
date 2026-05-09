@@ -600,6 +600,13 @@ prompt_version() {
 }
 
 prompt_release_notes() {
+    # Bootstrap is a factory tool — no GitHub release, no OTA publish, so
+    # release notes have no destination. Skip the prompt entirely.
+    if [[ "$PRODUCT" == "nextgen-bootstrap" ]]; then
+        RELEASE_NOTES=""
+        return 0
+    fi
+
     print_header "Release Notes"
     echo "Enter release notes (press Ctrl+D when done, Ctrl+C to skip):"
     echo ""
