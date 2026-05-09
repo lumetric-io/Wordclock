@@ -589,10 +589,26 @@
         }
       };
 
+      // Bounded-timeout fetch. Without this, each poll after the device
+      // reboots can hang for ~30 s (browser's default DNS timeout) because
+      // wordclock.local no longer resolves on Lumetric — the bootstrap is
+      // gone and the new firmware is on its own enrollment AP. Bound at
+      // 4 s so reboot detection takes ≤ ~15 s in the worst case.
+      const POLL_TIMEOUT_MS = 4000;
+      const fetchWithTimeout = async (url, opts = {}) => {
+        const ctrl = new AbortController();
+        const id = setTimeout(() => ctrl.abort(), POLL_TIMEOUT_MS);
+        try {
+          return await fetch(url, { ...opts, signal: ctrl.signal });
+        } finally {
+          clearTimeout(id);
+        }
+      };
+
       let consecutiveErrors = 0;
       while (true) {
         try {
-          const res = await fetch('/api/provision/status', { cache: 'no-store' });
+          const res = await fetchWithTimeout('/api/provision/status', { cache: 'no-store' });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const body = await res.json();
           consecutiveErrors = 0;
@@ -631,7 +647,7 @@
           // Reboot in progress — server is unreachable. After a few
           // consecutive errors, the new firmware is starting up.
           consecutiveErrors++;
-          if (consecutiveErrors >= 4) {
+          if (consecutiveErrors >= 3) {
             // Reboot detected mid-download means the firmware download
             // succeeded; show 100% before the success terminus.
             await flushBarTo100();
@@ -639,7 +655,7 @@
             return;
           }
         }
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 1000));
       }
     }
 
