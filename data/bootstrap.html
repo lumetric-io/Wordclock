@@ -558,11 +558,14 @@
     // Poll provisioning status. The device reboots on success — fetch will
     // eventually fail with a network error, which we treat as "done".
     async function pollStatus() {
+      // Titles call out the specific artifact + step number so the operator
+      // can distinguish the two downloads at a glance instead of seeing two
+      // near-identical "Downloading…" lines back-to-back.
       const labels = {
         'idle': 'Idle',
         'fetching-channels': 'Fetching manifest…',
-        'downloading-firmware': 'Downloading firmware…',
-        'downloading-fs': 'Downloading UI image…',
+        'downloading-fs': 'Step 1 of 2 — littlefs.bin (UI image)',
+        'downloading-firmware': 'Step 2 of 2 — firmware.bin (application)',
         'applying': 'Applying update…',
         'done': 'Done — rebooting',
         'failed': 'Failed',

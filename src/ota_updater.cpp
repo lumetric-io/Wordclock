@@ -962,13 +962,24 @@ bool installProductFirmware(const String& productId, const String& channel) {
       logError("❌ Bootstrap: fs URL missing");
       return false;
     }
-    BOOT_EMIT_PHASE("downloading-fs", "Downloading filesystem image…");
+    {
+      // Build a phase message that includes the file name and exact byte
+      // count so the operator can tell at a glance which of the two
+      // downloads is currently running.
+      String fsMsg = String("Downloading littlefs.bin · ") + String(fsSize) + " bytes";
+      BOOT_EMIT_PHASE("downloading-fs", fsMsg.c_str());
+    }
     BOOT_EMIT_PROGRESS(0, (size_t)fsSize);
     logInfo(String("⬇️ Bootstrap: downloading fs (") + fsVersion + ", " + String(fsSize) + " bytes)…");
     if (!performFilesystemUpdate(fsUrl, fsSize, *client)) {
       logError("❌ Bootstrap: fs update failed");
       return false;
     }
+    // Update.onProgress doesn't reliably fire for the final chunk
+    // (writeStream returns before the last _progress_callback). Force a
+    // 100% emit so the UI's progress bar visibly fills before we move on
+    // to the firmware phase.
+    BOOT_EMIT_PROGRESS((size_t)fsSize, (size_t)fsSize);
     if (fsVersion.length()) writeFsImageVersion(fsVersion);
     logInfo("✅ Bootstrap: fs updated");
   }
@@ -985,13 +996,18 @@ bool installProductFirmware(const String& productId, const String& channel) {
     logError("❌ Bootstrap: firmware URL missing");
     return false;
   }
-  BOOT_EMIT_PHASE("downloading-firmware", "Downloading firmware…");
+  {
+    String fwMsg = String("Downloading firmware.bin · ") + String(fwSize) + " bytes";
+    BOOT_EMIT_PHASE("downloading-firmware", fwMsg.c_str());
+  }
   BOOT_EMIT_PROGRESS(0, (size_t)fwSize);
   logInfo(String("⬇️ Bootstrap: downloading firmware from ") + fwUrl);
   if (!performHttpOta(fwUrl, *client)) {
     logError("❌ Bootstrap: firmware update failed");
     return false;
   }
+  // Final-chunk progress emit — see the matching note for fs above.
+  BOOT_EMIT_PROGRESS((size_t)fwSize, (size_t)fwSize);
 
   BOOT_EMIT_PHASE("applying", "Applying & rebooting…");
   logInfo("✅ Bootstrap: firmware applied; rebooting into product…");
