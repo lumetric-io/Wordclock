@@ -8,16 +8,21 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/chronolett.css" />
+  <script src="/i18n/i18n.js" defer></script>
 </head>
 <body>
   <header class="topbar">
     <div class="page">
       <div class="container topbar-inner">
-        <a href="/dashboard-v2.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by">Admin</span></a>
+        <a href="/dashboard-v2.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by" data-i18n="common.brand.admin">Admin</span></a>
         <nav class="topnav">
-          <a href="/dashboard-v2.html">Dashboard</a>
-          <a href="/logs-v2.html">Logs</a>
-          <a href="/admin.html" class="toggle-classic">← Classic</a>
+          <a href="/dashboard-v2.html" data-i18n="common.nav.dashboard">Dashboard</a>
+          <a href="/logs-v2.html" data-i18n="common.nav.logs">Logs</a>
+          <span class="lang-toggle">
+            <a href="#" data-lang-toggle="en" data-i18n="common.lang.en">EN</a>
+            <a href="#" data-lang-toggle="nl" data-i18n="common.lang.nl">NL</a>
+          </span>
+          <a href="/admin.html" class="toggle-classic" data-i18n="common.nav.classic">← Classic</a>
         </nav>
       </div>
     </div>
@@ -27,31 +32,31 @@
     <div class="container">
 
       <section class="hero">
-        <p class="kicker">Admin</p>
-        <h1>Service<span class="copper-dot">.</span></h1>
-        <p class="lede">Production and service actions. This page is protected by the manufacturer password — critical endpoints are not accessible without it.</p>
+        <p class="kicker" data-i18n="admin.kicker">Admin</p>
+        <h1><span data-i18n="admin.title">Service</span><span class="copper-dot">.</span></h1>
+        <p class="lede" data-i18n="admin.lede">Production and service actions. This page is protected by the manufacturer password — critical endpoints are not accessible without it.</p>
       </section>
 
       <!-- 01 — Quick actions -->
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">01</span>
-          <h2 class="section-title">Quick actions</h2>
+          <h2 class="section-title" data-i18n="admin.actions.title">Quick actions</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Run</span>
+          <span class="label" data-i18n="admin.actions.label">Run</span>
           <div class="section-body">
             <div class="btn-row">
-              <a class="btn line" href="/restart">Restart</a>
-              <a class="btn line" href="/resetwifi">Reset Wi-Fi</a>
-              <a class="btn line" href="/startSequence">Start sequence</a>
+              <a class="btn line" href="/restart" data-i18n="admin.actions.restart">Restart</a>
+              <a class="btn line" href="/resetwifi" data-i18n="admin.actions.reset_wifi">Reset Wi-Fi</a>
+              <a class="btn line" href="/startSequence" data-i18n="admin.actions.start_sequence">Start sequence</a>
               <button class="btn" id="updateBtnAdm">
-                <span id="updateBtnLabel">Update</span>
+                <span id="updateBtnLabel" data-i18n="admin.actions.update">Update</span>
                 <span id="updateSpinnerAdm" class="spinner hidden" aria-label="Update in progress"></span>
               </button>
             </div>
             <p id="updateBtnMsg" class="help"></p>
-            <a class="btn line block" href="/update-v2.html" id="updatePageLink">Open update page</a>
+            <a class="btn line block" href="/update-v2.html" id="updatePageLink" data-i18n="admin.actions.open_update">Open update page</a>
           </div>
         </div>
       </section>
@@ -60,24 +65,24 @@
       <section class="chapter" id="releaseChannelSection">
         <header class="section-head">
           <span class="section-num">02</span>
-          <h2 class="section-title">Release channel</h2>
+          <h2 class="section-title" data-i18n="admin.channel.title">Release channel</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Choose</span>
+          <span class="label" data-i18n="admin.channel.label">Choose</span>
           <div class="section-body">
             <label class="check-row">
               <input type="radio" name="updateChannelAdmin" value="stable" />
-              <span>Stable <span class="muted">(recommended)</span></span>
+              <span><span data-i18n="admin.channel.stable">Stable</span> <span class="muted" data-i18n="admin.channel.stable_hint">(recommended)</span></span>
             </label>
             <label class="check-row">
               <input type="radio" name="updateChannelAdmin" value="early" />
-              <span>Early <span class="muted">(experimental)</span></span>
+              <span><span data-i18n="admin.channel.early">Early</span> <span class="muted" data-i18n="admin.channel.early_hint">(experimental)</span></span>
             </label>
             <label class="check-row">
               <input type="radio" name="updateChannelAdmin" value="develop" />
-              <span class="text-err">Develop — may render the clock unusable; recovery not guaranteed</span>
+              <span class="text-err" data-i18n="admin.channel.develop">Develop — may render the clock unusable; recovery not guaranteed</span>
             </label>
-            <p id="updateChannelStatusAdmin" class="help">Default: stable. Early/Develop may be unstable.</p>
+            <p id="updateChannelStatusAdmin" class="help" data-i18n="admin.channel.default_help">Default: stable. Early/Develop may be unstable.</p>
           </div>
         </div>
       </section>
@@ -86,14 +91,14 @@
       <section class="chapter" id="syncUiSection">
         <header class="section-head">
           <span class="section-num">03</span>
-          <h2 class="section-title">UI sync</h2>
+          <h2 class="section-title" data-i18n="admin.sync.title">UI sync</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Manifest</span>
+          <span class="label" data-i18n="admin.sync.label">Manifest</span>
           <div class="section-body">
-            <button id="syncUiBtn" class="btn ghost">Sync UI files</button>
+            <button id="syncUiBtn" class="btn ghost" data-i18n="admin.sync.btn">Sync UI files</button>
             <p id="syncUiMsg" class="help"></p>
-            <a href="/logs-v2.html" class="btn line">View logs</a>
+            <a href="/logs-v2.html" class="btn line" data-i18n="admin.sync.view_logs">View logs</a>
           </div>
         </div>
       </section>
@@ -102,22 +107,22 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">04</span>
-          <h2 class="section-title">Log settings</h2>
+          <h2 class="section-title" data-i18n="admin.logs.title">Log settings</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Retention</span>
+          <span class="label" data-i18n="admin.logs.label">Retention</span>
           <div class="section-body">
             <div class="field">
-              <span class="label">Retention — <span id="logRetentionVal" class="value-mono">1</span> days</span>
+              <span class="label"><span data-i18n="admin.logs.retention">Retention</span> — <span id="logRetentionVal" class="value-mono">1</span> <span data-i18n="admin.logs.days">days</span></span>
               <input type="range" id="logRetention" min="1" max="10" step="1" />
-              <p class="help">Number of days to keep log files (1–10). Default is 1.</p>
+              <p class="help" data-i18n="admin.logs.retention_help">Number of days to keep log files (1–10). Default is 1.</p>
             </div>
             <label class="check-row">
               <input type="checkbox" id="logDeleteOnBoot" />
-              <span>Clear logs on restart</span>
+              <span data-i18n="admin.logs.clear_on_restart">Clear logs on restart</span>
             </label>
             <div class="field">
-              <span class="label">Log level</span>
+              <span class="label" data-i18n="admin.logs.level">Log level</span>
               <select id="logLevel" class="select">
                 <option value="0">DEBUG</option>
                 <option value="1">INFO</option>
@@ -125,7 +130,7 @@
                 <option value="3">ERROR</option>
               </select>
             </div>
-            <button id="saveLogSettings" class="btn">Save log settings</button>
+            <button id="saveLogSettings" class="btn" data-i18n="admin.logs.save_btn">Save log settings</button>
             <p id="logSettingsStatus" class="help"></p>
           </div>
         </div>
@@ -135,18 +140,18 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">05</span>
-          <h2 class="section-title">Display</h2>
+          <h2 class="section-title" data-i18n="admin.display.title">Display</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Mode</span>
+          <span class="label" data-i18n="admin.display.label">Mode</span>
           <div class="section-body">
             <label class="check-row">
               <input type="checkbox" id="sellMode" />
-              <span>Sell mode (show 10:47)</span>
+              <span data-i18n="admin.display.sell_mode">Sell mode (show 10:47)</span>
             </label>
             <hr class="h-rule" />
             <div class="field">
-              <span class="label">Colour</span>
+              <span class="label" data-i18n="admin.display.colour">Colour</span>
               <input type="color" id="adminColorPicker" />
             </div>
           </div>
@@ -157,21 +162,21 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">06</span>
-          <h2 class="section-title">Upload</h2>
+          <h2 class="section-title" data-i18n="admin.upload.title">Upload</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Firmware</span>
+          <span class="label" data-i18n="admin.upload.label_fw">Firmware</span>
           <div class="section-body">
             <form action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="field">
               <input type="file" name="firmwareFile" accept=".bin" required />
-              <button type="submit" class="btn ghost">Upload firmware</button>
+              <button type="submit" class="btn ghost" data-i18n="admin.upload.fw_btn">Upload firmware</button>
             </form>
             <p id="updateStatus" class="help"></p>
             <hr class="h-rule" />
-            <span class="label">UI (LittleFS)</span>
+            <span class="label" data-i18n="admin.upload.label_ui">UI (LittleFS)</span>
             <form action="/uploadFs" method="POST" enctype="multipart/form-data" class="field">
               <input type="file" name="filesystemFile" accept=".bin" required />
-              <button type="submit" class="btn ghost">Upload UI image</button>
+              <button type="submit" class="btn ghost" data-i18n="admin.upload.ui_btn">Upload UI image</button>
             </form>
             <p id="updateFsStatus" class="help"></p>
           </div>
@@ -182,13 +187,13 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">07</span>
-          <h2 class="section-title">Fleet</h2>
+          <h2 class="section-title" data-i18n="admin.fleet.title">Fleet</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Register</span>
+          <span class="label" data-i18n="admin.fleet.label">Register</span>
           <div class="section-body">
-            <p class="help">Register this device with fleet management.</p>
-            <button id="registerBtn" class="btn copper">Register device</button>
+            <p class="help" data-i18n="admin.fleet.help">Register this device with fleet management.</p>
+            <button id="registerBtn" class="btn copper" data-i18n="admin.fleet.btn">Register device</button>
             <p id="registerStatus" class="help"></p>
             <pre id="registerResponse" class="log-output hidden" style="height:auto;max-height:200px"></pre>
           </div>
@@ -199,20 +204,20 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">08</span>
-          <h2 class="section-title">Build info</h2>
+          <h2 class="section-title" data-i18n="admin.build.title">Build info</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Identity</span>
+          <span class="label" data-i18n="admin.build.label">Identity</span>
           <div class="section-body">
             <dl class="dl">
-              <dt>Firmware</dt><dd id="buildFirmware">—</dd>
-              <dt>UI</dt><dd id="buildUi">—</dd>
-              <dt>Git SHA</dt><dd id="buildSha">—</dd>
-              <dt>Git branch</dt><dd id="buildBranch">—</dd>
-              <dt>Build time (UTC)</dt><dd id="buildTime">—</dd>
-              <dt>Environment</dt><dd id="buildEnv">—</dd>
-              <dt>Device ID</dt><dd id="buildDeviceId">—</dd>
-              <dt>Hardware ID</dt><dd id="buildHardwareId">—</dd>
+              <dt data-i18n="admin.build.fw">Firmware</dt><dd id="buildFirmware">—</dd>
+              <dt data-i18n="admin.build.ui">UI</dt><dd id="buildUi">—</dd>
+              <dt data-i18n="admin.build.git_sha">Git SHA</dt><dd id="buildSha">—</dd>
+              <dt data-i18n="admin.build.git_branch">Git branch</dt><dd id="buildBranch">—</dd>
+              <dt data-i18n="admin.build.build_time">Build time (UTC)</dt><dd id="buildTime">—</dd>
+              <dt data-i18n="admin.build.env">Environment</dt><dd id="buildEnv">—</dd>
+              <dt data-i18n="admin.build.device_id">Device ID</dt><dd id="buildDeviceId">—</dd>
+              <dt data-i18n="admin.build.hardware_id">Hardware ID</dt><dd id="buildHardwareId">—</dd>
             </dl>
             <p id="buildInfoStatus" class="help"></p>
           </div>
@@ -223,13 +228,13 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">09</span>
-          <h2 class="section-title">Danger</h2>
+          <h2 class="section-title" data-i18n="admin.danger.title">Danger</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Reset</span>
+          <span class="label" data-i18n="admin.danger.label">Reset</span>
           <div class="section-body">
-            <p class="help">Erases stored settings. The device will reboot to a fresh state.</p>
-            <button id="factoryBtn" class="btn danger">Factory reset</button>
+            <p class="help" data-i18n="admin.danger.help">Erases stored settings. The device will reboot to a fresh state.</p>
+            <button id="factoryBtn" class="btn danger" data-i18n="admin.danger.btn">Factory reset</button>
             <p id="factoryMsg" class="help"></p>
           </div>
         </div>
@@ -237,13 +242,14 @@
 
       <div class="footer-sig">
         <span>Chronolett<span class="copper">.</span></span>
-        <span>v2 — editorial preview</span>
+        <span data-i18n="common.footer.preview">v2 — editorial preview</span>
       </div>
 
     </div>
   </main>
 
   <script>
+    const T = (k, fb) => (window.chronolettI18n ? window.chronolettI18n.t(k, fb) : fb);
 
     // OTA via admin button
     const updateBtn = document.getElementById('updateBtnAdm');
@@ -281,9 +287,9 @@
       };
       updateBtn.addEventListener('click', async (e) => {
         e.preventDefault();
-        if (!confirm('Check for firmware updates and start OTA?')) return;
-        if (updateStatusEl) updateStatusEl.textContent = 'Checking for updates…';
-        if (updateBtnMsg) updateBtnMsg.textContent = 'Checking…';
+        if (!confirm(T('admin.ota.confirm', 'Check for firmware updates and start OTA?'))) return;
+        if (updateStatusEl) updateStatusEl.textContent = T('admin.ota.checking', 'Checking for updates…');
+        if (updateBtnMsg) updateBtnMsg.textContent = T('admin.ota.checking_short', 'Checking…');
         if (updateSpinnerAdm) updateSpinnerAdm.classList.remove('hidden');
         updateBtn.disabled = true; updateBtn.classList.add('disabled');
         try {
@@ -292,21 +298,21 @@
           try { preVersion = await getVersion(); } catch (e) {}
           const r = await fetch('/checkForUpdate');
           if (r.ok) {
-            if (updateStatusEl) updateStatusEl.textContent = 'Update started. Device will reboot shortly…';
-            if (updateBtnMsg) updateBtnMsg.textContent = 'Running…';
+            if (updateStatusEl) updateStatusEl.textContent = T('admin.ota.started', 'Update started. Device will reboot shortly…');
+            if (updateBtnMsg) updateBtnMsg.textContent = T('admin.ota.running', 'Running…');
             const result = await waitForUpdateCompletion(preUptime, preVersion);
             if (result === 'reboot' || result === 'version') { location.reload(); return; }
-            if (updateStatusEl) updateStatusEl.textContent = (result === 'no-update') ? 'No update applied.' : 'Update may still be running.';
+            if (updateStatusEl) updateStatusEl.textContent = (result === 'no-update') ? T('admin.ota.no_update', 'No update applied.') : T('admin.ota.may_running', 'Update may still be running.');
             if (updateSpinnerAdm) updateSpinnerAdm.classList.add('hidden');
           } else {
-            const msg = 'Update failed (HTTP ' + r.status + ')';
+            const msg = T('admin.ota.failed_http', 'Update failed') + ' (HTTP ' + r.status + ')';
             if (updateStatusEl) updateStatusEl.textContent = msg;
             if (updateBtnMsg) updateBtnMsg.textContent = msg;
             if (updateSpinnerAdm) updateSpinnerAdm.classList.add('hidden');
           }
         } catch (err) {
-          if (updateStatusEl) updateStatusEl.textContent = 'Update request failed';
-          if (updateBtnMsg) updateBtnMsg.textContent = 'Request failed';
+          if (updateStatusEl) updateStatusEl.textContent = T('admin.ota.req_failed', 'Update request failed');
+          if (updateBtnMsg) updateBtnMsg.textContent = T('admin.ota.req_failed_short', 'Request failed');
           if (updateSpinnerAdm) updateSpinnerAdm.classList.add('hidden');
         } finally {
           updateBtn.disabled = false; updateBtn.classList.remove('disabled');
@@ -319,10 +325,13 @@
     const channelStatusAdmin = document.getElementById('updateChannelStatusAdmin');
     let lastAdminChannel = 'stable';
     const applyChannelGuardAdmin = (ch) => {
-      if (channelStatusAdmin) channelStatusAdmin.textContent = `Current channel: ${ch}${ch === 'develop' ? ' (automatic updates disabled)' : ''}`;
+      if (channelStatusAdmin) {
+        channelStatusAdmin.textContent = T('admin.channel.current', 'Current channel:') + ' ' + ch +
+          (ch === 'develop' ? ' ' + T('admin.channel.auto_disabled', '(automatic updates disabled)') : '');
+      }
     };
     const loadChannelAdmin = async () => {
-      if (channelStatusAdmin) channelStatusAdmin.textContent = 'Loading channel…';
+      if (channelStatusAdmin) channelStatusAdmin.textContent = T('admin.channel.loading', 'Loading channel…');
       try {
         const res = await fetch('/api/update/channel');
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -344,7 +353,7 @@
           if (!r.checked) return;
           const ch = r.value;
           if (ch === 'develop') {
-            const ok = window.confirm('Use the develop channel? This may render the clock unusable; recovery is not guaranteed.');
+            const ok = window.confirm(T('admin.channel.develop_confirm', 'Use the develop channel? This may render the clock unusable; recovery is not guaranteed.'));
             if (!ok) {
               r.checked = false;
               const prev = Array.from(channelRadiosAdmin).find(x => x.value === lastAdminChannel);
@@ -353,7 +362,7 @@
               return;
             }
           }
-          if (channelStatusAdmin) channelStatusAdmin.textContent = 'Saving…';
+          if (channelStatusAdmin) channelStatusAdmin.textContent = T('common.saving', 'Saving…');
           try {
             const res = await fetch('/api/update/channel', {
               method: 'POST',
@@ -364,7 +373,7 @@
             lastAdminChannel = ch;
             applyChannelGuardAdmin(ch);
           } catch (err) {
-            if (channelStatusAdmin) channelStatusAdmin.textContent = 'Save failed; keeping previous value';
+            if (channelStatusAdmin) channelStatusAdmin.textContent = T('admin.channel.save_failed', 'Save failed; keeping previous value');
             channelRadiosAdmin.forEach(radio => { radio.checked = (radio.value === lastAdminChannel); });
             applyChannelGuardAdmin(lastAdminChannel);
           }
@@ -382,13 +391,13 @@
     const syncMsg = document.getElementById('syncUiMsg');
     if (syncBtn) {
       syncBtn.addEventListener('click', async () => {
-        if (!confirm('Sync UI files from manifest? This may take a moment.')) return;
-        if (syncMsg) syncMsg.textContent = 'Sync in progress…';
+        if (!confirm(T('admin.sync.confirm', 'Sync UI files from manifest? This may take a moment.'))) return;
+        if (syncMsg) syncMsg.textContent = T('admin.sync.in_progress', 'Sync in progress…');
         try {
           const res = await fetch('/syncUI', { method: 'POST' });
-          if (res.ok) syncMsg.textContent = 'UI sync triggered. Check logs for progress.';
-          else syncMsg.textContent = 'UI sync failed (HTTP ' + res.status + ')';
-        } catch (err) { syncMsg.textContent = 'UI sync request failed'; }
+          if (res.ok) syncMsg.textContent = T('admin.sync.triggered', 'UI sync triggered. Check logs for progress.');
+          else syncMsg.textContent = T('admin.sync.failed', 'UI sync failed') + ' (HTTP ' + res.status + ')';
+        } catch (err) { syncMsg.textContent = T('admin.sync.req_failed', 'UI sync request failed'); }
       });
     }
 
@@ -404,13 +413,13 @@
     const fmsg = document.getElementById('factoryMsg');
     if (fbtn) {
       fbtn.addEventListener('click', async () => {
-        if (!confirm('Are you sure you want to perform a full factory reset?')) return;
+        if (!confirm(T('admin.danger.confirm', 'Are you sure you want to perform a full factory reset?'))) return;
         const r = await fetch('/factoryreset', { method: 'POST' });
         if (r.ok) {
-          fmsg.textContent = 'Factory reset started. Device will reboot shortly…';
+          fmsg.textContent = T('admin.danger.started', 'Factory reset started. Device will reboot shortly…');
           setTimeout(() => location.reload(), 10000);
         } else {
-          fmsg.textContent = 'Failed to start factory reset';
+          fmsg.textContent = T('admin.danger.failed', 'Failed to start factory reset');
         }
       });
     }
@@ -443,9 +452,9 @@
           if (updateBtn) updateBtn.classList.add('hidden');
           if (updatePageLink) updatePageLink.classList.add('hidden');
         }
-        if (buildStatus) buildStatus.textContent = 'Last updated just now.';
+        if (buildStatus) buildStatus.textContent = T('admin.build.last_updated', 'Last updated just now.');
       } catch (err) {
-        if (buildStatus) buildStatus.textContent = 'Failed to load build info (' + err.message + ')';
+        if (buildStatus) buildStatus.textContent = T('admin.build.failed', 'Failed to load build info') + ' (' + err.message + ')';
       }
     }
     loadBuildInfo();
@@ -473,16 +482,16 @@
         const days = logRetention.value;
         const delOnBoot = logDeleteOnBoot.checked;
         const level = logLevel.value;
-        logSettingsStatus.textContent = 'Saving…';
+        logSettingsStatus.textContent = T('common.saving', 'Saving…');
         logSettingsStatus.className = 'help';
         try {
           const res = await fetch(`/api/logs/settings?retention_days=${days}&delete_on_boot=${delOnBoot}&level=${level}`, { method: 'POST' });
           if (res.ok) {
-            logSettingsStatus.textContent = 'Settings saved successfully';
+            logSettingsStatus.textContent = T('admin.logs.saved', 'Settings saved successfully');
             logSettingsStatus.className = 'help text-ok';
           } else throw new Error('HTTP ' + res.status);
         } catch (err) {
-          logSettingsStatus.textContent = 'Save failed: ' + err.message;
+          logSettingsStatus.textContent = T('admin.logs.save_failed', 'Save failed:') + ' ' + err.message;
           logSettingsStatus.className = 'help text-err';
         }
       });
@@ -496,7 +505,7 @@
     if (registerBtn) {
       registerBtn.addEventListener('click', async () => {
         registerBtn.disabled = true; registerBtn.classList.add('disabled');
-        if (registerStatus) registerStatus.textContent = 'Registering device…';
+        if (registerStatus) registerStatus.textContent = T('admin.fleet.registering', 'Registering device…');
         if (registerResponse) { registerResponse.textContent = ''; registerResponse.classList.add('hidden'); }
         try {
           const res = await fetch('/api/device/register', { method: 'POST' });
@@ -504,14 +513,16 @@
           let body = text;
           try { body = JSON.stringify(JSON.parse(text), null, 2); } catch (err) {}
           if (registerResponse) {
-            registerResponse.textContent = body || '(empty response)';
+            registerResponse.textContent = body || T('admin.fleet.empty_response', '(empty response)');
             registerResponse.classList.remove('hidden');
           }
           if (registerStatus) {
-            registerStatus.textContent = res.ok ? 'Registration succeeded.' : 'Registration failed (HTTP ' + res.status + ').';
+            registerStatus.textContent = res.ok
+              ? T('admin.fleet.success', 'Registration succeeded.')
+              : T('admin.fleet.failed', 'Registration failed') + ' (HTTP ' + res.status + ').';
           }
         } catch (err) {
-          if (registerStatus) registerStatus.textContent = 'Registration request failed.';
+          if (registerStatus) registerStatus.textContent = T('admin.fleet.req_failed', 'Registration request failed.');
           if (registerResponse) {
             registerResponse.textContent = err && err.message ? err.message : String(err);
             registerResponse.classList.remove('hidden');
@@ -521,6 +532,11 @@
         }
       });
     }
+
+    // Refresh dynamic strings on language switch (channel status, build info).
+    window.addEventListener('chronolett:lang', () => {
+      applyChannelGuardAdmin(lastAdminChannel);
+    });
   </script>
 </body>
 </html>

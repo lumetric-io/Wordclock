@@ -8,16 +8,21 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/chronolett.css" />
+  <script src="/i18n/i18n.js" defer></script>
 </head>
 <body>
   <header class="topbar">
     <div class="page">
       <div class="container topbar-inner">
-        <a href="/dashboard-v2.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by">Logs</span></a>
+        <a href="/dashboard-v2.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by" data-i18n="common.brand.logs">Logs</span></a>
         <nav class="topnav">
-          <a href="/dashboard-v2.html">Dashboard</a>
-          <a href="/admin-v2.html">Admin</a>
-          <a href="/logs.html" class="toggle-classic">← Classic</a>
+          <a href="/dashboard-v2.html" data-i18n="common.nav.dashboard">Dashboard</a>
+          <a href="/admin-v2.html" data-i18n="common.nav.admin">Admin</a>
+          <span class="lang-toggle">
+            <a href="#" data-lang-toggle="en" data-i18n="common.lang.en">EN</a>
+            <a href="#" data-lang-toggle="nl" data-i18n="common.lang.nl">NL</a>
+          </span>
+          <a href="/logs.html" class="toggle-classic" data-i18n="common.nav.classic">← Classic</a>
         </nav>
       </div>
     </div>
@@ -27,22 +32,22 @@
     <div class="container">
 
       <section class="hero">
-        <p class="kicker">Logs</p>
-        <h1>Archive<span class="copper-dot">.</span></h1>
-        <p class="lede">Download archived log files. Newest entries first.</p>
+        <p class="kicker" data-i18n="logs.kicker">Logs</p>
+        <h1><span data-i18n="logs.title">Archive</span><span class="copper-dot">.</span></h1>
+        <p class="lede" data-i18n="logs.lede">Download archived log files. Newest entries first.</p>
       </section>
 
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">01</span>
-          <h2 class="section-title">Available files</h2>
+          <h2 class="section-title" data-i18n="logs.section.title">Available files</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Logs</span>
+          <span class="label" data-i18n="logs.section.label">Logs</span>
           <div class="section-body">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-              <p class="help" style="margin:0">Click a row to download.</p>
-              <button id="refreshLogs" class="btn line small">Refresh</button>
+              <p class="help" style="margin:0" data-i18n="logs.click_to_download">Click a row to download.</p>
+              <button id="refreshLogs" class="btn line small" data-i18n="logs.refresh">Refresh</button>
             </div>
             <ul id="logList" class="list-rows"></ul>
             <p id="logError" class="help text-err"></p>
@@ -52,25 +57,27 @@
 
       <div class="footer-sig">
         <span>Chronolett<span class="copper">.</span></span>
-        <span>v2 — editorial preview</span>
+        <span data-i18n="common.footer.preview">v2 — editorial preview</span>
       </div>
 
     </div>
   </main>
 
   <script>
+    const T = (k, fb) => (window.chronolettI18n ? window.chronolettI18n.t(k, fb) : fb);
+
     const listEl = document.getElementById('logList');
     const errEl = document.getElementById('logError');
     const btn = document.getElementById('refreshLogs');
     async function loadLogs() {
       if (errEl) errEl.textContent = '';
-      if (listEl) listEl.innerHTML = '<li><span class="meta">Loading…</span></li>';
+      if (listEl) listEl.innerHTML = '<li><span class="meta">' + T('logs.loading', 'Loading…') + '</span></li>';
       try {
         const res = await fetch('/api/logs');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const files = await res.json();
         if (!Array.isArray(files) || files.length === 0) {
-          if (listEl) listEl.innerHTML = '<li><span class="meta">No logs available.</span></li>';
+          if (listEl) listEl.innerHTML = '<li><span class="meta">' + T('logs.empty', 'No logs available.') + '</span></li>';
           return;
         }
         if (listEl) {
@@ -82,7 +89,7 @@
             name.textContent = file.name;
             const meta = document.createElement('span');
             meta.className = 'meta';
-            meta.textContent = file.size ? `${file.size} bytes` : '';
+            meta.textContent = file.size ? `${file.size} ${T('common.bytes', 'bytes')}` : '';
             const wrap = document.createElement('span');
             wrap.style.display = 'flex';
             wrap.style.gap = '12px';
@@ -91,18 +98,21 @@
             wrap.appendChild(meta);
             const link = document.createElement('a');
             link.href = '/log/download?date=' + encodeURIComponent(file.date);
-            link.textContent = 'Download →';
+            link.textContent = T('logs.download', 'Download →');
             li.appendChild(wrap);
             li.appendChild(link);
             listEl.appendChild(li);
           });
         }
       } catch (err) {
-        if (errEl) errEl.textContent = 'Failed to load logs (' + err.message + ')';
+        if (errEl) errEl.textContent = T('logs.load_failed', 'Failed to load logs') + ' (' + err.message + ')';
         if (listEl) listEl.innerHTML = '';
       }
     }
     if (btn) btn.addEventListener('click', loadLogs);
+    // Re-render the list when the user switches language so dynamic strings
+    // (Loading…, No logs available, Download →, "bytes") update too.
+    window.addEventListener('chronolett:lang', loadLogs);
     loadLogs();
   </script>
 </body>

@@ -8,17 +8,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/chronolett.css" />
+  <script src="/i18n/i18n.js" defer></script>
 </head>
 <body>
   <header class="topbar">
     <div class="page">
       <div class="container topbar-inner">
-        <a href="/dashboard-v2.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by">Wordclock</span></a>
+        <a href="/dashboard-v2.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by" data-i18n="common.brand.wordclock">Wordclock</span></a>
         <nav class="topnav">
-          <a href="/mqtt-v2.html">MQTT</a>
-          <a href="/logs-v2.html">Logs</a>
-          <a href="/admin-v2.html">Admin</a>
-          <a href="/dashboard.html" class="toggle-classic" title="Switch to classic design">← Classic</a>
+          <a href="/mqtt-v2.html" data-i18n="common.nav.mqtt">MQTT</a>
+          <a href="/logs-v2.html" data-i18n="common.nav.logs">Logs</a>
+          <a href="/admin-v2.html" data-i18n="common.nav.admin">Admin</a>
+          <span class="lang-toggle">
+            <a href="#" data-lang-toggle="en" data-i18n="common.lang.en">EN</a>
+            <a href="#" data-lang-toggle="nl" data-i18n="common.lang.nl">NL</a>
+          </span>
+          <a href="/dashboard.html" class="toggle-classic" data-i18n-title="dashboard.classic_title" title="Switch to classic design" data-i18n="common.nav.classic">← Classic</a>
         </nav>
       </div>
     </div>
@@ -28,19 +33,19 @@
     <div class="container">
 
       <section class="hero">
-        <p class="kicker">Dashboard</p>
+        <p class="kicker" data-i18n="dashboard.kicker">Dashboard</p>
         <h1>Wordclock<span class="copper-dot">.</span></h1>
-        <p class="lede">Manage your clock — colour, brightness, schedule, and firmware. Settings save instantly.</p>
+        <p class="lede" data-i18n="dashboard.lede">Manage your clock — colour, brightness, schedule, and firmware. Settings save instantly.</p>
       </section>
 
       <!-- 01 — Status -->
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">01</span>
-          <h2 class="section-title">Status</h2>
+          <h2 class="section-title" data-i18n="dashboard.status.title">Status</h2>
         </header>
         <div class="section-aside">
-          <span class="label">State</span>
+          <span class="label" data-i18n="dashboard.status.label">State</span>
           <div class="section-body">
             <div class="status-row">
               <div class="status-pill">
@@ -49,12 +54,12 @@
               </div>
             </div>
             <div id="ledEventRow" class="event-row">
-              <span class="event-label">LED event</span>
+              <span class="event-label" data-i18n="dashboard.status.led_event">LED event</span>
               <span id="ledEventText">—</span>
             </div>
             <div class="btn-row">
-              <button id="toggleClockOn" class="btn copper">On</button>
-              <button id="toggleClockOff" class="btn ghost">Off</button>
+              <button id="toggleClockOn" class="btn copper" data-i18n="dashboard.status.on_btn">On</button>
+              <button id="toggleClockOff" class="btn ghost" data-i18n="dashboard.status.off_btn">Off</button>
             </div>
           </div>
         </div>
@@ -64,13 +69,13 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">02</span>
-          <h2 class="section-title">Colour</h2>
+          <h2 class="section-title" data-i18n="dashboard.colour.title">Colour</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Pick</span>
+          <span class="label" data-i18n="dashboard.colour.label">Pick</span>
           <div class="section-body">
             <input type="color" id="colorPicker" />
-            <p class="help">Tap to choose the LED hue. Applied immediately.</p>
+            <p class="help" data-i18n="dashboard.colour.help">Tap to choose the LED hue. Applied immediately.</p>
           </div>
         </div>
       </section>
@@ -79,14 +84,14 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">03</span>
-          <h2 class="section-title">Brightness</h2>
+          <h2 class="section-title" data-i18n="dashboard.brightness.title">Brightness</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Level</span>
+          <span class="label" data-i18n="dashboard.brightness.label">Level</span>
           <div class="section-body">
             <div class="slider-block">
               <div class="slider-meta">
-                <span class="value-mono">Level <span id="brightnessValue2">—</span></span>
+                <span class="value-mono"><span data-i18n="dashboard.brightness.value_prefix">Level</span> <span id="brightnessValue2">—</span></span>
                 <input type="number" id="brightnessInput" min="0" max="255" step="1" class="input tight short" />
                 <div class="step-btns">
                   <button id="brightnessDec" class="btn line small">−10</button>
@@ -97,10 +102,10 @@
             </div>
             <div id="logoBrightnessSection" class="hidden">
               <hr class="h-rule" style="margin: 16px 0" />
-              <span class="label">Logo brightness</span>
+              <span class="label" data-i18n="dashboard.brightness.logo_label">Logo brightness</span>
               <div class="slider-block">
                 <div class="slider-meta">
-                  <span class="value-mono">Level <span id="logoBrightnessValue">—</span></span>
+                  <span class="value-mono"><span data-i18n="dashboard.brightness.value_prefix">Level</span> <span id="logoBrightnessValue">—</span></span>
                   <input type="number" id="logoBrightnessInput" min="0" max="255" step="1" class="input tight short" />
                   <div class="step-btns">
                     <button id="logoBrightnessDec" class="btn line small">−10</button>
@@ -118,44 +123,44 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">04</span>
-          <h2 class="section-title">Nightmode</h2>
+          <h2 class="section-title" data-i18n="dashboard.nightmode.title">Nightmode</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Schedule</span>
+          <span class="label" data-i18n="dashboard.nightmode.label">Schedule</span>
           <div class="section-body">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
               <label class="check-row">
                 <input type="checkbox" id="nightModeEnabled" />
-                <span>Enable nightmode</span>
+                <span data-i18n="dashboard.nightmode.enable">Enable nightmode</span>
               </label>
               <span id="nightModeStatus" class="value-mono muted">—</span>
             </div>
             <div class="field">
-              <span class="label">Effect</span>
+              <span class="label" data-i18n="dashboard.nightmode.effect_label">Effect</span>
               <select id="nightModeEffect" class="select">
-                <option value="dim">Dim to percentage</option>
-                <option value="off">Fully off</option>
+                <option value="dim" data-i18n="dashboard.nightmode.effect_dim">Dim to percentage</option>
+                <option value="off" data-i18n="dashboard.nightmode.effect_off">Fully off</option>
               </select>
             </div>
             <div class="field" id="nightModeDimControls">
-              <span class="label">Dim percentage — <span id="nightModeDimValue" class="value-mono">—</span>%</span>
+              <span class="label"><span data-i18n="dashboard.nightmode.dim_label">Dim percentage</span> — <span id="nightModeDimValue" class="value-mono">—</span>%</span>
               <div class="slider-meta">
                 <input type="range" min="0" max="100" value="20" id="nightModeDimSlider" style="flex:1" />
                 <input type="number" id="nightModeDimInput" min="0" max="100" step="1" class="input tight short" />
               </div>
-              <p class="help">0% = fully off · 100% = original brightness</p>
+              <p class="help" data-i18n="dashboard.nightmode.dim_help">0% = fully off · 100% = original brightness</p>
             </div>
             <div class="field-row">
               <div class="field">
-                <span class="label">Start</span>
+                <span class="label" data-i18n="dashboard.nightmode.start">Start</span>
                 <input type="time" id="nightModeStart" class="input" />
               </div>
               <div class="field">
-                <span class="label">End</span>
+                <span class="label" data-i18n="dashboard.nightmode.end">End</span>
                 <input type="time" id="nightModeEnd" class="input" />
               </div>
             </div>
-            <p class="help">If end is earlier than start, nightmode runs over midnight.</p>
+            <p class="help" data-i18n="dashboard.nightmode.midnight_help">If end is earlier than start, nightmode runs over midnight.</p>
           </div>
         </div>
       </section>
@@ -164,15 +169,15 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">05</span>
-          <h2 class="section-title">Actions</h2>
+          <h2 class="section-title" data-i18n="dashboard.actions.title">Actions</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Run</span>
+          <span class="label" data-i18n="dashboard.actions.label">Run</span>
           <div class="section-body">
             <div class="btn-row three">
-              <button id="restartBtn" class="btn line">Restart</button>
-              <button id="resetWifiBtn" class="btn line">Reset Wi-Fi</button>
-              <button id="startSequenceBtn" class="btn line">Start sequence</button>
+              <button id="restartBtn" class="btn line" data-i18n="dashboard.actions.restart">Restart</button>
+              <button id="resetWifiBtn" class="btn line" data-i18n="dashboard.actions.reset_wifi">Reset Wi-Fi</button>
+              <button id="startSequenceBtn" class="btn line" data-i18n="dashboard.actions.start_sequence">Start sequence</button>
             </div>
           </div>
         </div>
@@ -182,46 +187,46 @@
       <section class="chapter" id="firmwareUpdateSection">
         <header class="section-head">
           <span class="section-num">06</span>
-          <h2 class="section-title">Firmware</h2>
+          <h2 class="section-title" data-i18n="dashboard.firmware.title">Firmware</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Channel</span>
+          <span class="label" data-i18n="dashboard.firmware.channel_label">Channel</span>
           <div class="section-body">
             <div class="field">
               <label class="check-row">
                 <input type="radio" name="updateChannel" value="stable" />
-                <span>Stable <span class="muted">(recommended)</span></span>
+                <span><span data-i18n="dashboard.firmware.stable">Stable</span> <span class="muted" data-i18n="dashboard.firmware.stable_hint">(recommended)</span></span>
               </label>
               <label class="check-row">
                 <input type="radio" name="updateChannel" value="early" />
-                <span>Early <span class="muted">(experimental)</span></span>
+                <span><span data-i18n="dashboard.firmware.early">Early</span> <span class="muted" data-i18n="dashboard.firmware.early_hint">(experimental)</span></span>
               </label>
-              <p id="updateChannelStatus" class="help">Default: stable. Early may be unstable.</p>
+              <p id="updateChannelStatus" class="help" data-i18n="dashboard.firmware.channel_help">Default: stable. Early may be unstable.</p>
             </div>
             <hr class="h-rule" />
-            <span class="label">Automatic</span>
+            <span class="label" data-i18n="dashboard.firmware.automatic">Automatic</span>
             <label class="check-row">
               <input type="checkbox" id="autoUpdate" />
-              <span>Automatic firmware updates</span>
+              <span data-i18n="dashboard.firmware.auto_label">Automatic firmware updates</span>
             </label>
             <hr class="h-rule" />
-            <span class="label">Check</span>
+            <span class="label" data-i18n="dashboard.firmware.check_label">Check</span>
             <div class="slider-meta">
-              <button id="checkUpdateBtn" class="btn">Check for update</button>
+              <button id="checkUpdateBtn" class="btn" data-i18n="dashboard.firmware.check_btn">Check for update</button>
               <span id="updateSpinner" class="spinner hidden" aria-label="Update in progress"></span>
               <span id="updateStatus" class="value-mono muted"></span>
             </div>
             <hr class="h-rule" />
-            <span class="label">Manual upload</span>
+            <span class="label" data-i18n="dashboard.firmware.manual_label">Manual upload</span>
             <form id="firmwareUploadForm" action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="field">
               <input type="file" name="firmwareFile" accept=".bin" required />
-              <button type="submit" class="btn ghost">Upload firmware</button>
+              <button type="submit" class="btn ghost" data-i18n="dashboard.firmware.upload_btn">Upload firmware</button>
             </form>
             <p id="firmwareUploadStatus" class="help"></p>
             <hr class="h-rule" />
             <dl class="dl">
-              <dt>Firmware</dt><dd id="version">—</dd>
-              <dt>UI</dt><dd id="uiVersion">—</dd>
+              <dt data-i18n="update.versions.firmware">Firmware</dt><dd id="version">—</dd>
+              <dt data-i18n="update.versions.ui">UI</dt><dd id="uiVersion">—</dd>
             </dl>
           </div>
         </div>
@@ -231,23 +236,23 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">07</span>
-          <h2 class="section-title">Display</h2>
+          <h2 class="section-title" data-i18n="dashboard.display.title">Display</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Words</span>
+          <span class="label" data-i18n="dashboard.display.label">Words</span>
           <div class="section-body">
             <label class="check-row">
               <input type="checkbox" id="animateWords" />
-              <span>Word-by-word animation</span>
+              <span data-i18n="dashboard.display.animate">Word-by-word animation</span>
             </label>
             <div id="hetIsSection">
               <hr class="h-rule" />
               <label class="check-row">
                 <input type="checkbox" id="hetIsAlways2" />
-                <span>Always show "HET IS"</span>
+                <span data-i18n="dashboard.display.always_het_is">Always show "HET IS"</span>
               </label>
               <div class="field" style="margin-top:12px">
-                <span class="label">Show "HET IS" — <span id="hetIsDurationValue2" class="value-mono">30</span>s</span>
+                <span class="label"><span data-i18n="dashboard.display.show_het_is">Show "HET IS"</span> — <span id="hetIsDurationValue2" class="value-mono">30</span>s</span>
                 <div class="slider-meta">
                   <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="input tight short" />
                   <div class="step-btns">
@@ -256,7 +261,7 @@
                   </div>
                 </div>
                 <input type="range" min="0" max="360" value="360" id="hetIsDuration2" />
-                <p class="help">0 = never · 360 = always</p>
+                <p class="help" data-i18n="dashboard.display.het_is_help">0 = never · 360 = always</p>
               </div>
             </div>
           </div>
@@ -267,10 +272,10 @@
       <section class="chapter hidden" id="logoLedsSection">
         <header class="section-head">
           <span class="section-num">08</span>
-          <h2 class="section-title">Logo LEDs</h2>
+          <h2 class="section-title" data-i18n="dashboard.logo.title">Logo LEDs</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Pixels</span>
+          <span class="label" data-i18n="dashboard.logo.label">Pixels</span>
           <div class="section-body">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span class="value-mono muted" id="logoStatus">—</span>
@@ -278,8 +283,8 @@
             <div id="logoGrid" class="logo-color-grid"></div>
             <div class="slider-meta">
               <input type="color" id="logoAllColor" class="small" />
-              <button id="logoFillAll" class="btn line">Fill all</button>
-              <button id="logoApply" class="btn">Save</button>
+              <button id="logoFillAll" class="btn line" data-i18n="dashboard.logo.fill_all">Fill all</button>
+              <button id="logoApply" class="btn" data-i18n="dashboard.logo.save">Save</button>
             </div>
           </div>
         </div>
@@ -289,13 +294,13 @@
       <section class="chapter">
         <header class="section-head">
           <span class="section-num">09</span>
-          <h2 class="section-title">Logs</h2>
+          <h2 class="section-title" data-i18n="dashboard.logs.title">Logs</h2>
         </header>
         <div class="section-aside">
-          <span class="label">Tail</span>
+          <span class="label" data-i18n="dashboard.logs.label">Tail</span>
           <div class="section-body">
             <div class="field">
-              <span class="label">Log level</span>
+              <span class="label" data-i18n="dashboard.logs.level_label">Log level</span>
               <select id="logLevel" class="select">
                 <option value="ERROR">ERROR</option>
                 <option value="WARN">WARN</option>
@@ -305,7 +310,7 @@
               <p id="logLevelStatus" class="help"></p>
             </div>
             <div class="value-mono muted">
-              Storage: <span id="logSummary">—</span> <span id="logSummaryStatus" class="muted"></span>
+              <span data-i18n="dashboard.logs.storage">Storage:</span> <span id="logSummary">—</span> <span id="logSummaryStatus" class="muted"></span>
             </div>
             <pre id="logOutput" class="log-output"></pre>
           </div>
@@ -314,7 +319,7 @@
 
       <div class="footer-sig">
         <span>Chronolett<span class="copper">.</span></span>
-        <span>v2 — editorial preview</span>
+        <span data-i18n="common.footer.preview">v2 — editorial preview</span>
       </div>
 
     </div>
@@ -322,6 +327,8 @@
 
   <script>
     // === Identical logic to dashboard.html, with selector-only adjustments ===
+    const T = (k, fb) => (window.chronolettI18n ? window.chronolettI18n.t(k, fb) : fb);
+
     class DataLoader {
       constructor() {
         this.loaders = new Map();
@@ -416,16 +423,24 @@
       if (hetIsSection) hetIsSection.classList.toggle('hidden', !v);
     };
 
-    const LED_EVENT_LABELS = {
-      FirmwareCheck: 'Idle',
-      FirmwareAvailable: 'Firmware available',
-      FirmwareDownloading: 'Firmware downloading',
-      FirmwareApplying: 'Firmware applying',
-      NtpFailed: 'NTP failed',
-      MqttDisconnected: 'MQTT disconnected',
-      BleProvisioning: 'BLE provisioning',
-      WifiManagerPortal: 'Wi-Fi manager portal'
+    // Map LED event ids to i18n keys + English fallbacks. Resolved through
+    // T() at render time so language switches re-translate without a reload.
+    const LED_EVENT_KEYS = {
+      FirmwareCheck:       ['dashboard.led.idle',          'Idle'],
+      FirmwareAvailable:   ['dashboard.led.fw_available',  'Firmware available'],
+      FirmwareDownloading: ['dashboard.led.fw_downloading','Firmware downloading'],
+      FirmwareApplying:    ['dashboard.led.fw_applying',   'Firmware applying'],
+      NtpFailed:           ['dashboard.led.ntp_failed',    'NTP failed'],
+      MqttDisconnected:    ['dashboard.led.mqtt_disc',     'MQTT disconnected'],
+      BleProvisioning:     ['dashboard.led.ble_prov',      'BLE provisioning'],
+      WifiManagerPortal:   ['dashboard.led.wifi_portal',   'Wi-Fi manager portal'],
     };
+    function ledEventLabel(name) {
+      const e = LED_EVENT_KEYS[name];
+      return e ? T(e[0], e[1]) : name;
+    }
+    let lastLedEvent = 'FirmwareCheck';
+    let lastStatusOn = null;
 
     dataLoader.register('status', async () => {
       const res = await fetch('/status');
@@ -436,12 +451,15 @@
       onSuccess: (status) => {
         clearErrorState('statusText');
         const on = status === 'on';
+        lastStatusOn = on;
         const ind = document.getElementById('statusIndicator');
         if (ind) ind.className = 'dot ' + (on ? 'on' : 'off');
         const st = document.getElementById('statusText');
-        if (st) st.textContent = on ? 'Wordclock on' : 'Wordclock off';
+        if (st) st.textContent = on
+          ? T('dashboard.status.dyn_on', 'Wordclock on')
+          : T('dashboard.status.dyn_off', 'Wordclock off');
       },
-      onError: (err) => setErrorState('statusText', err, 'Error loading status')
+      onError: (err) => setErrorState('statusText', err, T('dashboard.status.error', 'Error loading status'))
     });
 
     dataLoader.register('ledEvent', async () => {
@@ -455,7 +473,8 @@
         const row = document.getElementById('ledEventRow');
         if (!el || !row) return;
         const name = (data && data.event) ? data.event : 'FirmwareCheck';
-        el.textContent = LED_EVENT_LABELS[name] || name;
+        lastLedEvent = name;
+        el.textContent = ledEventLabel(name);
         row.classList.toggle('active', name !== 'FirmwareCheck');
       },
       onError: () => { const el = document.getElementById('ledEventText'); if (el) el.textContent = '—'; }
@@ -464,16 +483,21 @@
     const autoUpdCb = document.getElementById('autoUpdate');
     const channelRadios = document.querySelectorAll('input[name="updateChannel"]');
     const channelStatus = document.getElementById('updateChannelStatus');
+    let lastChannel = 'stable';
     const applyChannelGuard = (ch) => {
+      lastChannel = ch;
       const disabled = (ch === 'develop');
       if (autoUpdCb) {
         if (disabled) { autoUpdCb.checked = false; autoUpdCb.disabled = true; }
         else { autoUpdCb.disabled = false; }
       }
-      if (channelStatus) channelStatus.textContent = `Current channel: ${ch}${disabled ? ' (automatic updates disabled)' : ''}`;
+      if (channelStatus) {
+        channelStatus.textContent = T('dashboard.firmware.current', 'Current channel:') + ' ' + ch +
+          (disabled ? ' ' + T('dashboard.firmware.auto_disabled', '(automatic updates disabled)') : '');
+      }
     };
     const loadChannel = async () => {
-      if (channelStatus) channelStatus.textContent = 'Loading channel…';
+      if (channelStatus) channelStatus.textContent = T('dashboard.firmware.loading', 'Loading channel…');
       try {
         const res = await fetch('/api/update/channel');
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -492,7 +516,7 @@
         if (!r.checked) return;
         const ch = r.value;
         if (ch === 'develop') {
-          const ok = window.confirm('Use the develop channel? This may make the clock unusable; recovery is not guaranteed.');
+          const ok = window.confirm(T('dashboard.firmware.develop_confirm', 'Use the develop channel? This may make the clock unusable; recovery is not guaranteed.'));
           if (!ok) {
             r.checked = false;
             const stable = Array.from(channelRadios).find(x => x.value === 'stable');
@@ -501,7 +525,7 @@
             return;
           }
         }
-        if (channelStatus) channelStatus.textContent = 'Saving…';
+        if (channelStatus) channelStatus.textContent = T('common.saving', 'Saving…');
         try {
           const res = await fetch('/api/update/channel', {
             method: 'POST',
@@ -511,7 +535,7 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
           applyChannelGuard(ch);
         } catch (err) {
-          if (channelStatus) channelStatus.textContent = 'Save failed; keeping previous value';
+          if (channelStatus) channelStatus.textContent = T('dashboard.firmware.save_failed', 'Save failed; keeping previous value');
           await loadChannel();
         }
       });
@@ -641,19 +665,19 @@
       });
       const loadLogoState = async () => {
         if (!logoGrid) return;
-        setLogoStatus('Loading…');
+        setLogoStatus(T('common.loading', 'Loading…'));
         try {
           const res = await fetch('/logo/state');
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const data = await res.json();
           renderLogoState(data);
-          setLogoStatus('Saved');
-        } catch (err) { setLogoStatus('Load failed', true); }
+          setLogoStatus(T('common.saved', 'Saved'));
+        } catch (err) { setLogoStatus(T('dashboard.logo.load_failed', 'Load failed'), true); }
       };
       if (logoGrid) dataLoader.register('logoState', loadLogoState, { priority: 5 });
       const saveLogoState = async () => {
         if (!logoGrid) return;
-        setLogoStatus('Saving…');
+        setLogoStatus(T('common.saving', 'Saving…'));
         const payload = {
           brightness: parseInt(logoBrightness ? logoBrightness.value : '0', 10) || 0,
           colors: logoPickers.map(p => (p.value || '#000000').replace('#', '').toUpperCase())
@@ -667,8 +691,8 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const data = await res.json();
           renderLogoState(data);
-          setLogoStatus('Saved');
-        } catch (err) { setLogoStatus('Save failed', true); }
+          setLogoStatus(T('common.saved', 'Saved'));
+        } catch (err) { setLogoStatus(T('dashboard.nightmode.save_failed', 'Save failed'), true); }
       };
       const logoApplyBtn = document.getElementById('logoApply');
       if (logoApplyBtn) logoApplyBtn.addEventListener('click', saveLogoState);
@@ -691,8 +715,8 @@
     const nightModeStart = document.getElementById('nightModeStart');
     const nightModeEnd = document.getElementById('nightModeEnd');
     let nightModeCurrent = null;
-    const setNightModeSaving = () => { if (nightModeStatus) nightModeStatus.textContent = 'Saving…'; };
-    const setNightModeError = () => { if (nightModeStatus) nightModeStatus.textContent = 'Save failed'; };
+    const setNightModeSaving = () => { if (nightModeStatus) nightModeStatus.textContent = T('common.saving', 'Saving…'); };
+    const setNightModeError = () => { if (nightModeStatus) nightModeStatus.textContent = T('dashboard.nightmode.save_failed', 'Save failed'); };
     const setNightModeDimDisabled = (disabled) => {
       if (nightModeDimSlider) nightModeDimSlider.disabled = disabled;
       if (nightModeDimInput) nightModeDimInput.disabled = disabled;
@@ -701,12 +725,14 @@
     const formatNightModeStatus = (cfg) => {
       if (!cfg) return '—';
       const parts = [];
-      parts.push(cfg.active ? 'Active' : 'Inactive');
-      if (cfg.override === 'force_on') parts.push('manual on');
-      else if (cfg.override === 'force_off') parts.push('manual off');
-      else if (cfg.schedule_active) parts.push('on schedule');
-      else parts.push('waiting');
-      if (!cfg.time_synced) parts.push('time unknown');
+      parts.push(cfg.active
+        ? T('dashboard.nightmode.active', 'Active')
+        : T('dashboard.nightmode.inactive', 'Inactive'));
+      if (cfg.override === 'force_on') parts.push(T('dashboard.nightmode.manual_on', 'manual on'));
+      else if (cfg.override === 'force_off') parts.push(T('dashboard.nightmode.manual_off', 'manual off'));
+      else if (cfg.schedule_active) parts.push(T('dashboard.nightmode.on_schedule', 'on schedule'));
+      else parts.push(T('dashboard.nightmode.waiting', 'waiting'));
+      if (!cfg.time_synced) parts.push(T('dashboard.nightmode.time_unknown', 'time unknown'));
       return parts.join(' · ');
     };
     const applyNightModeConfig = (cfg) => {
@@ -792,8 +818,8 @@
       updateNightMode({ end: nightModeEnd.value });
     });
 
-    document.getElementById('restartBtn').onclick = () => { if (confirm('Restart Wordclock?')) fetch('/restart'); };
-    document.getElementById('resetWifiBtn').onclick = () => { if (confirm('Reset Wi-Fi?')) fetch('/resetwifi'); };
+    document.getElementById('restartBtn').onclick = () => { if (confirm(T('dashboard.actions.restart_confirm', 'Restart Wordclock?'))) fetch('/restart'); };
+    document.getElementById('resetWifiBtn').onclick = () => { if (confirm(T('dashboard.actions.reset_wifi_confirm', 'Reset Wi-Fi?'))) fetch('/resetwifi'); };
     document.getElementById('startSequenceBtn').onclick = () => fetch('/startSequence');
 
     // OTA check
@@ -830,7 +856,7 @@
         return 'timeout';
       };
       checkBtn.addEventListener('click', async () => {
-        updateStatusEl.textContent = 'Checking for updates…';
+        updateStatusEl.textContent = T('dashboard.firmware.checking', 'Checking for updates…');
         if (updateSpinner) updateSpinner.classList.remove('hidden');
         checkBtn.disabled = true; checkBtn.classList.add('disabled');
         try {
@@ -839,17 +865,19 @@
           try { preVersion = await getVersion(); } catch (e) {}
           const r = await fetch('/checkForUpdate');
           if (r.ok) {
-            updateStatusEl.textContent = 'Update started (if available).';
+            updateStatusEl.textContent = T('dashboard.firmware.started', 'Update started (if available).');
             const result = await waitForUpdateCompletion(preUptime, preVersion);
             if (result === 'reboot' || result === 'version') { location.reload(); return; }
-            updateStatusEl.textContent = (result === 'no-update') ? 'No update applied.' : 'Update may still be running.';
+            updateStatusEl.textContent = (result === 'no-update')
+              ? T('dashboard.firmware.no_update', 'No update applied.')
+              : T('dashboard.firmware.may_running', 'Update may still be running.');
             if (updateSpinner) updateSpinner.classList.add('hidden');
           } else {
-            updateStatusEl.textContent = 'Update check failed';
+            updateStatusEl.textContent = T('dashboard.firmware.check_failed', 'Update check failed');
             if (updateSpinner) updateSpinner.classList.add('hidden');
           }
         } catch (e) {
-          updateStatusEl.textContent = 'Network error during update check';
+          updateStatusEl.textContent = T('dashboard.firmware.network_error', 'Network error during update check');
           if (updateSpinner) updateSpinner.classList.add('hidden');
         } finally {
           checkBtn.disabled = false; checkBtn.classList.remove('disabled');
@@ -865,7 +893,7 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
         } catch (e) {
           autoUpdCb.checked = !desired;
-          if (updateStatusEl) updateStatusEl.textContent = 'Saving automatic updates failed';
+          if (updateStatusEl) updateStatusEl.textContent = T('dashboard.firmware.auto_save_failed', 'Saving automatic updates failed');
         }
       });
     }
@@ -884,32 +912,32 @@
       };
       manualUploadForm.addEventListener('submit', (evt) => {
         evt.preventDefault();
-        if (!fileInput || fileInput.files.length === 0) { setManualStatus('Select a firmware file (.bin) first.'); return; }
+        if (!fileInput || fileInput.files.length === 0) { setManualStatus(T('dashboard.firmware.select_file', 'Select a firmware file (.bin) first.')); return; }
         const formData = new FormData();
         formData.append('firmwareFile', fileInput.files[0]);
         setButtonDisabled(true);
         const xhr = new XMLHttpRequest();
         xhr.open('POST', manualUploadForm.action || '/uploadFirmware');
         xhr.responseType = 'text';
-        xhr.upload.addEventListener('loadstart', () => setManualStatus('Upload started…'));
+        xhr.upload.addEventListener('loadstart', () => setManualStatus(T('dashboard.firmware.upload_started', 'Upload started…')));
         xhr.upload.addEventListener('progress', (event) => {
           if (event.lengthComputable && event.total > 0) {
             const percent = Math.round((event.loaded / event.total) * 100);
-            setManualStatus(`Uploading… ${percent}%`);
-          } else setManualStatus('Uploading…');
+            setManualStatus(T('dashboard.firmware.uploading', 'Uploading…') + ' ' + percent + '%');
+          } else setManualStatus(T('dashboard.firmware.uploading', 'Uploading…'));
         });
-        xhr.upload.addEventListener('load', () => setManualStatus('File sent. Verifying firmware…'));
+        xhr.upload.addEventListener('load', () => setManualStatus(T('dashboard.firmware.uploaded', 'File sent. Verifying firmware…')));
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            setManualStatus('Upload complete. Clock will restart shortly. Page reloads in 15s.');
+            setManualStatus(T('dashboard.firmware.upload_complete', 'Upload complete. Clock will restart shortly. Page reloads in 15s.'));
             setTimeout(() => location.reload(), 15000);
           } else {
-            setManualStatus(`Upload failed (${xhr.status} ${xhr.statusText || ''}).`);
+            setManualStatus(T('dashboard.firmware.upload_failed', 'Upload failed') + ' (' + xhr.status + ' ' + (xhr.statusText || '') + ').');
             setButtonDisabled(false);
           }
         });
-        xhr.addEventListener('error', () => { setManualStatus('Network error during upload.'); setButtonDisabled(false); });
-        xhr.addEventListener('abort', () => { setManualStatus('Upload aborted.'); setButtonDisabled(false); });
+        xhr.addEventListener('error', () => { setManualStatus(T('dashboard.firmware.upload_network_err', 'Network error during upload.')); setButtonDisabled(false); });
+        xhr.addEventListener('abort', () => { setManualStatus(T('dashboard.firmware.upload_aborted', 'Upload aborted.')); setButtonDisabled(false); });
         xhr.send(formData);
       });
     }
@@ -1021,7 +1049,7 @@
         priority: 1,
         onSuccess: (lvl) => {
           if (logLevelSel) logLevelSel.value = lvl || 'INFO';
-          if (logLevelStatus) logLevelStatus.textContent = `Current log level: ${lvl || 'INFO'}`;
+          if (logLevelStatus) logLevelStatus.textContent = T('dashboard.logs.current_level', 'Current log level:') + ' ' + (lvl || 'INFO');
         }
       });
     }
@@ -1049,13 +1077,13 @@
         priority: 1,
         onSuccess: (j) => {
           const total = j.total_bytes || 0;
-          logSummaryEl.textContent = `${formatBytes(total)} (${j.count || 0} files)`;
+          logSummaryEl.textContent = formatBytes(total) + ' (' + (j.count || 0) + ' ' + T('dashboard.logs.files', 'files') + ')';
           setLogSummaryColor(total);
           if (logSummaryStatus) logSummaryStatus.textContent = '';
         },
         onError: () => {
           logSummaryEl.textContent = '—';
-          if (logSummaryStatus) logSummaryStatus.textContent = 'Failed to load log summary';
+          if (logSummaryStatus) logSummaryStatus.textContent = T('dashboard.logs.summary_failed', 'Failed to load log summary');
         }
       });
     }
@@ -1197,7 +1225,7 @@
 
     function setLogLevelUI(lvl) {
       if (logLevelSel) logLevelSel.value = lvl;
-      if (logLevelStatus) logLevelStatus.textContent = `Current log level: ${lvl}`;
+      if (logLevelStatus) logLevelStatus.textContent = T('dashboard.logs.current_level', 'Current log level:') + ' ' + lvl;
     }
     if (logLevelSel) {
       logLevelSel.addEventListener('change', () => {
@@ -1208,9 +1236,30 @@
           body: `level=${encodeURIComponent(lvl)}`
         }).then(r => r.text())
           .then(() => setLogLevelUI(lvl))
-          .catch(() => alert('Failed to change log level'));
+          .catch(() => alert(T('dashboard.logs.change_failed', 'Failed to change log level')));
       });
     }
+
+    // Re-render dynamic strings on language switch.
+    window.addEventListener('chronolett:lang', () => {
+      // Status text
+      if (lastStatusOn !== null) {
+        const st = document.getElementById('statusText');
+        if (st) st.textContent = lastStatusOn
+          ? T('dashboard.status.dyn_on', 'Wordclock on')
+          : T('dashboard.status.dyn_off', 'Wordclock off');
+      }
+      // LED event row
+      const ledEl = document.getElementById('ledEventText');
+      if (ledEl) ledEl.textContent = ledEventLabel(lastLedEvent);
+      // Channel status line
+      if (channelStatus && lastChannel) applyChannelGuard(lastChannel);
+      // Nightmode descriptor — easier to reload than rebuild parts.
+      if (nightModeEnabled) dataLoader.load('nightMode');
+      // Log level + summary
+      if (logLevelSel && logLevelStatus && logLevelSel.value) setLogLevelUI(logLevelSel.value);
+      if (logSummaryEl) dataLoader.load('logSummary');
+    });
   </script>
 </body>
 </html>
