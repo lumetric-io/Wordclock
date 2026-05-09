@@ -80,9 +80,15 @@ main {
   text-decoration: none;
 }
 
+/* The .by suffix on the brand mark doubles as the "current page"
+   indicator (each v2 page sets a different .by — Wordclock, Admin,
+   MQTT, Logs, Update). Site convention is to bold the current page;
+   making this copper + slightly heavier achieves the same without
+   needing per-link is-current bookkeeping in the topnav. */
 .brand .by {
-  font-weight: 300;
-  color: var(--graphite-60);
+  font-weight: 400;
+  color: var(--copper);
+  letter-spacing: 0.01em;
 }
 
 .brand .copper-dot { color: var(--copper); }
@@ -155,13 +161,46 @@ main {
 }
 
 .lang-toggle a.active {
+  /* Site uses ink (sober) for active language — copper would compete
+     with the brand accent on the same row and read as "warning". */
   color: var(--paper);
-  background: var(--copper);
+  background: var(--ink);
 }
 
-@media (max-width: 640px) {
-  .topnav { gap: 12px; }
-  .topnav a:not(.toggle-classic) { display: none; }
+/* Narrow viewports: stack the topbar contents into two rows (brand on
+   top, nav + toggles below) so every link stays reachable. The earlier
+   rule hid all nav links on phones except "← Classic", which silently
+   broke navigation and language switching on mobile. */
+@media (max-width: 720px) {
+  .topbar-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .topnav {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 14px 18px;
+    flex-wrap: wrap;
+  }
+  /* Push the design-toggle to the right edge of its row, separating
+     "navigation" from "switch back to classic" visually. */
+  .topnav .toggle-classic {
+    margin-left: auto;
+  }
+}
+
+/* Focus ring — keyboard users get a visible copper outline on every
+   interactive element. Explicit instead of relying on the default
+   browser focus, which is invisible on dark/copper backgrounds. */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--copper);
+  outline-offset: 2px;
 }
 
 /* ─── Page hero ──────────────────────────────────────── */
@@ -180,7 +219,10 @@ main {
 }
 
 .hero h1 {
-  font-size: clamp(40px, 8vw, 88px);
+  /* min() cap matches the site pattern (styles.css:321) so the headline
+     never overflows on narrow phones — the inner clamp's vw term is
+     bounded by 16vw, giving a hard ceiling that respects the viewport. */
+  font-size: min(clamp(40px, 13vw, 120px), 16vw);
   font-weight: 200;
   letter-spacing: -0.035em;
   line-height: 0.95;
@@ -200,7 +242,11 @@ main {
 
 /* ─── Sections ───────────────────────────────────────── */
 section.chapter {
-  padding: clamp(40px, 7vw, 72px) 0;
+  /* Bumped to match the site's section padding (--pad-section = 56→128px).
+     Phone viewports get 56px instead of the previous 40px — slight
+     vertical breathing room. Desktop grows substantially, which is the
+     point: editorial chapters should feel separated, not stacked. */
+  padding: clamp(56px, 9vw, 128px) 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -208,16 +254,31 @@ section.chapter:last-of-type { border-bottom: none; }
 
 .section-head {
   display: grid;
-  grid-template-columns: 110px 1fr;
+  /* Rail width brought up to 200px to match the site's --rail token
+     (styles.css:49). 110px was about half the site's value and made
+     v2 read as a denser, more cramped variant of the brand. */
+  grid-template-columns: 200px 1fr;
   gap: clamp(16px, 4vw, 40px);
   align-items: baseline;
   margin-bottom: clamp(20px, 3vw, 32px);
 }
 
 @media (max-width: 640px) {
+  /* On phones the rail collapses; we put num + title inline instead
+     of stacking them, so the chapter marker reads as a single unit
+     rather than two full-width spans. Mirrors styles.css:1047-1051. */
   .section-head {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 6px;
+  }
+  .section-head .section-num {
+    /* Render num + title in source order on the same line where they
+       fit; the title can wrap below if it's long. */
+    display: inline-block;
+    margin-right: 12px;
+  }
+  .section-head .section-title {
+    display: inline;
   }
 }
 
@@ -252,7 +313,9 @@ section.chapter:last-of-type { border-bottom: none; }
 
 .section-aside {
   display: grid;
-  grid-template-columns: 110px 1fr;
+  /* Same rail bump as .section-head — keeps the body's left edge
+     aligned with the chapter title above it. */
+  grid-template-columns: 200px 1fr;
   gap: clamp(16px, 4vw, 40px);
 }
 
@@ -448,7 +511,10 @@ section.chapter:last-of-type { border-bottom: none; }
   gap: 16px;
 }
 
-@media (max-width: 480px) {
+/* Stack at 600px instead of 480px — at the in-between widths (User /
+   Password on MQTT, Start / End time on nightmode) two narrow columns
+   crammed in 380-500px just truncated the placeholder text. */
+@media (max-width: 600px) {
   .field-row { grid-template-columns: 1fr; }
 }
 
@@ -466,11 +532,19 @@ select.select {
   font-weight: 400;
   color: var(--ink);
   background: var(--paper);
-  border: 1px solid var(--line-strong);
+  /* Softened from --line-strong (40% ink) to --line (10% ink) so inputs
+     read as part of the editorial frame rather than utilitarian boxes.
+     Hover/focus still pop the border to copper, so they're discoverable. */
+  border: 1px solid var(--line);
   border-radius: 0;
   -webkit-appearance: none;
   appearance: none;
   transition: border-color .15s;
+}
+
+.input:hover,
+.select:hover {
+  border-color: var(--graphite-40);
 }
 
 .input:focus,
@@ -744,6 +818,11 @@ input[type="file"]::file-selector-button {
 /* ─── Logo grid (color pickers) ──────────────────────── */
 .logo-color-grid {
   display: grid;
+  /* Auto-fill so the grid adapts to the container width on phones
+     instead of forcing a fixed column count from JS (see dashboard-v2's
+     syncLogoGrid — column count is now CSS-driven). 48px minmax gives
+     a comfortable tap target on iOS (Apple HIG guideline is 44px). */
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
   gap: 6px;
   margin: 12px 0;
 }

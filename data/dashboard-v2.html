@@ -601,8 +601,10 @@
           const input = logoPickers.pop();
           if (input && input.parentElement === logoGrid) logoGrid.removeChild(input);
         }
-        const cols = Math.max(1, Math.min(10, Math.ceil(target / 5)));
-        logoGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+        // Column count is CSS-driven now (grid-template-columns:
+        // repeat(auto-fill, minmax(48px, 1fr)) in chronolett.css), so the
+        // grid adapts to the container width on phones instead of being
+        // forced into a fixed count derived from total LED count.
       };
       if (logoGrid) syncLogoGrid(DEFAULT_LOGO_COUNT);
       const logoBrightness = document.getElementById('logoBrightness');
