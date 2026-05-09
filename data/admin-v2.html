@@ -146,13 +146,6 @@
             </label>
             <hr class="h-rule" />
             <div class="field">
-              <span class="label">Grid layout</span>
-              <select id="gridVariant" class="select"></select>
-              <p class="help">Format: <em>Name [LANG VERSION]</em>, e.g. <em>Nederlands V2 [NL V2]</em>.</p>
-              <p id="gridVariantStatus" class="help"></p>
-            </div>
-            <hr class="h-rule" />
-            <div class="field">
               <span class="label">Colour</span>
               <input type="color" id="adminColorPicker" />
             </div>
@@ -251,14 +244,6 @@
   </main>
 
   <script>
-    const formatVariantLabel = (v) => {
-      if (!v) return '';
-      const base = v.label || v.key || '';
-      const lang = v.language ? v.language.toUpperCase() : '';
-      const ver = v.version ? v.version.toUpperCase() : '';
-      const suffix = [lang, ver].filter(Boolean).join(' ');
-      return suffix ? `${base} [${suffix}]` : base;
-    };
 
     // OTA via admin button
     const updateBtn = document.getElementById('updateBtnAdm');
@@ -391,47 +376,6 @@
     const sell = document.getElementById('sellMode');
     fetch('/getSellMode').then(r => r.text()).then(v => { if (sell) sell.checked = (v.trim() === 'on'); });
     if (sell) sell.addEventListener('change', () => fetch(`/setSellMode?state=${sell.checked ? 'on' : 'off'}`));
-
-    // Grid variant
-    const gridSelect = document.getElementById('gridVariant');
-    const gridStatus = document.getElementById('gridVariantStatus');
-    const loadGridVariants = async () => {
-      if (!gridSelect) return;
-      try {
-        const res = await fetch('/listGridVariants');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const variants = await res.json();
-        gridSelect.innerHTML = '';
-        variants.forEach(v => {
-          const opt = document.createElement('option');
-          opt.value = v.id;
-          opt.textContent = formatVariantLabel(v);
-          if (v.active) opt.selected = true;
-          gridSelect.appendChild(opt);
-        });
-        if (gridStatus) {
-          const active = variants.find(v => v.active);
-          gridStatus.textContent = active ? `Active grid: ${formatVariantLabel(active)}` : '';
-        }
-      } catch (err) {
-        if (gridStatus) gridStatus.textContent = 'Could not load grid variants';
-      }
-    };
-    if (gridSelect) {
-      loadGridVariants();
-      gridSelect.addEventListener('change', async () => {
-        const id = gridSelect.value;
-        if (gridStatus) gridStatus.textContent = 'Saving…';
-        try {
-          const res = await fetch(`/setGridVariant?id=${encodeURIComponent(id)}`);
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const body = await res.json();
-          if (gridStatus) gridStatus.textContent = `Active grid: ${formatVariantLabel(body)}`;
-        } catch (err) {
-          if (gridStatus) gridStatus.textContent = 'Save failed';
-        }
-      });
-    }
 
     // Sync UI
     const syncBtn = document.getElementById('syncUiBtn');

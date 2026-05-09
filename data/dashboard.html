@@ -169,7 +169,6 @@
       <p class="mt-2 text-sm">
         <strong>Firmware version:</strong> <span id="version">-</span>
         <span class="ml-4"><strong>UI version:</strong> <span id="uiVersion">-</span></span>
-        <span class="ml-4"><strong>Grid:</strong> <span id="gridVariantLabel">-</span></span>
       </p>
     </section>
 
@@ -199,12 +198,6 @@
           <p class="text-xs text-gray-500 mt-1">0 = nooit, 360 = altijd</p>
         </div>
       </div>
-    </section>
-
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <h2 class="text-xl font-semibold mb-2">Grid layout</h2>
-      <select id="gridVariantPublic" class="w-full border rounded p-2 text-sm"></select>
-      <p class="text-xs text-gray-600 mt-2" id="gridVariantStatusPublic"></p>
     </section>
 
     <section class="bg-white p-4 rounded-2xl shadow mb-4 hidden" id="logoLedsSection">
@@ -410,65 +403,6 @@
         hetIsSection.classList.toggle('hidden', !visible);
       }
     };
-
-    const formatVariantLabel = (variant) => {
-      if (!variant) return '';
-      const base = variant.label || variant.key || '';
-      const lang = variant.language ? variant.language.toUpperCase() : '';
-      const ver = variant.version ? variant.version.toUpperCase() : '';
-      const suffix = [lang, ver].filter(Boolean).join(' ');
-      return suffix ? `${base} [${suffix}]` : base;
-    };
-
-    const gridSelectPublic = document.getElementById('gridVariantPublic');
-    const gridStatusPublic = document.getElementById('gridVariantStatusPublic');
-    const loadGridVariantsPublic = async () => {
-      if (!gridSelectPublic) return;
-      try {
-        const res = await fetch('/listGridVariants');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const variants = await res.json();
-        gridSelectPublic.innerHTML = '';
-        variants.forEach((v) => {
-          const opt = document.createElement('option');
-          opt.value = v.id;
-          opt.textContent = formatVariantLabel(v);
-          if (v.active) opt.selected = true;
-          gridSelectPublic.appendChild(opt);
-        });
-        if (gridStatusPublic) {
-          const active = variants.find(v => v.active);
-          gridStatusPublic.textContent = active ? `Actieve grid: ${formatVariantLabel(active)}` : '';
-        }
-      } catch (err) {
-        if (gridStatusPublic) gridStatusPublic.textContent = 'Kon grid-varianten niet laden';
-      }
-    };
-    
-    // Grid Variants list loader (normale prioriteit)
-    if (gridSelectPublic) {
-      dataLoader.register('gridVariantsList', loadGridVariantsPublic, {
-        priority: 5,
-        onError: (error) => {
-          if (gridStatusPublic) gridStatusPublic.textContent = 'Kon grid-varianten niet laden';
-        }
-      });
-      gridSelectPublic.addEventListener('change', async () => {
-        const id = gridSelectPublic.value;
-        if (gridStatusPublic) gridStatusPublic.textContent = 'Bezig met opslaan…';
-        try {
-          const res = await fetch(`/setGridVariant?id=${encodeURIComponent(id)}`);
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const body = await res.json();
-          if (gridStatusPublic) gridStatusPublic.textContent = `Actieve grid: ${formatVariantLabel(body)}`;
-          if (isLogoProduct && dataLoader.loaders.has('logoState')) {
-            dataLoader.load('logoState');
-          }
-        } catch (err) {
-          if (gridStatusPublic) gridStatusPublic.textContent = 'Opslaan mislukt';
-        }
-      });
-    }
 
     // Human-readable labels for LED events
     const LED_EVENT_LABELS = {
@@ -1222,27 +1156,6 @@
         setLoadingState('uiVersion', false);
         setErrorState('version', error, '-');
         setErrorState('uiVersion', error, '-');
-      }
-    });
-
-    // Grid Variant loader (normale prioriteit)
-    dataLoader.register('gridVariant', async () => {
-      setLoadingState('gridVariantLabel', true);
-      const res = await fetch('/getGridVariant');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    }, {
-      priority: 5,
-      onSuccess: (v) => {
-        setLoadingState('gridVariantLabel', false);
-        clearErrorState('gridVariantLabel');
-        const el = document.getElementById('gridVariantLabel');
-        if (el) el.textContent = v.label || v.key || ('ID ' + v.id);
-      },
-      onError: (error) => {
-        setLoadingState('gridVariantLabel', false);
-        const el = document.getElementById('gridVariantLabel');
-        if (el) el.textContent = 'n.v.t.';
       }
     });
 

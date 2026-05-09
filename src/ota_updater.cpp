@@ -777,7 +777,7 @@ static void checkForFirmwareUpdateV2() {
 
   String requestedChannel = normalizeChannel(displaySettings.getUpdateChannel());
 
-  const GridVariantInfo* info = getGridVariantInfo(displaySettings.getGridVariant());
+  const GridVariantInfo* info = getGridVariantInfo(getActiveGridVariant());
   logDebug(String("OTA grid: ") + (info ? info->key : "unknown"));
 
   JsonDocument channelDoc;

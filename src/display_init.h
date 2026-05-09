@@ -2,6 +2,7 @@
 
 #include "led_state.h"
 #include "display_settings.h"
+#include "grid_layout.h"
 #include "log.h"
 #if defined(PRODUCT_VARIANT_LOGO)
 #include "logo_leds.h"
@@ -16,7 +17,9 @@ inline void initDisplay() {
     logoLeds.begin();
 #endif
     displaySettings.begin();
-    const GridVariantInfo* info = getGridVariantInfo(displaySettings.getGridVariant());
+    // Grid is compile-time only — log which variant this build ships with so
+    // it shows up alongside firmware/UI versions in the boot log.
+    const GridVariantInfo* info = getGridVariantInfo(getActiveGridVariant());
     if (info) {
         logInfo(String("🧩 Grid variant: ") + info->label + " (" + info->key + ")");
     }

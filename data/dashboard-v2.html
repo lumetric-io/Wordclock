@@ -222,7 +222,6 @@
             <dl class="dl">
               <dt>Firmware</dt><dd id="version">—</dd>
               <dt>UI</dt><dd id="uiVersion">—</dd>
-              <dt>Grid</dt><dd id="gridVariantLabel">—</dd>
             </dl>
           </div>
         </div>
@@ -264,25 +263,10 @@
         </div>
       </section>
 
-      <!-- 08 — Grid layout -->
-      <section class="chapter">
-        <header class="section-head">
-          <span class="section-num">08</span>
-          <h2 class="section-title">Grid layout</h2>
-        </header>
-        <div class="section-aside">
-          <span class="label">Variant</span>
-          <div class="section-body">
-            <select id="gridVariantPublic" class="select"></select>
-            <p class="help" id="gridVariantStatusPublic"></p>
-          </div>
-        </div>
-      </section>
-
-      <!-- 09 — Logo LEDs (logo product only) -->
+      <!-- 08 — Logo LEDs (logo product only) -->
       <section class="chapter hidden" id="logoLedsSection">
         <header class="section-head">
-          <span class="section-num">09</span>
+          <span class="section-num">08</span>
           <h2 class="section-title">Logo LEDs</h2>
         </header>
         <div class="section-aside">
@@ -301,10 +285,10 @@
         </div>
       </section>
 
-      <!-- 10 — Logs -->
+      <!-- 09 — Logs -->
       <section class="chapter">
         <header class="section-head">
-          <span class="section-num">10</span>
+          <span class="section-num">09</span>
           <h2 class="section-title">Logs</h2>
         </header>
         <div class="section-aside">
@@ -431,56 +415,6 @@
     const setHetIsSectionVisible = (v) => {
       if (hetIsSection) hetIsSection.classList.toggle('hidden', !v);
     };
-
-    const formatVariantLabel = (v) => {
-      if (!v) return '';
-      const base = v.label || v.key || '';
-      const lang = v.language ? v.language.toUpperCase() : '';
-      const ver = v.version ? v.version.toUpperCase() : '';
-      const suffix = [lang, ver].filter(Boolean).join(' ');
-      return suffix ? `${base} [${suffix}]` : base;
-    };
-
-    const gridSelectPublic = document.getElementById('gridVariantPublic');
-    const gridStatusPublic = document.getElementById('gridVariantStatusPublic');
-    const loadGridVariantsPublic = async () => {
-      if (!gridSelectPublic) return;
-      try {
-        const res = await fetch('/listGridVariants');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const variants = await res.json();
-        gridSelectPublic.innerHTML = '';
-        variants.forEach(v => {
-          const opt = document.createElement('option');
-          opt.value = v.id;
-          opt.textContent = formatVariantLabel(v);
-          if (v.active) opt.selected = true;
-          gridSelectPublic.appendChild(opt);
-        });
-        if (gridStatusPublic) {
-          const active = variants.find(v => v.active);
-          gridStatusPublic.textContent = active ? `Active grid: ${formatVariantLabel(active)}` : '';
-        }
-      } catch (err) {
-        if (gridStatusPublic) gridStatusPublic.textContent = 'Could not load grid variants';
-      }
-    };
-    if (gridSelectPublic) {
-      dataLoader.register('gridVariantsList', loadGridVariantsPublic, { priority: 5 });
-      gridSelectPublic.addEventListener('change', async () => {
-        const id = gridSelectPublic.value;
-        if (gridStatusPublic) gridStatusPublic.textContent = 'Saving…';
-        try {
-          const res = await fetch(`/setGridVariant?id=${encodeURIComponent(id)}`);
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const body = await res.json();
-          if (gridStatusPublic) gridStatusPublic.textContent = `Active grid: ${formatVariantLabel(body)}`;
-          if (isLogoProduct && dataLoader.loaders.has('logoState')) dataLoader.load('logoState');
-        } catch (err) {
-          if (gridStatusPublic) gridStatusPublic.textContent = 'Save failed';
-        }
-      });
-    }
 
     const LED_EVENT_LABELS = {
       FirmwareCheck: 'Idle',
@@ -1011,21 +945,6 @@
       onError: () => {
         const fwEl = document.getElementById('version'); if (fwEl) fwEl.textContent = '—';
         const uiEl = document.getElementById('uiVersion'); if (uiEl) uiEl.textContent = '—';
-      }
-    });
-
-    dataLoader.register('gridVariant', async () => {
-      const res = await fetch('/getGridVariant');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    }, {
-      priority: 5,
-      onSuccess: (v) => {
-        const el = document.getElementById('gridVariantLabel');
-        if (el) el.textContent = v.label || v.key || ('ID ' + v.id);
-      },
-      onError: () => {
-        const el = document.getElementById('gridVariantLabel'); if (el) el.textContent = 'n/a';
       }
     });
 

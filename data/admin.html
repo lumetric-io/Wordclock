@@ -120,13 +120,6 @@
         <input type="checkbox" id="sellMode" class="h-4 w-4">
       </div>
 
-      <div class="mt-6">
-        <label for="gridVariant" class="block text-sm font-semibold mb-1">Grid layout</label>
-        <select id="gridVariant" class="w-full border rounded p-2 text-sm"></select>
-        <p class="text-xs text-gray-500 mt-1">Notatie: <em>Naam [TAAL VERSIE]</em>, bijvoorbeeld <em>Nederlands V2 [NL V2]</em>.</p>
-        <p id="gridVariantStatus" class="text-xs text-gray-600 mt-2"></p>
-      </div>
-
       <h2 class="text-xl font-semibold mt-6 mb-2">Color</h2>
       <input type="color" id="adminColorPicker" class="w-full h-12 rounded p-0 border-2" />
 
@@ -179,15 +172,6 @@
   </div>
 
   <script>
-    const formatVariantLabel = (variant) => {
-      if (!variant) return '';
-      const base = variant.label || variant.key || '';
-      const lang = variant.language ? variant.language.toUpperCase() : '';
-      const ver = variant.version ? variant.version.toUpperCase() : '';
-      const suffix = [lang, ver].filter(Boolean).join(' ');
-      return suffix ? `${base} [${suffix}]` : base;
-    };
-
     // Update via OTA
     const updateBtn = document.getElementById('updateBtnAdm');
     const updateStatusEl = document.getElementById('updateStatus');
@@ -376,47 +360,6 @@
           // no-op; device display updates immediately
         });
     });
-
-    // Grid variant selection
-    const gridSelect = document.getElementById('gridVariant');
-    const gridStatus = document.getElementById('gridVariantStatus');
-    const loadGridVariants = async () => {
-      if (!gridSelect) return;
-      try {
-        const res = await fetch('/listGridVariants');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const variants = await res.json();
-        gridSelect.innerHTML = '';
-        variants.forEach((v) => {
-          const opt = document.createElement('option');
-          opt.value = v.id;
-          opt.textContent = formatVariantLabel(v);
-          if (v.active) opt.selected = true;
-          gridSelect.appendChild(opt);
-        });
-        if (gridStatus) {
-          const active = variants.find(v => v.active);
-          gridStatus.textContent = active ? `Actieve grid: ${formatVariantLabel(active)}` : '';
-        }
-      } catch (err) {
-        if (gridStatus) gridStatus.textContent = 'Kon grid-varianten niet laden';
-      }
-    };
-    if (gridSelect) {
-      loadGridVariants();
-      gridSelect.addEventListener('change', async () => {
-        const id = gridSelect.value;
-        if (gridStatus) gridStatus.textContent = 'Bezig met opslaan…';
-        try {
-          const res = await fetch(`/setGridVariant?id=${encodeURIComponent(id)}`);
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const body = await res.json();
-          if (gridStatus) gridStatus.textContent = `Actieve grid: ${formatVariantLabel(body)}`;
-        } catch (err) {
-          if (gridStatus) gridStatus.textContent = 'Opslaan mislukt';
-        }
-      });
-    }
 
     const syncBtn = document.getElementById('syncUiBtn');
     const syncMsg = document.getElementById('syncUiMsg');
