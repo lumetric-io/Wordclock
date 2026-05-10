@@ -169,7 +169,7 @@ void handleChannels() {
   setState(BootstrapState::FetchingChannels,
            String("Probing channels for ") + productId + "…");
 
-  std::vector<String> channels;
+  std::vector<ChannelTarget> channels;
   listAvailableChannels(productId, channels);
 
   setState(BootstrapState::Idle, "");
@@ -178,7 +178,9 @@ void handleChannels() {
   doc["product"] = productId;
   JsonArray arr = doc["channels"].to<JsonArray>();
   for (const auto& ch : channels) {
-    arr.add(ch);
+    JsonObject o = arr.add<JsonObject>();
+    o["name"] = ch.name;
+    o["fw_version"] = ch.fwVersion;
   }
   String out;
   serializeJson(doc, out);

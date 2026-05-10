@@ -381,7 +381,7 @@
     const state = {
       product: null,        // selected product id
       channel: null,        // selected channel
-      channels: [],         // channels available for the selected product
+      channels: {},         // map: channel name → fw_version (populated after selectProduct)
       productsById: {},     // id → product metadata (ap_name, label, …)
       selfUpdating: false,  // true: bootstrap-self-update flow (different terminus copy)
     };
@@ -418,7 +418,7 @@
     async function selectProduct(id, cardEl) {
       state.product = id;
       state.channel = null;
-      state.channels = [];
+      state.channels = {};
       els.productCards.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
       cardEl.classList.add('selected');
       els.channelHint.textContent = 'Probing channels…';
@@ -435,7 +435,14 @@
         const res = await fetch('/api/provision/channels?product=' + encodeURIComponent(id));
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const body = await res.json();
-        state.channels = body.channels || [];
+        // Server returns objects { name, fw_version }. Normalise to a map
+        // keyed by channel name so the renderer can look up the version
+        // alongside the static hint text.
+        const raw = body.channels || [];
+        state.channels = {};
+        raw.forEach(c => {
+          if (c && c.name) state.channels[c.name] = c.fw_version || '';
+        });
         renderChannels();
       } catch (err) {
         els.channelHint.textContent = '';
@@ -444,7 +451,8 @@
     }
 
     function renderChannels() {
-      if (state.channels.length === 0) {
+      const channelNames = Object.keys(state.channels);
+      if (channelNames.length === 0) {
         els.channelHint.textContent = 'No channels available for this product. Check OTA server.';
         return;
       }
@@ -458,13 +466,20 @@
       const ORDER = ['stable', 'early', 'develop'];
 
       els.channelOptions.innerHTML = '';
-      ORDER.filter(c => state.channels.includes(c)).forEach(ch => {
+      ORDER.filter(c => channelNames.includes(c)).forEach(ch => {
         const meta = HINTS[ch] || { hint: '', danger: false };
+        const fwVersion = state.channels[ch] || '';
+        // Two-line cell: bold channel name + the version it currently
+        // resolves to. Operator can sanity-check before clicking Install.
+        const versionHtml = fwVersion
+          ? '<span class="desc" style="margin-left: 8px;">' + fwVersion + '</span>'
+          : '<span class="desc danger" style="margin-left: 8px;">no version published</span>';
         const row = document.createElement('label');
         row.className = 'channel-row';
         row.innerHTML =
           '<input type="radio" name="channel" value="' + ch + '">' +
           '<span class="name">' + ch + '</span>' +
+          versionHtml +
           '<span class="hint' + (meta.danger ? ' danger' : '') + '">' + meta.hint + '</span>';
         const input = row.querySelector('input');
         input.addEventListener('change', () => onChannelPicked(ch));
@@ -506,8 +521,11 @@
 
     async function startProvision() {
       if (!state.product || !state.channel) return;
+      const fwVersion = state.channels[state.channel] || '';
+      const versionLine = fwVersion ? '\nVersion: ' + fwVersion : '';
       const ok = window.confirm(
-        'Install ' + state.product + ' (' + state.channel + ') on this device?\n\n' +
+        'Install ' + state.product + ' (' + state.channel + ') on this device?' +
+        versionLine + '\n\n' +
         'The device will download firmware and UI, then reboot. Do not power off.'
       );
       if (!ok) return;

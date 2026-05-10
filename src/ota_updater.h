@@ -18,8 +18,14 @@ bool installProductFirmware(const String& productId, const String& channel);
 
 // Probe the OTA server for which channels (stable/early/develop) currently
 // publish a target for the given product. `out` is cleared first; on success
-// it holds the names of channels that exist.
-bool listAvailableChannels(const String& productId, std::vector<String>& out);
+// it holds one entry per channel that has a non-null target, including the
+// firmware version the channel currently points at (so UIs can preview what
+// would actually get installed).
+struct ChannelTarget {
+  String name;        // "stable" / "early" / "develop"
+  String fwVersion;   // channel.json → target.version (may be empty)
+};
+bool listAvailableChannels(const String& productId, std::vector<ChannelTarget>& out);
 
 // Bootstrap-only: fetch the stable channel for `nextgen-bootstrap`, compare
 // against the running FIRMWARE_VERSION, and install if newer. On success the

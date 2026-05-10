@@ -26,7 +26,7 @@ String getUiVersion() {
 void checkForFirmwareUpdate() {}
 
 bool installProductFirmware(const String&, const String&) { return false; }
-bool listAvailableChannels(const String&, std::vector<String>& out) { out.clear(); return false; }
+bool listAvailableChannels(const String&, std::vector<ChannelTarget>& out) { out.clear(); return false; }
 bool checkForBootstrapSelfUpdate(bool& outUpToDate, String& outRemoteVersion) {
   outUpToDate = false; outRemoteVersion = ""; return false;
 }
@@ -1019,7 +1019,7 @@ bool installProductFirmware(const String& productId, const String& channel) {
   return true;  // not reached
 }
 
-bool listAvailableChannels(const String& productId, std::vector<String>& out) {
+bool listAvailableChannels(const String& productId, std::vector<ChannelTarget>& out) {
   out.clear();
   std::unique_ptr<WiFiClient> client(new WiFiClient());
   static const char* kCandidates[] = { "stable", "early", "develop" };
@@ -1029,7 +1029,10 @@ bool listAvailableChannels(const String& productId, std::vector<String>& out) {
     // Channel exists if the JSON has a non-null "target".
     JsonVariant target = doc["target"];
     if (!target.isNull()) {
-      out.push_back(String(ch));
+      ChannelTarget entry;
+      entry.name = String(ch);
+      entry.fwVersion = String(target["version"] | "");
+      out.push_back(entry);
     }
   }
   return !out.empty();
@@ -1088,7 +1091,7 @@ bool checkForBootstrapSelfUpdate(bool& outUpToDate, String& outRemoteVersion) {
 
 #else
 bool installProductFirmware(const String&, const String&) { return false; }
-bool listAvailableChannels(const String&, std::vector<String>& out) { out.clear(); return false; }
+bool listAvailableChannels(const String&, std::vector<ChannelTarget>& out) { out.clear(); return false; }
 #endif
 
 #ifndef WORDCLOCK_BOOTSTRAP
