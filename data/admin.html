@@ -115,6 +115,20 @@
         <p id="factoryMsg" class="text-xs text-gray-600 mt-2"></p>
       </div>
 
+      <div class="mt-6 bg-red-50 border border-red-200 rounded-xl p-4" id="installBootstrapSection">
+        <h2 class="text-xl font-semibold mb-2 text-red-700">Re-install bootstrap firmware</h2>
+        <p class="text-sm text-gray-700">
+          Replaces the current product firmware with the <strong>nextgen-bootstrap</strong>
+          provisioning image (stable channel). After the reboot, this device will host the
+          first-flash product picker at <code>http://wordclock.local/</code> and stop acting
+          as a clock until a product is re-installed.
+        </p>
+        <button id="installBootstrapBtn" class="mt-3 py-2 px-3 rounded bg-red-600 text-white hover:bg-red-700">
+          🛠️ Install bootstrap firmware
+        </button>
+        <p id="installBootstrapMsg" class="text-xs text-gray-600 mt-2"></p>
+      </div>
+
       <div class="mt-6 flex items-center gap-3">
         <label for="sellMode" class="text-sm">Sell mode (show 10:47)</label>
         <input type="checkbox" id="sellMode" class="h-4 w-4">
@@ -440,11 +454,13 @@
         if (syncSection && info.ui_sync_supported === false) {
           syncSection.classList.add('hidden');
         }
+        const installBootstrapSection = document.getElementById('installBootstrapSection');
         if (info.ota_enabled === false) {
           if (syncSection) syncSection.classList.add('hidden');
           if (channelSection) channelSection.classList.add('hidden');
           if (updateBtn) updateBtn.classList.add('hidden');
           if (updatePageLink) updatePageLink.classList.add('hidden');
+          if (installBootstrapSection) installBootstrapSection.classList.add('hidden');
         }
         if (buildStatus) buildStatus.textContent = 'Last updated just now.';
       } catch (err) {
@@ -513,6 +529,104 @@
     }
 
     loadLogSettings();
+
+    // Re-install bootstrap firmware (admin path; destructive — device stops
+    // being a clock until a product is re-installed via the bootstrap UI).
+    const installBootstrapBtn = document.getElementById('installBootstrapBtn');
+    const installBootstrapMsg = document.getElementById('installBootstrapMsg');
+
+    // Poll /api/firmware/identity until the device responds as `bootstrap`
+    // (or hard timeout). Same endpoint exists on per-device and bootstrap
+    // firmware; we branch on the `role` field. Short per-poll timeouts so
+    // the inevitable mid-reboot connection failures don't stretch each
+    // iteration to the browser default.
+    async function pollForBootstrap(onTick) {
+      const start = Date.now();
+      const maxMs = 180000;        // 3 min — covers slow OTA + reboot + DHCP
+      const intervalMs = 2500;
+      const perPollTimeoutMs = 3000;
+      let sawOffline = false;
+      while (Date.now() - start < maxMs) {
+        await new Promise(r => setTimeout(r, intervalMs));
+        try {
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), perPollTimeoutMs);
+          const res = await fetch('/api/firmware/identity', { cache: 'no-store', signal: ctrl.signal });
+          clearTimeout(tid);
+          if (!res.ok) { sawOffline = true; if (onTick) onTick('offline'); continue; }
+          const body = await res.json();
+          if (body && body.role === 'bootstrap') return 'bootstrap';
+          // Still product — likely the OTA hasn't rebooted yet. Keep polling.
+          if (onTick) onTick(sawOffline ? 'recovering' : 'pre-reboot');
+        } catch (e) {
+          sawOffline = true;
+          if (onTick) onTick('offline');
+        }
+      }
+      return 'timeout';
+    }
+
+    if (installBootstrapBtn) {
+      installBootstrapBtn.addEventListener('click', async () => {
+        const ok = window.confirm(
+          'Replace the current firmware with the bootstrap provisioning image?\n\n' +
+          'After reboot, this device stops being a clock and hosts the first-flash ' +
+          'product picker at http://wordclock.local/. You will need to re-pick a ' +
+          'product to bring the clock back.'
+        );
+        if (!ok) return;
+        installBootstrapBtn.disabled = true;
+        installBootstrapBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        if (installBootstrapMsg) installBootstrapMsg.textContent = 'Starting bootstrap install…';
+        try {
+          const res = await fetch('/api/installBootstrap', { method: 'POST' });
+          if (!(res.status === 202 || res.ok)) {
+            const text = await res.text();
+            if (installBootstrapMsg) {
+              installBootstrapMsg.textContent =
+                'Failed to start bootstrap install (HTTP ' + res.status + '): ' + text;
+            }
+            installBootstrapBtn.disabled = false;
+            installBootstrapBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            return;
+          }
+          if (installBootstrapMsg) {
+            installBootstrapMsg.textContent =
+              'Install started. Waiting for the device to reboot into bootstrap…';
+          }
+          const result = await pollForBootstrap((phase) => {
+            if (!installBootstrapMsg) return;
+            if (phase === 'pre-reboot') {
+              installBootstrapMsg.textContent = 'Install in progress — device still online…';
+            } else if (phase === 'offline') {
+              installBootstrapMsg.textContent = 'Device offline — OTA running / device rebooting…';
+            } else if (phase === 'recovering') {
+              installBootstrapMsg.textContent = 'Device coming back online…';
+            }
+          });
+          if (result === 'bootstrap') {
+            if (installBootstrapMsg) {
+              installBootstrapMsg.textContent = 'Bootstrap online — opening picker…';
+            }
+            // Same hostname (wordclock.local) so a hard navigation to / lands
+            // on bootstrap.html served by the new firmware.
+            setTimeout(() => { window.location.href = '/'; }, 800);
+          } else {
+            if (installBootstrapMsg) {
+              installBootstrapMsg.textContent =
+                'Bootstrap did not come back within 3 minutes. ' +
+                'Try opening http://wordclock.local/ manually, or power-cycle the device.';
+            }
+            installBootstrapBtn.disabled = false;
+            installBootstrapBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          }
+        } catch (err) {
+          if (installBootstrapMsg) installBootstrapMsg.textContent = 'Request failed: ' + err.message;
+          installBootstrapBtn.disabled = false;
+          installBootstrapBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      });
+    }
 
     const registerBtn = document.getElementById('registerBtn');
     const registerStatus = document.getElementById('registerStatus');

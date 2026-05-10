@@ -21,6 +21,17 @@ bool installProductFirmware(const String& productId, const String& channel);
 // it holds the names of channels that exist.
 bool listAvailableChannels(const String& productId, std::vector<String>& out);
 
+// Bootstrap-only: fetch the stable channel for `nextgen-bootstrap`, compare
+// against the running FIRMWARE_VERSION, and install if newer. On success the
+// device reboots inside installProductFirmware() and never returns. Return
+// values reflect the up-front check only:
+//   - returns false if no update was needed (already latest) or the check
+//     itself failed (network / manifest error). `outUpToDate` distinguishes
+//     the two: true means up-to-date, false means error.
+// Compiled only into the bootstrap firmware (per the WORDCLOCK_BOOTSTRAP gate
+// in the implementation file).
+bool checkForBootstrapSelfUpdate(bool& outUpToDate, String& outRemoteVersion);
+
 #if SUPPORT_OTA_V2 == 0
 void syncFilesFromManifest();
 void syncUiFilesFromConfiguredVersion();

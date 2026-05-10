@@ -600,13 +600,6 @@ prompt_version() {
 }
 
 prompt_release_notes() {
-    # Bootstrap is a factory tool — no GitHub release, no OTA publish, so
-    # release notes have no destination. Skip the prompt entirely.
-    if [[ "$PRODUCT" == "nextgen-bootstrap" ]]; then
-        RELEASE_NOTES=""
-        return 0
-    fi
-
     print_header "Release Notes"
     echo "Enter release notes (press Ctrl+D when done, Ctrl+C to skip):"
     echo ""
@@ -1595,18 +1588,10 @@ print_summary() {
         for b in "${RELEASE_BINARIES[@]}"; do
             echo "    - $b"
         done
-        if [[ "$PRODUCT" == "nextgen-bootstrap" ]]; then
-            echo "  Tag: (skipped - bootstrap is flashed via USB)"
-        else
-            echo "  Tag: $NEW_VERSION"
-        fi
+        echo "  Tag: $NEW_VERSION"
     else
         echo "  Binary: $DIST_DIR/$(get_release_filename "$NEW_VERSION" "$PRODUCT")"
-        if [[ "$PRODUCT" == "nextgen-bootstrap" ]]; then
-            echo "  Tag: (skipped - bootstrap is flashed via USB)"
-        else
-            echo "  Tag: $NEW_VERSION"
-        fi
+        echo "  Tag: $NEW_VERSION"
     fi
     if [[ "$TESTS_RUN" == true ]]; then
         echo "  Tests: ✓ All passed"
@@ -1627,28 +1612,25 @@ print_summary() {
     echo ""
     print_info "Next steps:"
     local step_num=1
+    echo "  ${step_num}. Verify the release on GitHub"
+    step_num=$((step_num + 1))
+
+    # Show coverage report instruction if generated
+    if [[ "$COVERAGE_GENERATED" == true && -n "$COVERAGE_HTML_PATH" ]]; then
+        echo "  2. Review coverage report: open $COVERAGE_HTML_PATH"
+    fi
+
+    # All products use OTA2
+    echo "  ${step_num}. OTA2 manifests published via tools/publish-ota.sh"
+    step_num=$((step_num + 1))
+    echo "  ${step_num}. Test the OTA update process"
+    step_num=$((step_num + 1))
+    echo "  ${step_num}. Announce the release"
     if [[ "$PRODUCT" == "nextgen-bootstrap" ]]; then
-        # Bootstrap firmware is flashed via USB — no GitHub release, no OTA.
-        echo "  ${step_num}. Flash a fresh chip:  ./tools/flash.sh   (pick nextgen-bootstrap)"
         step_num=$((step_num + 1))
-        echo "  ${step_num}. Power up. Connect to Wi-Fi 'Lumetric' (or fall back to portal)."
-        step_num=$((step_num + 1))
-        echo "  ${step_num}. Open http://wordclock.local/ in a browser to pick a product."
-    else
-        echo "  ${step_num}. Verify the release on GitHub"
-        step_num=$((step_num + 1))
-
-        # Show coverage report instruction if generated
-        if [[ "$COVERAGE_GENERATED" == true && -n "$COVERAGE_HTML_PATH" ]]; then
-            echo "  2. Review coverage report: open $COVERAGE_HTML_PATH"
-        fi
-
-        # All products use OTA2
-        echo "  ${step_num}. OTA2 manifests published via tools/publish-ota.sh"
-        step_num=$((step_num + 1))
-        echo "  ${step_num}. Test the OTA update process"
-        step_num=$((step_num + 1))
-        echo "  ${step_num}. Announce the release"
+        echo "  ${step_num}. (Optional) Flash a fresh chip:  ./tools/flash.sh   (pick nextgen-bootstrap)"
+        echo "       Existing bootstrap chips will pick up this release via the manual"
+        echo "       'Check for updates' link in the bootstrap UI."
     fi
     echo ""
 }
@@ -1738,40 +1720,33 @@ main() {
     # Build release binary
     release_build
 
-    # Bootstrap is a factory tool flashed via USB — no git tag, no push to
-    # GitHub, no GitHub release, no OTA publish. The local version-bump
-    # commit is kept as a paper trail of what was built.
-    if [[ "$PRODUCT" == "nextgen-bootstrap" ]]; then
-        print_header "Bootstrap Finalisation"
-        print_info "Skipping git tag, push, GitHub release, and OTA publish."
-        print_info "Bootstrap firmware is flashed via USB; no OTA channel needed."
-        print_info "Version bump committed locally only."
-        echo ""
-    else
-        # Create git tag
-        if [[ "$SKIP_GIT_RELEASE" != true ]]; then
-            read -p "Skip git tag/push/GitHub release? (y/N): " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                SKIP_GIT_RELEASE=true
-            fi
+    # All nextgen products — including nextgen-bootstrap — go through the
+    # standard tag/release/OTA-publish pipeline. Bootstrap is no longer
+    # USB-only: it can self-update over OTA from the stable channel and is
+    # also installable on a per-device firmware via admin → "Install
+    # bootstrap firmware". Both paths require a published bootstrap manifest.
+    if [[ "$SKIP_GIT_RELEASE" != true ]]; then
+        read -p "Skip git tag/push/GitHub release? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            SKIP_GIT_RELEASE=true
         fi
-
-        if [[ "$SKIP_GIT_RELEASE" != true ]]; then
-            create_git_tag
-
-            # Push to GitHub
-            push_changes
-
-            # Create GitHub release
-            create_github_release
-        else
-            print_info "Skipping git tag/push/GitHub release (publish manifests only)"
-        fi
-
-        # OTA publish (all products use OTA2)
-        publish_ota2_manifests
     fi
+
+    if [[ "$SKIP_GIT_RELEASE" != true ]]; then
+        create_git_tag
+
+        # Push to GitHub
+        push_changes
+
+        # Create GitHub release
+        create_github_release
+    else
+        print_info "Skipping git tag/push/GitHub release (publish manifests only)"
+    fi
+
+    # OTA publish (all products use OTA2, including nextgen-bootstrap)
+    publish_ota2_manifests
     
     # Cleanup
     cleanup

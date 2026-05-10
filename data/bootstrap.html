@@ -263,9 +263,14 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="page" style="padding: 0; display: flex; justify-content: space-between; width: 100%;">
+    <div class="page" style="padding: 0; display: flex; justify-content: space-between; align-items: center; width: 100%;">
       <span>Chronolett<span class="copper">.</span></span>
-      <span>Bootstrap</span>
+      <span style="display: flex; gap: 16px; align-items: center;">
+        <a href="#" id="selfUpdateLink" style="color: var(--graphite-60); text-decoration: none; font-size: 11px; letter-spacing: 0.16em;">
+          Check for updates
+        </a>
+        <span>Bootstrap</span>
+      </span>
     </div>
   </header>
 
@@ -327,6 +332,7 @@
       <p id="progressNote" class="help" style="margin-top: 18px;">
         Do not power off the device. The clock will reboot automatically when finished.
       </p>
+      <button id="progressCloseBtn" class="btn ghost hidden" style="margin-top: 18px;">Close</button>
     </div>
   </div>
 
@@ -352,13 +358,32 @@
       progressBar: document.getElementById('progressBar'),
       progressBarFill: document.getElementById('progressBarFill'),
       progressBytes: document.getElementById('progressBytes'),
+      progressCloseBtn: document.getElementById('progressCloseBtn'),
     };
+
+    // Dismiss-the-overlay handler. Only meaningful at non-rebooting terminus
+    // (up-to-date / failed); during an install the overlay stays put because
+    // the page is about to lose its connection.
+    if (els.progressCloseBtn) {
+      els.progressCloseBtn.addEventListener('click', () => {
+        els.progressOverlay.classList.remove('show');
+        els.progressCloseBtn.classList.add('hidden');
+        // Reset progress card to a neutral starting state so a follow-up
+        // action doesn't see leftover copy from the previous run.
+        els.progressApLine.classList.add('hidden');
+        els.progressBar.classList.add('hidden');
+        els.progressBytes.classList.add('hidden');
+        els.progressSpinner.classList.remove('hidden');
+        state.selfUpdating = false;
+      });
+    }
 
     const state = {
       product: null,        // selected product id
       channel: null,        // selected channel
       channels: [],         // channels available for the selected product
       productsById: {},     // id → product metadata (ap_name, label, …)
+      selfUpdating: false,  // true: bootstrap-self-update flow (different terminus copy)
     };
 
     // Step 1: load and render products
@@ -487,7 +512,9 @@
       );
       if (!ok) return;
 
+      state.selfUpdating = false;
       els.progressOverlay.classList.add('show');
+      if (els.progressCloseBtn) els.progressCloseBtn.classList.add('hidden');
       els.progressTitle.textContent = 'Starting…';
       els.progressDetail.textContent = state.product + ' / ' + state.channel;
 
@@ -540,11 +567,26 @@
     // SSID the new firmware will broadcast for its own enrollment portal.
     // SSID-appearing-on-phone is the load-bearing positive signal.
     function showRebootSuccess() {
-      const meta = state.productsById[state.product] || {};
-      const apName = meta.ap_name || 'Wordclock_AP';
       els.progressSpinner.classList.add('hidden');
       els.progressBar.classList.add('hidden');
       els.progressBytes.classList.add('hidden');
+
+      // Self-update terminus: bootstrap is still bootstrap after reboot.
+      // No new SSID to watch for — the operator just reloads this page.
+      if (state.selfUpdating) {
+        els.progressKicker.textContent = 'Reboot complete';
+        els.progressTitle.textContent = 'Bootstrap updated';
+        els.progressDetail.textContent =
+          'The new bootstrap firmware will be running shortly.';
+        els.progressApLine.classList.add('hidden');
+        els.progressNote.textContent =
+          'Reload this page in ~30 seconds to confirm. If it does not come ' +
+          'back, power-cycle the device.';
+        return;
+      }
+
+      const meta = state.productsById[state.product] || {};
+      const apName = meta.ap_name || 'Wordclock_AP';
       els.progressKicker.textContent = 'Reboot complete';
       els.progressTitle.textContent = 'Provisioning complete';
       els.progressDetail.textContent =
@@ -633,6 +675,22 @@
 
           if (body.state === 'done') {
             await flushBarTo100();
+            // Self-update can land on Done WITHOUT a reboot when the device
+            // is already on the latest build. Detect that via the server's
+            // message rather than a separate state — keeps the state enum
+            // tight at the cost of a string check here.
+            if (state.selfUpdating && /already running latest/i.test(body.message || '')) {
+              els.progressSpinner.classList.add('hidden');
+              els.progressBar.classList.add('hidden');
+              els.progressBytes.classList.add('hidden');
+              els.progressKicker.textContent = 'No update needed';
+              els.progressTitle.textContent = 'Up to date';
+              els.progressDetail.textContent = body.message || '';
+              els.progressApLine.classList.add('hidden');
+              els.progressNote.textContent = '';
+              if (els.progressCloseBtn) els.progressCloseBtn.classList.remove('hidden');
+              return;
+            }
             // Reboot is imminent; jump straight to the watch-for-AP terminus
             // so the user has a clear next-step rather than a brief "Done"
             // that we'd otherwise replace once the connection drops.
@@ -640,7 +698,14 @@
             return;
           }
           if (body.state === 'failed') {
+            els.progressSpinner.classList.add('hidden');
+            els.progressBar.classList.add('hidden');
+            els.progressBytes.classList.add('hidden');
             els.progressTitle.textContent = 'Failed';
+            els.progressDetail.textContent = body.message || '';
+            els.progressApLine.classList.add('hidden');
+            els.progressNote.textContent = '';
+            if (els.progressCloseBtn) els.progressCloseBtn.classList.remove('hidden');
             return;
           }
         } catch (err) {
@@ -660,6 +725,52 @@
     }
 
     loadProducts();
+
+    // Bootstrap self-update — manual only, hardcoded stable channel. Reuses
+    // the same provisioning state machine + progress overlay so the operator
+    // sees the familiar download phases, except the "watch for AP" terminus
+    // doesn't apply (the new firmware is still bootstrap and will host this
+    // same page after reboot).
+    const selfUpdateLink = document.getElementById('selfUpdateLink');
+    if (selfUpdateLink) {
+      selfUpdateLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!window.confirm(
+          'Check for a newer bootstrap firmware on the stable channel and ' +
+          'install it if available? The device will reboot.'
+        )) return;
+
+        state.selfUpdating = true;
+
+        // Reuse the provisioning overlay; tweak the copy so the operator
+        // knows what to expect after the reboot (this stays bootstrap).
+        els.progressOverlay.classList.add('show');
+        if (els.progressCloseBtn) els.progressCloseBtn.classList.add('hidden');
+        els.progressSpinner.classList.remove('hidden');
+        els.progressKicker.textContent = 'Self-update';
+        els.progressTitle.textContent = 'Checking…';
+        els.progressDetail.textContent = 'nextgen-bootstrap / stable';
+        els.progressApLine.classList.add('hidden');
+        els.progressNote.textContent =
+          'Do not power off the device. After reboot, this same page will be ' +
+          'available again at the bootstrap address.';
+
+        try {
+          const res = await fetch('/api/bootstrap/self-update', { method: 'POST' });
+          if (!res.ok && res.status !== 202) {
+            const text = await res.text();
+            throw new Error('HTTP ' + res.status + ': ' + text);
+          }
+          // For up-to-date / done outcomes the same status poller surfaces
+          // the result; Failed paths show the message. For the install path
+          // the device reboots and pollStatus exits via consecutiveErrors.
+          pollStatus();
+        } catch (err) {
+          els.progressTitle.textContent = 'Self-update failed';
+          els.progressDetail.textContent = err.message;
+        }
+      });
+    }
   </script>
 </body>
 </html>

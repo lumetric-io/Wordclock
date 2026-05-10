@@ -27,6 +27,9 @@ void checkForFirmwareUpdate() {}
 
 bool installProductFirmware(const String&, const String&) { return false; }
 bool listAvailableChannels(const String&, std::vector<String>& out) { out.clear(); return false; }
+bool checkForBootstrapSelfUpdate(bool& outUpToDate, String& outRemoteVersion) {
+  outUpToDate = false; outRemoteVersion = ""; return false;
+}
 
 #if SUPPORT_OTA_V2 == 0
 void syncFilesFromManifest() {}
@@ -1031,9 +1034,69 @@ bool listAvailableChannels(const String& productId, std::vector<String>& out) {
   }
   return !out.empty();
 }
+
+#ifdef WORDCLOCK_BOOTSTRAP
+// Bootstrap self-update. Mirrors checkForFirmwareUpdateV2() but with the
+// bootstrap product id and a fixed channel — bootstrap intentionally has no
+// displaySettings/grid_layout to query, so this is a deliberate trim of that
+// flow. On a newer remote version, hands off to installProductFirmware()
+// which reboots and never returns.
+bool checkForBootstrapSelfUpdate(bool& outUpToDate, String& outRemoteVersion) {
+  outUpToDate = false;
+  outRemoteVersion = "";
+  logInfo("🔍 Bootstrap: checking for self-update…");
+
+  std::unique_ptr<WiFiClient> client(new WiFiClient());
+
+  JsonDocument channelDoc;
+  if (!fetchOta2Channel(channelDoc, *client, "nextgen-bootstrap", "stable")) {
+    logError("❌ Bootstrap self-update: channel manifest fetch failed");
+    return false;
+  }
+
+  JsonVariant target = channelDoc["target"];
+  if (target.isNull()) {
+    logInfo("✅ Bootstrap self-update: no target published on stable.");
+    outUpToDate = true;
+    return false;
+  }
+
+  outRemoteVersion = String(target["version"] | "");
+  logInfo(String("ℹ️ Bootstrap remote version: ") + outRemoteVersion);
+  if (outRemoteVersion.isEmpty()) {
+    logError("❌ Bootstrap self-update: remote version missing from manifest");
+    return false;
+  }
+  if (!isVersionNewer(outRemoteVersion, FIRMWARE_VERSION)) {
+    logInfo(String("✅ Bootstrap already latest (") + FIRMWARE_VERSION + ")");
+    outUpToDate = true;
+    return false;
+  }
+
+  // Newer build available — installProductFirmware does its own
+  // re-fetching of the same channel manifest and emits its own phase
+  // transitions through bootstrapEmitPhase. On success it reboots and
+  // never returns.
+  logInfo(String("⬇️ Bootstrap self-update: installing ") + outRemoteVersion);
+  if (!installProductFirmware("nextgen-bootstrap", "stable")) {
+    logError("❌ Bootstrap self-update: install failed");
+    return false;
+  }
+  return true;  // not reached on success (reboot)
+}
+#endif
+
 #else
 bool installProductFirmware(const String&, const String&) { return false; }
 bool listAvailableChannels(const String&, std::vector<String>& out) { out.clear(); return false; }
+#endif
+
+#ifndef WORDCLOCK_BOOTSTRAP
+bool checkForBootstrapSelfUpdate(bool& outUpToDate, String& outRemoteVersion) {
+  outUpToDate = false;
+  outRemoteVersion = "";
+  return false;
+}
 #endif
 
 #endif // OTA_ENABLED

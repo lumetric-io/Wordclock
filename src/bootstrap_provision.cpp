@@ -104,6 +104,28 @@ void provisionTaskFn(void* params) {
   vTaskDelete(nullptr);
 }
 
+// FreeRTOS task: bootstrap-self-update. Hands off to installProductFirmware
+// (which reboots on success) when a newer build exists; otherwise reports
+// "up to date" through the same state channel the UI already polls.
+void selfUpdateTaskFn(void* /*params*/) {
+  bool upToDate = false;
+  String remoteVersion;
+  if (checkForBootstrapSelfUpdate(upToDate, remoteVersion)) {
+    // installProductFirmware reboots on success — unreachable.
+    setState(BootstrapState::Done, "Updated. Rebooting…");
+  } else if (upToDate) {
+    setState(BootstrapState::Done,
+             String("Already running latest bootstrap (") + FIRMWARE_VERSION + ")");
+  } else {
+    setState(BootstrapState::Failed,
+             remoteVersion.length()
+               ? String("Self-update failed (remote ") + remoteVersion + ")"
+               : String("Self-update failed (could not reach OTA server)"));
+  }
+  g_provisionTask = nullptr;
+  vTaskDelete(nullptr);
+}
+
 // ───────────────────────────────────────────────────────────────────────
 // Route handlers
 // ───────────────────────────────────────────────────────────────────────
@@ -223,6 +245,44 @@ void handleProvisionStart() {
   server.send(202, "application/json", out);
 }
 
+void handleSelfUpdateStart() {
+  if (g_state == BootstrapState::DownloadingFs ||
+      g_state == BootstrapState::DownloadingFirmware ||
+      g_state == BootstrapState::Applying) {
+    server.send(409, "text/plain", "provisioning already in progress");
+    return;
+  }
+
+  // Self-update always uses bootstrap/stable; there's no operator-facing
+  // channel selector here on purpose (matches the "factory tool, stable
+  // only" character of the bootstrap firmware).
+  g_selectedProduct = "nextgen-bootstrap";
+  g_selectedChannel = "stable";
+  g_bytesDone = 0;
+  g_bytesTotal = 0;
+  setState(BootstrapState::FetchingChannels, "Checking for bootstrap update…");
+
+  BaseType_t ok = xTaskCreate(selfUpdateTaskFn,
+                              "bootstrap_selfupdate",
+                              8192,
+                              nullptr,
+                              1,
+                              &g_provisionTask);
+  if (ok != pdPASS) {
+    setState(BootstrapState::Failed, "Failed to spawn self-update task");
+    server.send(500, "text/plain", "task spawn failed");
+    return;
+  }
+
+  JsonDocument doc;
+  doc["state"] = stateName(g_state);
+  doc["product"] = g_selectedProduct;
+  doc["channel"] = g_selectedChannel;
+  String out;
+  serializeJson(doc, out);
+  server.send(202, "application/json", out);
+}
+
 void handleProvisionStatus() {
   JsonDocument doc;
   doc["state"] = stateName(g_state);
@@ -279,6 +339,26 @@ void registerBootstrapRoutes(WebServer& srv) {
   server.on("/api/provision/channels", HTTP_GET, handleChannels);
   server.on("/api/provision/start", HTTP_POST, handleProvisionStart);
   server.on("/api/provision/status", HTTP_GET, handleProvisionStatus);
+  server.on("/api/bootstrap/self-update", HTTP_POST, handleSelfUpdateStart);
+  // GET fallback so the UI can trigger via plain link/click without CORS
+  // preflight gymnastics. Idempotent semantically (the task itself enforces
+  // the in-progress guard).
+  server.on("/api/bootstrap/self-update", HTTP_GET, handleSelfUpdateStart);
+
+  // Cross-firmware identity probe. Mirror of the per-device endpoint —
+  // admin UIs poll this after triggering /api/installBootstrap to detect
+  // when the device has come back as bootstrap. Same shape as per-device
+  // (role + firmware + ui + product_id) so the JS branches on `role` only.
+  server.on("/api/firmware/identity", HTTP_GET, []() {
+    JsonDocument doc;
+    doc["role"] = "bootstrap";
+    doc["firmware"] = FIRMWARE_VERSION;
+    doc["ui"] = UI_VERSION;
+    doc["product_id"] = "nextgen-bootstrap";
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
   server.onNotFound([]() {
     server.send(404, "text/plain", String("not found: ") + server.uri());
   });

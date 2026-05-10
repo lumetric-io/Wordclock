@@ -245,6 +245,22 @@
         </div>
       </section>
 
+      <!-- 10 — Re-install bootstrap firmware -->
+      <section class="chapter" id="installBootstrapSection">
+        <header class="section-head">
+          <span class="section-num">10</span>
+          <h2 class="section-title" data-i18n="admin.bootstrap.title">Re-install bootstrap</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="admin.bootstrap.label">Provisioning</span>
+          <div class="section-body">
+            <p class="help" data-i18n="admin.bootstrap.help">Replaces the running firmware with the bootstrap provisioning image (stable channel). After reboot, this device hosts the first-flash product picker at <code>http://wordclock.local/</code> and stops acting as a clock until a product is re-installed.</p>
+            <button id="installBootstrapBtn" class="btn danger" data-i18n="admin.bootstrap.btn">Install bootstrap firmware</button>
+            <p id="installBootstrapMsg" class="help"></p>
+          </div>
+        </div>
+      </section>
+
       <div class="footer-sig">
         <span>Chronolett<span class="copper">.</span></span>
         <span data-i18n="common.footer.preview">v2 — editorial preview</span>
@@ -476,6 +492,97 @@
       });
     }
 
+    // Re-install bootstrap firmware (admin path; destructive — device stops
+    // being a clock until a product is re-installed via the bootstrap UI).
+    const installBootstrapBtn = document.getElementById('installBootstrapBtn');
+    const installBootstrapMsg = document.getElementById('installBootstrapMsg');
+
+    async function pollForBootstrap(onTick) {
+      const start = Date.now();
+      const maxMs = 180000;
+      const intervalMs = 2500;
+      const perPollTimeoutMs = 3000;
+      let sawOffline = false;
+      while (Date.now() - start < maxMs) {
+        await new Promise(r => setTimeout(r, intervalMs));
+        try {
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), perPollTimeoutMs);
+          const res = await fetch('/api/firmware/identity', { cache: 'no-store', signal: ctrl.signal });
+          clearTimeout(tid);
+          if (!res.ok) { sawOffline = true; if (onTick) onTick('offline'); continue; }
+          const body = await res.json();
+          if (body && body.role === 'bootstrap') return 'bootstrap';
+          if (onTick) onTick(sawOffline ? 'recovering' : 'pre-reboot');
+        } catch (e) {
+          sawOffline = true;
+          if (onTick) onTick('offline');
+        }
+      }
+      return 'timeout';
+    }
+
+    if (installBootstrapBtn) {
+      installBootstrapBtn.addEventListener('click', async () => {
+        if (!confirm(T(
+          'admin.bootstrap.confirm',
+          'Replace the current firmware with the bootstrap provisioning image?\n\n' +
+          'After reboot, this device stops being a clock and hosts the first-flash ' +
+          'product picker at http://wordclock.local/. You will need to re-pick a ' +
+          'product to bring the clock back.'
+        ))) return;
+        installBootstrapBtn.disabled = true;
+        installBootstrapBtn.classList.add('disabled');
+        if (installBootstrapMsg) installBootstrapMsg.textContent = T('admin.bootstrap.starting', 'Starting bootstrap install…');
+        try {
+          const res = await fetch('/api/installBootstrap', { method: 'POST' });
+          if (!(res.status === 202 || res.ok)) {
+            const text = await res.text();
+            if (installBootstrapMsg) {
+              installBootstrapMsg.textContent = T('admin.bootstrap.failed_http', 'Failed to start bootstrap install') +
+                ' (HTTP ' + res.status + '): ' + text;
+            }
+            installBootstrapBtn.disabled = false;
+            installBootstrapBtn.classList.remove('disabled');
+            return;
+          }
+          if (installBootstrapMsg) {
+            installBootstrapMsg.textContent = T('admin.bootstrap.waiting',
+              'Install started. Waiting for the device to reboot into bootstrap…');
+          }
+          const result = await pollForBootstrap((phase) => {
+            if (!installBootstrapMsg) return;
+            if (phase === 'pre-reboot') {
+              installBootstrapMsg.textContent = T('admin.bootstrap.in_progress', 'Install in progress — device still online…');
+            } else if (phase === 'offline') {
+              installBootstrapMsg.textContent = T('admin.bootstrap.offline', 'Device offline — OTA running / device rebooting…');
+            } else if (phase === 'recovering') {
+              installBootstrapMsg.textContent = T('admin.bootstrap.recovering', 'Device coming back online…');
+            }
+          });
+          if (result === 'bootstrap') {
+            if (installBootstrapMsg) {
+              installBootstrapMsg.textContent = T('admin.bootstrap.online', 'Bootstrap online — opening picker…');
+            }
+            // Same hostname; hard navigation to / lands on bootstrap.html.
+            setTimeout(() => { window.location.href = '/'; }, 800);
+          } else {
+            if (installBootstrapMsg) {
+              installBootstrapMsg.textContent = T('admin.bootstrap.timeout',
+                'Bootstrap did not come back within 3 minutes. ' +
+                'Try opening http://wordclock.local/ manually, or power-cycle the device.');
+            }
+            installBootstrapBtn.disabled = false;
+            installBootstrapBtn.classList.remove('disabled');
+          }
+        } catch (err) {
+          if (installBootstrapMsg) installBootstrapMsg.textContent = T('admin.bootstrap.req_failed', 'Request failed:') + ' ' + err.message;
+          installBootstrapBtn.disabled = false;
+          installBootstrapBtn.classList.remove('disabled');
+        }
+      });
+    }
+
     // Build info
     const buildStatus = document.getElementById('buildInfoStatus');
     async function loadBuildInfo() {
@@ -498,11 +605,13 @@
         const channelSection = document.getElementById('releaseChannelSection');
         const updatePageLink = document.getElementById('updatePageLink');
         if (syncSection && info.ui_sync_supported === false) syncSection.classList.add('hidden');
+        const installBootstrapSection = document.getElementById('installBootstrapSection');
         if (info.ota_enabled === false) {
           if (syncSection) syncSection.classList.add('hidden');
           if (channelSection) channelSection.classList.add('hidden');
           if (updateBtn) updateBtn.classList.add('hidden');
           if (updatePageLink) updatePageLink.classList.add('hidden');
+          if (installBootstrapSection) installBootstrapSection.classList.add('hidden');
         }
         if (buildStatus) buildStatus.textContent = T('admin.build.last_updated', 'Last updated just now.');
       } catch (err) {

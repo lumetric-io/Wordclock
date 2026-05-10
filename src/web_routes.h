@@ -70,6 +70,26 @@ static void otaUpdateTask(void* params) {
   logInfo("🧵 OTA update task finished");
   vTaskDelete(nullptr);
 }
+
+// Re-install the bootstrap firmware on this device. installProductFirmware
+// reboots on success and never returns; on failure we clear the running flag
+// so the operator can retry from the UI without a power cycle. Hardcoded
+// "stable" channel — matches the bootstrap firmware's own self-update policy.
+static void installBootstrapTask(void* /*params*/) {
+  logInfo("🧵 Bootstrap re-install task started");
+  set_update_running(true);
+  mqtt_publish_update_status(true);
+  setLedsSuspended(true);
+  bool ok = installProductFirmware("nextgen-bootstrap", "stable");
+  setLedsSuspended(false);
+  if (!ok) {
+    logError("❌ Bootstrap re-install failed");
+    set_update_running(false);
+    mqtt_publish_update_status(false);
+  }
+  g_otaTaskHandle = nullptr;
+  vTaskDelete(nullptr);
+}
 #endif
 
 // Serve file, preferring a .gz variant if client accepts gzip
@@ -878,6 +898,22 @@ void setupWebRoutes() {
   });
 #endif
 
+  // Cross-firmware identity probe. Both per-device and bootstrap firmwares
+  // expose this endpoint — admin UIs poll it to detect when the device has
+  // rebooted into bootstrap after an /api/installBootstrap call. Deliberately
+  // unauthenticated so the polling JS can distinguish "device offline" from
+  // "needs credentials". Returns nothing sensitive (version + product id).
+  server.on("/api/firmware/identity", HTTP_GET, []() {
+    JsonDocument doc;
+    doc["role"] = "product";
+    doc["firmware"] = FIRMWARE_VERSION;
+    doc["ui"] = UI_VERSION;
+    doc["product_id"] = PRODUCT_ID;
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
   server.on("/log/download", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     logFlushFile();
@@ -1187,6 +1223,35 @@ void setupWebRoutes() {
     set_update_running(true);
     mqtt_publish_update_status(true);
     server.send(200, "text/plain", "Firmware update started");
+  });
+
+  // Admin-only: replace the running per-device firmware with the bootstrap
+  // firmware. Useful when an operator needs to re-provision a device for a
+  // different product without a USB connection. After the OTA reboot, the
+  // device hosts the bootstrap product picker at http://wordclock.local/.
+  server.on("/api/installBootstrap", HTTP_POST, []() {
+    if (!ensureAdminAuth()) return;
+    if (is_update_running()) {
+      server.send(409, "text/plain", "Firmware update already running");
+      return;
+    }
+    logWarn("⚠️ Bootstrap re-install requested via admin UI");
+    BaseType_t ok = xTaskCreatePinnedToCore(
+      installBootstrapTask,
+      "installBootstrap",
+      12288,
+      nullptr,
+      1,
+      &g_otaTaskHandle,
+      tskNO_AFFINITY
+    );
+    if (ok != pdPASS) {
+      g_otaTaskHandle = nullptr;
+      logError("Failed to start bootstrap re-install task");
+      server.send(500, "text/plain", "Failed to start bootstrap install");
+      return;
+    }
+    server.send(202, "text/plain", "Bootstrap install started");
   });
 #endif
 
