@@ -195,7 +195,13 @@ void processNetwork() {
 
   // When disconnected, kick off periodic reconnects to avoid needing a full device reboot.
   // The portal (if started) runs in AP+STA mode so reconnect attempts continue alongside it.
-  if (!connected) {
+  //
+  // Exception: during initial setup (no saved creds at boot) the periodic
+  // STA scan can never succeed — there's nothing to reconnect to — and the
+  // scan disrupts the AP that the portal is serving. Skip the whole block;
+  // once the operator submits creds via the portal, WiFiManager handles
+  // the connection itself.
+  if (!connected && !isInitialSetupMode()) {
     unsigned long now = millis();
 
     // Track how long we have been without a connection (handles boot-time failures too).
@@ -262,6 +268,15 @@ void processNetwork() {
 
 bool isWiFiConnected() {
   return g_wifiConnected;
+}
+
+bool isInitialSetupMode() {
+  // Initial setup = no saved credentials AND not currently connected. The
+  // portal is up (initNetwork starts it on autoConnect failure) and the
+  // operator is in front of the device picking an SSID. There is nothing
+  // useful to render on the clock face (no NTP yet) and no point in
+  // periodic STA reconnect scans (no credentials to retry).
+  return !g_wifiConnected && !g_wifiHadCredentialsAtBoot;
 }
 
 void resetWiFiSettings() {

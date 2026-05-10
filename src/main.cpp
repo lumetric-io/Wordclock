@@ -106,7 +106,13 @@ void loop() {
 
   unsigned long nowMs = millis();
   if (runtimeHandleNoWifiLoop(nowMs)) {
-    if (!isBleProvisioningActive()) {
+    // Skip the wordclock render loop during initial setup so the AP and
+    // portal stay responsive. Adafruit_NeoPixel::show() disables interrupts
+    // for ~30µs/LED — at 20fps for a 121-LED grid that's ~72ms/sec of
+    // interrupt-disabled time, which chokes WiFi/lwIP. No useful clock
+    // face to render anyway (no NTP yet). The LedEvents tick still runs so
+    // the WifiManagerPortal heartbeat indicator stays visible.
+    if (!isBleProvisioningActive() && !isInitialSetupMode()) {
       runtimeHandleWordclockLoop(nowMs);
     }
     runtimeHandleLedEvents(nowMs);
