@@ -26,14 +26,28 @@ public:
     }
     prefs_.end();
 
-    // Update channel (stable by default)
+    // Update channel: persisted user choice wins. On first boot (no
+    // stored value yet) derive the default from FIRMWARE_VERSION rather
+    // than hardcoding "stable" — otherwise a freshly-flashed early/develop
+    // firmware would immediately auto-OTA back to stable on first WiFi
+    // connect (isVersionNewer treats "26.5.10" as newer than
+    // "26.5.10-rc.3" because the suffix differs). The user can still
+    // change the channel via the admin UI; once stored, that choice
+    // survives reboots and any future re-flash leaves it untouched.
     prefs_.begin("wc_display", true);
     hasStoredUpdateChannel_ = prefs_.isKey("upd_ch");
-    String ch = hasStoredUpdateChannel_ ? prefs_.getString("upd_ch", "stable") : String("stable");
+    const String buildChannel = detectBuildChannel();
+    String ch = hasStoredUpdateChannel_
+                  ? prefs_.getString("upd_ch", buildChannel)
+                  : buildChannel;
     prefs_.end();
     ch.toLowerCase();
     if (ch != "stable" && ch != "early" && ch != "develop") ch = "stable";
     updateChannel_ = ch;
+    if (!hasStoredUpdateChannel_) {
+      logInfo(String("ℹ️ No stored update channel; defaulting to build channel '") +
+              updateChannel_ + "'");
+    }
     if (updateChannel_ == "develop" && autoUpdate_) {
       autoUpdate_ = false;
       prefs_.begin("wc_display", false);
@@ -149,6 +163,20 @@ public:
   }
 
 private:
+  // Map FIRMWARE_VERSION → channel name. The release pipeline
+  // (tools/release.sh) enforces:
+  //   develop builds → "*-dev.X" or "*-dev"
+  //   early builds   → "*-rc.X"  or "*-early"
+  //   stable builds  → no pre-release suffix
+  // Used as the first-boot fallback for the persisted update channel.
+  static String detectBuildChannel() {
+    String v(FIRMWARE_VERSION);
+    v.toLowerCase();
+    if (v.indexOf("-dev") >= 0) return String("develop");
+    if (v.indexOf("-rc") >= 0 || v.indexOf("-early") >= 0) return String("early");
+    return String("stable");
+  }
+
   void markDirty() {
     if (!dirty_) {
       dirty_ = true;
