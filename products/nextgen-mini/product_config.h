@@ -1,8 +1,8 @@
 #pragma once
 
 #define PRODUCT_ID "nextgen-mini"
-#define FIRMWARE_VERSION "nextgen-mini-0.1.0-dev.0"
-#define UI_VERSION "ui-nextgen-mini-0.1.0-dev.0"
+#define FIRMWARE_VERSION "nextgen-mini-25.5.10-rc.5"
+#define UI_VERSION "ui-nextgen-mini-25.5.10-rc.5"
 #define PRODUCT_VARIANT_MINI 1
 #define DATA_PIN 4
 #define SUPPORT_MINUTE_LEDS 0
