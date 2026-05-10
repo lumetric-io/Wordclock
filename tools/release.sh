@@ -42,9 +42,33 @@ SUDO_MODE="${SUDO_MODE:-auto}" # auto|always|never
 
 VALID_PRODUCTS=("nextgen-30x30" "nextgen-50x50" "nextgen-logo-55x50" "nextgen-logo-100x100" "nextgen-mini" "nextgen-bootstrap")
 
+# Mass-build set: every nextgen-* product *except* bootstrap. Bootstrap is
+# excluded on purpose — it has its own release cadence (single channel,
+# different versioning) and rolling it into the per-channel mass build
+# would force its version to track the others'.
+ALL_NEXTGEN_NON_BOOTSTRAP=("nextgen-mini" "nextgen-30x30" "nextgen-50x50" "nextgen-logo-55x50" "nextgen-logo-100x100")
+
 # When set, release builds all listed products in one go (same version base, one tag/release, multiple binaries)
 BUILD_ALL_PRODUCTS=()
 RELEASE_BINARIES=()
+
+# Populate BUILD_ALL_PRODUCTS with every nextgen non-bootstrap product and
+# pre-select the first as the "lead" (used for VERSION_FILE / path
+# resolution and as the base for the proposed bump version). Caller wires
+# this from --all and from interactive menu option 7.
+set_build_all_nextgen() {
+    BUILD_ALL_PRODUCTS=("${ALL_NEXTGEN_NON_BOOTSTRAP[@]}")
+    if [[ -z "$PRODUCT" ]]; then
+        PRODUCT="${BUILD_ALL_PRODUCTS[0]}"
+    elif [[ "$PRODUCT" == "nextgen-bootstrap" ]]; then
+        # --all was passed alongside an explicit --product nextgen-bootstrap.
+        # Mass build excludes bootstrap by design — refuse rather than
+        # silently override one of the two flags.
+        print_error "--all and --product nextgen-bootstrap are mutually exclusive"
+        print_error "(bootstrap is intentionally excluded from the per-channel mass build)"
+        exit 1
+    fi
+}
 
 # Functions
 get_release_filename() {
@@ -434,7 +458,17 @@ prompt_product_channel() {
         fi
     fi
 
-    if [[ -z "$PRODUCT" ]]; then
+    # Mass build + bootstrap is incoherent in either direction. Catch the
+    # case where --product nextgen-bootstrap was passed *after* --all (which
+    # sets PRODUCT to the first non-bootstrap entry, then the later flag
+    # quietly overrides it).
+    if [[ ${#BUILD_ALL_PRODUCTS[@]} -gt 0 && "$PRODUCT" == "nextgen-bootstrap" ]]; then
+        print_error "--all and --product nextgen-bootstrap are mutually exclusive"
+        print_error "(bootstrap is intentionally excluded from the per-channel mass build)"
+        exit 1
+    fi
+
+    if [[ -z "$PRODUCT" && ${#BUILD_ALL_PRODUCTS[@]} -eq 0 ]]; then
         echo "Select product:"
         echo "  1) nextgen-30x30"
         echo "  2) nextgen-50x50"
@@ -442,7 +476,8 @@ prompt_product_channel() {
         echo "  4) nextgen-logo-100x100"
         echo "  5) nextgen-mini"
         echo "  6) nextgen-bootstrap   (first-flash provisioning)"
-        read -p "Product number (1-6): " -r
+        echo "  7) all nextgen products (except bootstrap)  — single channel, one version"
+        read -p "Product number (1-7): " -r
         case $REPLY in
             1) PRODUCT="nextgen-30x30" ;;
             2) PRODUCT="nextgen-50x50" ;;
@@ -450,6 +485,7 @@ prompt_product_channel() {
             4) PRODUCT="nextgen-logo-100x100" ;;
             5) PRODUCT="nextgen-mini" ;;
             6) PRODUCT="nextgen-bootstrap" ;;
+            7) set_build_all_nextgen ;;
             *) print_error "Invalid product"; exit 1 ;;
         esac
     fi
@@ -1770,6 +1806,13 @@ while [[ $# -gt 0 ]]; do
             PRODUCT="$2"
             shift 2
             ;;
+        --all|--all-products)
+            # Mass build: every nextgen-* product except bootstrap, single
+            # channel, one version base, one tag, one GitHub release with
+            # all binaries attached, one OTA publish per product.
+            set_build_all_nextgen
+            shift
+            ;;
         --channel)
             CHANNEL="$2"
             shift 2
@@ -1789,12 +1832,20 @@ while [[ $# -gt 0 ]]; do
             echo "Usage:"
             echo "  ./release.sh                               Full release pipeline"
             echo "  ./release.sh --product <product>           Set product"
+            echo "  ./release.sh --all                         Mass build: all nextgen products (except bootstrap)"
             echo "  ./release.sh --channel <channel>           Set channel (stable|early|develop)"
             echo "  ./release.sh --version <version>           Set version (skip prompt)"
             echo "  ./release.sh --ui-only                     UI-only update (no firmware build/tag/release)"
             echo "  ./release.sh --no-tag-release              Build + publish manifests without git tag/release"
             echo "  ./release.sh --update-manifest             (deprecated) Use publish-ota.sh instead"
             echo "  ./release.sh --help                        Show this help"
+            echo ""
+            echo "Mass build (--all):"
+            echo "  Brings every nextgen-mini / 30x30 / 50x50 / logo-55x50 / logo-100x100"
+            echo "  to the same base version on the chosen channel, builds all five binaries,"
+            echo "  creates a single git tag + GitHub release with all binaries attached, and"
+            echo "  publishes one OTA manifest per product. Bootstrap is excluded by design."
+            echo "  Example: ./release.sh --all --channel early"
             echo ""
             echo "Version Auto-increment:"
             echo "  - 26.2.2-dev.5  -> 26.2.2-dev.6  (increments dev number)"
