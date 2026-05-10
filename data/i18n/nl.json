@@ -181,6 +181,8 @@
   "admin.bootstrap.timeout": "Bootstrap kwam niet binnen 3 minuten terug. Open http://wordclock.local/ handmatig of zet het apparaat uit en weer aan.",
   "admin.bootstrap.failed_http": "Bootstrap-installatie starten mislukt",
   "admin.bootstrap.req_failed": "Aanvraag mislukt:",
+  "admin.color.set_failed": "Opslaan mislukt",
+  "dashboard.colour.set_failed": "Opslaan mislukt",
   "admin.ota.confirm": "Controleren op firmware-updates en OTA starten?",
   "admin.ota.checking": "Controleren op updates…",
   "admin.ota.checking_short": "Controleren…",

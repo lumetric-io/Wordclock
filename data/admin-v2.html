@@ -441,11 +441,35 @@
       if (adminColorValueEl) adminColorValueEl.textContent = hexUpper;
     }
 
-    function adminApplyColor(hex) {
+    let adminPendingColor = null;
+    async function adminApplyColor(hex) {
       const clean = hex.replace('#', '').toUpperCase();
-      if (adminColorPickerEl && clean.length === 6) adminColorPickerEl.value = '#' + clean;
+      if (clean.length !== 6) return;
+      adminPendingColor = clean;
+      if (adminColorPickerEl) adminColorPickerEl.value = '#' + clean;
       adminPaintSelectedSwatch('#' + clean);
-      fetch(`/setColor?color=${clean}`);
+      try {
+        const res = await fetch(`/setColor?color=${clean}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        // Reconcile with the server so the visible selection matches the
+        // device's actual state — surfaces any silent failure or override.
+        if (adminPendingColor === clean) {
+          const verify = await fetch('/getColor', { cache: 'no-store' });
+          if (verify.ok) {
+            const actual = (await verify.text()).trim().toUpperCase();
+            if (actual.length === 6) {
+              if (adminColorPickerEl) adminColorPickerEl.value = '#' + actual;
+              adminPaintSelectedSwatch('#' + actual);
+            }
+          }
+        }
+      } catch (err) {
+        if (adminColorValueEl) {
+          adminColorValueEl.textContent = (T('admin.color.set_failed', 'Save failed')) + ' (' + (err.message || err) + ')';
+          adminColorValueEl.classList.add('text-err');
+          setTimeout(() => adminColorValueEl.classList.remove('text-err'), 4000);
+        }
+      }
     }
 
     if (adminColorSwatchEl) {

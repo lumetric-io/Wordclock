@@ -181,6 +181,8 @@
   "admin.bootstrap.timeout": "Bootstrap did not come back within 3 minutes. Try opening http://wordclock.local/ manually, or power-cycle the device.",
   "admin.bootstrap.failed_http": "Failed to start bootstrap install",
   "admin.bootstrap.req_failed": "Request failed:",
+  "admin.color.set_failed": "Save failed",
+  "dashboard.colour.set_failed": "Save failed",
   "admin.ota.confirm": "Check for firmware updates and start OTA?",
   "admin.ota.checking": "Checking for updates…",
   "admin.ota.checking_short": "Checking…",

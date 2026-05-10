@@ -571,13 +571,40 @@
       if (colorValueEl) colorValueEl.textContent = hexUpper;
     }
 
-    function applyColor(hex) {
+    // Last-clicked colour, used to discard out-of-order /setColor responses
+    // when the user taps multiple swatches quickly (single-threaded ESP32
+    // WebServer can return responses in arrival order, but the post-success
+    // reload would otherwise repaint to whichever request finished last).
+    let pendingColor = null;
+    async function applyColor(hex) {
       const clean = hex.replace('#', '').toUpperCase();
+      if (clean.length !== 6) return;
+      pendingColor = clean;
       // Update the hidden native picker so a subsequent "Custom…" press
       // opens with the right starting colour.
-      if (colorPickerEl && clean.length === 6) colorPickerEl.value = '#' + clean;
+      if (colorPickerEl) colorPickerEl.value = '#' + clean;
+      // Optimistic paint — snappy UI; reconciled below if server disagrees.
       paintSelectedSwatch('#' + clean);
-      fetch(`/setColor?color=${clean}`);
+      try {
+        const res = await fetch(`/setColor?color=${clean}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        // Confirm with a re-read from the server so the visible selection
+        // always reflects the device's actual state. Cheap roundtrip and
+        // catches the "request silently failed / something else overwrote"
+        // class of bugs that the original fire-and-forget hid.
+        if (pendingColor === clean) {
+          dataLoader.load('color').catch(() => {});
+        }
+      } catch (err) {
+        if (colorValueEl) {
+          colorValueEl.textContent = T('dashboard.colour.set_failed', 'Save failed') + ' (' + (err.message || err) + ')';
+          colorValueEl.classList.add('text-err');
+          // Drop the error tag on the next successful paint.
+          setTimeout(() => colorValueEl.classList.remove('text-err'), 4000);
+        }
+        // Revert optimistic paint — re-read what the device actually has.
+        dataLoader.load('color').catch(() => {});
+      }
     }
 
     if (colorSwatchEl) {
