@@ -1212,8 +1212,8 @@
           if (buildRes.ok) {
             const buildInfo = await buildRes.json();
             const env = (buildInfo.environment || '').toLowerCase();
-            isLogoProduct = env.indexOf('wordclock-logo') !== -1;
-            isMiniProduct = env.indexOf('wordclock-mini') !== -1;
+            isLogoProduct = env.indexOf('nextgen-logo') !== -1;
+            isMiniProduct = env.indexOf('nextgen-mini') !== -1;
             setLogoSectionsVisible(isLogoProduct);
             setHetIsSectionVisible(!isMiniProduct);
             const updateSection = document.getElementById('firmwareUpdateSection');
