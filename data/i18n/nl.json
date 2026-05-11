@@ -208,6 +208,8 @@
   "dashboard.colour.label": "Kies",
   "dashboard.colour.help": "Tik op een staal om de LED-kleur te kiezen. Wordt direct toegepast.",
   "dashboard.colour.custom": "Aangepast…",
+  "dashboard.colour.hex_label": "Hex",
+  "dashboard.colour.rgb_label": "RGB",
   "dashboard.colour.ral.btn": "RAL…",
   "dashboard.colour.ral.title": "RAL Classic-kleuren",
   "dashboard.colour.ral.search_placeholder": "Zoek code of naam",

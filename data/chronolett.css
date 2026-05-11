@@ -878,6 +878,23 @@ input[type="file"]::file-selector-button {
   padding: 0;
 }
 
+/* Hex / RGB direct-entry row. Wraps onto a second line on narrow screens. */
+.swatch-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.swatch-input-row .input { width: 108px; }
+.swatch-input-row .rgb-field { width: 64px; }
+
+/* Brief red outline on invalid hex / RGB input. */
+.input.input-err {
+  border-color: var(--err);
+}
+
 /* ─── Logo grid (color pickers) ──────────────────────── */
 .logo-color-grid {
   display: grid;

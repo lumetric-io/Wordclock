@@ -208,6 +208,8 @@
   "dashboard.colour.label": "Pick",
   "dashboard.colour.help": "Tap a swatch to set the LED hue. Applied immediately.",
   "dashboard.colour.custom": "Custom…",
+  "dashboard.colour.hex_label": "Hex",
+  "dashboard.colour.rgb_label": "RGB",
   "dashboard.colour.ral.btn": "RAL…",
   "dashboard.colour.ral.title": "RAL Classic colours",
   "dashboard.colour.ral.search_placeholder": "Search code or name",

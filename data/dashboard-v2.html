@@ -82,6 +82,14 @@
               <input type="color" id="colorPicker" tabindex="-1" />
               <span class="value-mono muted" id="colorValue">—</span>
             </div>
+            <div class="swatch-input-row">
+              <span class="label" data-i18n="dashboard.colour.hex_label">Hex</span>
+              <input type="text" id="colorHexInput" class="input tight" placeholder="#FFAA00" maxlength="7" autocomplete="off" spellcheck="false" />
+              <span class="label" data-i18n="dashboard.colour.rgb_label">RGB</span>
+              <input type="number" id="colorRInput" class="input tight rgb-field" min="0" max="255" placeholder="R" />
+              <input type="number" id="colorGInput" class="input tight rgb-field" min="0" max="255" placeholder="G" />
+              <input type="number" id="colorBInput" class="input tight rgb-field" min="0" max="255" placeholder="B" />
+            </div>
             <p class="help" data-i18n="dashboard.colour.help">Tap a swatch to set the LED hue. Applied immediately.</p>
           </div>
         </div>
@@ -581,12 +589,28 @@
     const colorPickerEl = document.getElementById('colorPicker');
     const colorValueEl = document.getElementById('colorValue');
     const colorCustomBtn = document.getElementById('colorCustomBtn');
+    const colorHexInput = document.getElementById('colorHexInput');
+    const colorRgbInputs = ['R', 'G', 'B'].map((c) => document.getElementById('color' + c + 'Input'));
 
     function paintSelectedSwatch(hexUpper) {
       colorSwatchEl.querySelectorAll('.swatch').forEach((s) => {
         s.classList.toggle('selected', s.dataset.color.toUpperCase() === hexUpper);
       });
       if (colorValueEl) colorValueEl.textContent = hexUpper;
+      // Keep hex/RGB fields in sync — but don't clobber whichever input the
+      // user is currently typing into.
+      if (colorHexInput && document.activeElement !== colorHexInput) {
+        colorHexInput.value = hexUpper;
+        colorHexInput.classList.remove('input-err');
+      }
+      const clean = hexUpper.replace('#', '');
+      if (clean.length === 6 && colorRgbInputs.every((el) => el)) {
+        const parts = [clean.slice(0, 2), clean.slice(2, 4), clean.slice(4, 6)].map((s) => parseInt(s, 16));
+        colorRgbInputs.forEach((el, i) => {
+          if (document.activeElement !== el) el.value = parts[i];
+          el.classList.remove('input-err');
+        });
+      }
     }
 
     // Last-clicked colour, used to discard out-of-order /setColor responses
@@ -643,6 +667,56 @@
     }
     if (colorPickerEl) {
       colorPickerEl.addEventListener('input', (e) => applyColor(e.target.value));
+    }
+
+    // Hex text input — accepts "#FFAA00", "FFAA00", "#FA0", "FA0".
+    // Server's parseHexColor strips non-hex chars, so we expand the short
+    // form client-side to canonical 6-char before sending.
+    function tryApplyHex(value) {
+      const s = value.trim().replace(/^#/, '');
+      let hex = null;
+      if (/^[0-9a-fA-F]{6}$/.test(s)) {
+        hex = '#' + s.toUpperCase();
+      } else if (/^[0-9a-fA-F]{3}$/.test(s)) {
+        hex = '#' + s.split('').map((c) => c + c).join('').toUpperCase();
+      }
+      if (hex) { applyColor(hex); return true; }
+      return false;
+    }
+    if (colorHexInput) {
+      const submit = () => {
+        if (!colorHexInput.value.trim()) return;
+        const ok = tryApplyHex(colorHexInput.value);
+        colorHexInput.classList.toggle('input-err', !ok);
+      };
+      colorHexInput.addEventListener('blur', submit);
+      colorHexInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      });
+    }
+
+    // RGB triplet — three 0–255 inputs. Apply on Enter or blur, only when
+    // all three carry valid integers. Empty fields don't trigger.
+    function tryApplyRgb(rStr, gStr, bStr) {
+      const parts = [rStr, gStr, bStr].map((v) => parseInt(v, 10));
+      if (parts.some((n) => !Number.isFinite(n) || n < 0 || n > 255)) return false;
+      const toHex = (n) => n.toString(16).padStart(2, '0').toUpperCase();
+      applyColor('#' + parts.map(toHex).join(''));
+      return true;
+    }
+    if (colorRgbInputs.every((el) => el)) {
+      const submit = () => {
+        const vals = colorRgbInputs.map((el) => el.value);
+        if (vals.every((v) => !String(v).trim())) return;
+        const ok = tryApplyRgb(vals[0], vals[1], vals[2]);
+        colorRgbInputs.forEach((el) => el.classList.toggle('input-err', !ok));
+      };
+      colorRgbInputs.forEach((el) => {
+        el.addEventListener('blur', submit);
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); submit(); }
+        });
+      });
     }
 
     // Deferred external scripts (ral-picker.js) execute after this inline

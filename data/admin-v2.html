@@ -160,6 +160,14 @@
                 <input type="color" id="adminColorPicker" tabindex="-1" />
                 <span class="value-mono muted" id="adminColorValue">—</span>
               </div>
+              <div class="swatch-input-row">
+                <span class="label" data-i18n="dashboard.colour.hex_label">Hex</span>
+                <input type="text" id="adminColorHexInput" class="input tight" placeholder="#FFAA00" maxlength="7" autocomplete="off" spellcheck="false" />
+                <span class="label" data-i18n="dashboard.colour.rgb_label">RGB</span>
+                <input type="number" id="adminColorRInput" class="input tight rgb-field" min="0" max="255" placeholder="R" />
+                <input type="number" id="adminColorGInput" class="input tight rgb-field" min="0" max="255" placeholder="G" />
+                <input type="number" id="adminColorBInput" class="input tight rgb-field" min="0" max="255" placeholder="B" />
+              </div>
             </div>
           </div>
         </div>
@@ -450,6 +458,8 @@
     const adminColorPickerEl = document.getElementById('adminColorPicker');
     const adminColorValueEl = document.getElementById('adminColorValue');
     const adminColorCustomBtn = document.getElementById('adminColorCustomBtn');
+    const adminColorHexInput = document.getElementById('adminColorHexInput');
+    const adminColorRgbInputs = ['R', 'G', 'B'].map((c) => document.getElementById('adminColor' + c + 'Input'));
 
     function adminPaintSelectedSwatch(hexUpper) {
       if (!adminColorSwatchEl) return;
@@ -457,6 +467,18 @@
         s.classList.toggle('selected', s.dataset.color.toUpperCase() === hexUpper);
       });
       if (adminColorValueEl) adminColorValueEl.textContent = hexUpper;
+      if (adminColorHexInput && document.activeElement !== adminColorHexInput) {
+        adminColorHexInput.value = hexUpper;
+        adminColorHexInput.classList.remove('input-err');
+      }
+      const clean = hexUpper.replace('#', '');
+      if (clean.length === 6 && adminColorRgbInputs.every((el) => el)) {
+        const parts = [clean.slice(0, 2), clean.slice(2, 4), clean.slice(4, 6)].map((s) => parseInt(s, 16));
+        adminColorRgbInputs.forEach((el, i) => {
+          if (document.activeElement !== el) el.value = parts[i];
+          el.classList.remove('input-err');
+        });
+      }
     }
 
     let adminPendingColor = null;
@@ -515,6 +537,53 @@
           adminColorPickerEl.value = '#' + upper;
           adminPaintSelectedSwatch('#' + upper);
         }
+      });
+    }
+
+    // Hex text input — accepts "#FFAA00", "FFAA00", "#FA0", "FA0".
+    function adminTryApplyHex(value) {
+      const s = value.trim().replace(/^#/, '');
+      let hex = null;
+      if (/^[0-9a-fA-F]{6}$/.test(s)) {
+        hex = '#' + s.toUpperCase();
+      } else if (/^[0-9a-fA-F]{3}$/.test(s)) {
+        hex = '#' + s.split('').map((c) => c + c).join('').toUpperCase();
+      }
+      if (hex) { adminApplyColor(hex); return true; }
+      return false;
+    }
+    if (adminColorHexInput) {
+      const submit = () => {
+        if (!adminColorHexInput.value.trim()) return;
+        const ok = adminTryApplyHex(adminColorHexInput.value);
+        adminColorHexInput.classList.toggle('input-err', !ok);
+      };
+      adminColorHexInput.addEventListener('blur', submit);
+      adminColorHexInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      });
+    }
+
+    // RGB triplet — three 0–255 inputs. Apply on Enter or blur.
+    function adminTryApplyRgb(rStr, gStr, bStr) {
+      const parts = [rStr, gStr, bStr].map((v) => parseInt(v, 10));
+      if (parts.some((n) => !Number.isFinite(n) || n < 0 || n > 255)) return false;
+      const toHex = (n) => n.toString(16).padStart(2, '0').toUpperCase();
+      adminApplyColor('#' + parts.map(toHex).join(''));
+      return true;
+    }
+    if (adminColorRgbInputs.every((el) => el)) {
+      const submit = () => {
+        const vals = adminColorRgbInputs.map((el) => el.value);
+        if (vals.every((v) => !String(v).trim())) return;
+        const ok = adminTryApplyRgb(vals[0], vals[1], vals[2]);
+        adminColorRgbInputs.forEach((el) => el.classList.toggle('input-err', !ok));
+      };
+      adminColorRgbInputs.forEach((el) => {
+        el.addEventListener('blur', submit);
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); submit(); }
+        });
       });
     }
 
