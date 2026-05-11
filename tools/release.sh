@@ -52,14 +52,50 @@ ALL_NEXTGEN_NON_BOOTSTRAP=("nextgen-mini" "nextgen-30x30" "nextgen-50x50" "nextg
 BUILD_ALL_PRODUCTS=()
 RELEASE_BINARIES=()
 
+# Read each product's current FIRMWARE_VERSION, strip the per-product
+# prefix, and emit the product whose base version is highest by `sort -V`.
+# Used to pick the mass-build "lead" so the proposed bump tracks whichever
+# product has drifted ahead (per-product solo bumps happen between mass
+# releases; without this, the proposal anchors on the first product in the
+# list and silently regresses the others).
+pick_highest_versioned_product() {
+    local best_product=""
+    local best_base=""
+    for p in "$@"; do
+        local cfg="$PROJECT_ROOT/products/$p/product_config.h"
+        [[ -f "$cfg" ]] || continue
+        local raw base
+        raw=$(grep -E '^#define FIRMWARE_VERSION' "$cfg" | sed 's/.*"\(.*\)".*/\1/')
+        [[ -n "$raw" ]] || continue
+        base=$(get_base_version "$raw" "${p#wordclock-}")
+        if [[ -z "$best_base" ]]; then
+            best_product="$p"
+            best_base="$base"
+            continue
+        fi
+        local higher
+        higher=$(printf '%s\n%s\n' "$best_base" "$base" | sort -V | tail -1)
+        if [[ "$higher" == "$base" && "$higher" != "$best_base" ]]; then
+            best_product="$p"
+            best_base="$base"
+        fi
+    done
+    echo "$best_product"
+}
+
 # Populate BUILD_ALL_PRODUCTS with every nextgen non-bootstrap product and
-# pre-select the first as the "lead" (used for VERSION_FILE / path
-# resolution and as the base for the proposed bump version). Caller wires
-# this from --all and from interactive menu option 7.
+# pre-select a "lead" (used for VERSION_FILE / path resolution and as the
+# base for the proposed bump version). The lead is whichever product is
+# currently on the highest version, so a mass bump never proposes a version
+# below one already shipped for any product. Caller wires this from --all
+# and from interactive menu option 7.
 set_build_all_nextgen() {
     BUILD_ALL_PRODUCTS=("${ALL_NEXTGEN_NON_BOOTSTRAP[@]}")
     if [[ -z "$PRODUCT" ]]; then
-        PRODUCT="${BUILD_ALL_PRODUCTS[0]}"
+        PRODUCT=$(pick_highest_versioned_product "${BUILD_ALL_PRODUCTS[@]}")
+        if [[ -z "$PRODUCT" ]]; then
+            PRODUCT="${BUILD_ALL_PRODUCTS[0]}"
+        fi
     elif [[ "$PRODUCT" == "nextgen-bootstrap" ]]; then
         # --all was passed alongside an explicit --product nextgen-bootstrap.
         # Mass build excludes bootstrap by design — refuse rather than
@@ -527,6 +563,7 @@ prompt_product_channel() {
 
     if [[ ${#BUILD_ALL_PRODUCTS[@]} -gt 0 ]]; then
         print_info "Build-all mode: ${#BUILD_ALL_PRODUCTS[@]} products (${BUILD_ALL_PRODUCTS[*]})"
+        print_info "Version proposal anchored on highest-versioned product: $PRODUCT"
     else
         print_info "Using product: $PRODUCT"
     fi
