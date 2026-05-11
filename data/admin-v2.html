@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/chronolett.css" />
   <script src="/i18n/i18n.js" defer></script>
+  <script src="/ral-picker.js" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -155,6 +156,7 @@
               <div class="swatch-grid" id="adminColorSwatches" aria-label="Color presets"></div>
               <div class="swatch-custom-row">
                 <button type="button" class="btn line small" id="adminColorCustomBtn" data-i18n="dashboard.colour.custom">Custom…</button>
+                <button type="button" class="btn line small" id="adminColorRalBtn" data-i18n="dashboard.colour.ral.btn">RAL…</button>
                 <input type="color" id="adminColorPicker" tabindex="-1" />
                 <span class="value-mono muted" id="adminColorValue">—</span>
               </div>
@@ -268,6 +270,22 @@
 
     </div>
   </main>
+
+  <dialog id="ralPickerModal" class="ral-modal" aria-labelledby="ralPickerTitle">
+    <div class="ral-modal-head">
+      <h3 id="ralPickerTitle" data-i18n="dashboard.colour.ral.title">RAL Classic colours</h3>
+      <button type="button" class="btn line small" id="ralPickerClose" data-i18n="dashboard.colour.ral.close">Close</button>
+    </div>
+    <div class="ral-modal-body">
+      <input type="search" class="input tight" id="ralPickerSearch"
+             data-i18n-placeholder="dashboard.colour.ral.search_placeholder"
+             placeholder="Search code or name" autocomplete="off" />
+      <p class="ral-caveat" data-i18n="dashboard.colour.ral.gamut_warning">
+        Preview only — LED gamut differs from coating finish.
+      </p>
+      <ul class="ral-list" id="ralPickerList" role="listbox"></ul>
+    </div>
+  </dialog>
 
   <script>
     const T = (k, fb) => (window.chronolettI18n ? window.chronolettI18n.t(k, fb) : fb);
@@ -499,6 +517,20 @@
         }
       });
     }
+
+    // Deferred external scripts (ral-picker.js) execute after this inline
+    // block, so wait for DOMContentLoaded before calling initRalPicker.
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof window.initRalPicker !== 'function') return;
+      window.initRalPicker({
+        openBtn: document.getElementById('adminColorRalBtn'),
+        modal: document.getElementById('ralPickerModal'),
+        closeBtn: document.getElementById('ralPickerClose'),
+        search: document.getElementById('ralPickerSearch'),
+        list: document.getElementById('ralPickerList'),
+        onPick: adminApplyColor,
+      });
+    });
 
     // Factory reset
     const fbtn = document.getElementById('factoryBtn');

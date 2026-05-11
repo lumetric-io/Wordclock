@@ -327,6 +327,15 @@ void setupWebRoutes() {
     serveFile("/i18n/nl.json", "application/json");
   });
 
+  // RAL Classic colour picker: shared JS module + 205-entry palette.
+  // Lazy-loaded only when the user opens the RAL dialog in the v2 UI.
+  server.on("/ral-picker.js", HTTP_GET, []() {
+    serveFile("/ral-picker.js", "application/javascript");
+  });
+  server.on("/ral-classic.json", HTTP_GET, []() {
+    serveFile("/ral-classic.json", "application/json");
+  });
+
   // Favicon placeholder to avoid 404 noise
   server.on("/favicon.ico", HTTP_GET, []() {
     server.send(204);

@@ -912,5 +912,125 @@ input[type="file"]::file-selector-button {
 
 .footer-sig .copper { color: var(--copper); }
 
+/* ─── RAL picker dialog ──────────────────────────────────
+   Lazy-loaded modal for the 205-code RAL Classic palette. Opens from the
+   "RAL…" button next to "Custom…" in the colour section. WS2812 LEDs have
+   a narrower gamut than industrial coatings, so a caveat sits above the
+   list. */
+.ral-modal {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 0;
+  width: min(560px, 92vw);
+  max-height: 80vh;
+  background: var(--paper);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+}
+
+.ral-modal::backdrop {
+  background: rgba(14, 14, 14, 0.45);
+}
+
+.ral-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ral-modal-head h3 {
+  margin: 0;
+  font-family: "Cormorant Garamond", "Cormorant", serif;
+  font-weight: 500;
+  font-size: 22px;
+}
+
+.ral-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ral-caveat {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--copper);
+}
+
+.ral-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ral-row {
+  display: grid;
+  grid-template-columns: 28px 72px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.ral-row:hover,
+.ral-row:focus-visible {
+  background: var(--copper-soft);
+  outline: none;
+}
+
+.ral-row__swatch {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line);
+}
+
+.ral-row__code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.ral-row__names {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ral-row__nl { font-size: 14px; }
+
+.ral-row__en {
+  font-size: 11px;
+  color: var(--graphite-60);
+}
+
+.ral-empty {
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--graphite-60);
+  font-size: 13px;
+}
+
 /* ─── Hidden helper ──────────────────────────────────── */
 .hidden { display: none !important; }

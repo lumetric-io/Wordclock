@@ -1,0 +1,1027 @@
+{
+  "RAL 1000": {
+    "hex": "#CDBA88",
+    "nl": "Groenbeige",
+    "en": "Green beige"
+  },
+  "RAL 1001": {
+    "hex": "#D0B084",
+    "nl": "Beige",
+    "en": "Beige"
+  },
+  "RAL 1002": {
+    "hex": "#D2AA6D",
+    "nl": "Zandgeel",
+    "en": "Sand yellow"
+  },
+  "RAL 1003": {
+    "hex": "#F9A800",
+    "nl": "Signaalgeel",
+    "en": "Signal yellow"
+  },
+  "RAL 1004": {
+    "hex": "#E49E00",
+    "nl": "Goudgeel",
+    "en": "Golden yellow"
+  },
+  "RAL 1005": {
+    "hex": "#CB8E00",
+    "nl": "Honinggeel",
+    "en": "Honey yellow"
+  },
+  "RAL 1006": {
+    "hex": "#E29000",
+    "nl": "Maisgeel",
+    "en": "Maize yellow"
+  },
+  "RAL 1007": {
+    "hex": "#E88C00",
+    "nl": "Narcissengeel",
+    "en": "Daffodil yellow"
+  },
+  "RAL 1012": {
+    "hex": "#DDAF27",
+    "nl": "Citroengeel",
+    "en": "Lemon yellow"
+  },
+  "RAL 1013": {
+    "hex": "#E3D9C6",
+    "nl": "Parelwit",
+    "en": "Oyster white"
+  },
+  "RAL 1015": {
+    "hex": "#E6D2B5",
+    "nl": "Licht ivoorkleurig",
+    "en": "Light ivory"
+  },
+  "RAL 1016": {
+    "hex": "#F1DD38",
+    "nl": "Zwavelgeel",
+    "en": "Sulfur yellow"
+  },
+  "RAL 1017": {
+    "hex": "#F6A950",
+    "nl": "Saffraangeel",
+    "en": "Saffron yellow"
+  },
+  "RAL 1018": {
+    "hex": "#FACA30",
+    "nl": "Zinkgeel",
+    "en": "Zinc yellow"
+  },
+  "RAL 1019": {
+    "hex": "#A48F7A",
+    "nl": "Grijsbeige",
+    "en": "Grey beige"
+  },
+  "RAL 1020": {
+    "hex": "#A08F65",
+    "nl": "Olijfgeel",
+    "en": "Olive yellow"
+  },
+  "RAL 1021": {
+    "hex": "#F6B600",
+    "nl": "Koolzaadgeel",
+    "en": "Colza yellow"
+  },
+  "RAL 1023": {
+    "hex": "#F7B500",
+    "nl": "Verkeersgeel",
+    "en": "Traffic yellow"
+  },
+  "RAL 1024": {
+    "hex": "#BA8F4C",
+    "nl": "Okergeel",
+    "en": "Ochre yellow"
+  },
+  "RAL 1026": {
+    "hex": "#FFFF00",
+    "nl": "Kerriegeel",
+    "en": "Luminous yellow"
+  },
+  "RAL 1027": {
+    "hex": "#A77F0E",
+    "nl": "Briljantgeel",
+    "en": "Curry"
+  },
+  "RAL 1028": {
+    "hex": "#FF9B00",
+    "nl": "Meloengeel",
+    "en": "Melon yellow"
+  },
+  "RAL 1032": {
+    "hex": "#E2A300",
+    "nl": "Bremgeel",
+    "en": "Broom yellow"
+  },
+  "RAL 1033": {
+    "hex": "#F99A1C",
+    "nl": "Dahliageel",
+    "en": "Dahlia yellow"
+  },
+  "RAL 1034": {
+    "hex": "#EB9C52",
+    "nl": "Pastelgeel",
+    "en": "Pastel yellow"
+  },
+  "RAL 1035": {
+    "hex": "#908370",
+    "nl": "Parelmoergrijs",
+    "en": "Pearl beige"
+  },
+  "RAL 1036": {
+    "hex": "#80643F",
+    "nl": "Parelmoergoud",
+    "en": "Pearl gold"
+  },
+  "RAL 1037": {
+    "hex": "#F09200",
+    "nl": "Zonnegeel",
+    "en": "Sun yellow"
+  },
+  "RAL 2000": {
+    "hex": "#DD7907",
+    "nl": "Geeloranje",
+    "en": "Yellow orange"
+  },
+  "RAL 2001": {
+    "hex": "#BE4E20",
+    "nl": "Roodoranje",
+    "en": "Red orange"
+  },
+  "RAL 2002": {
+    "hex": "#C63927",
+    "nl": "Vermiljoen",
+    "en": "Vermilion"
+  },
+  "RAL 2003": {
+    "hex": "#FA842B",
+    "nl": "Pasteloranje",
+    "en": "Pastel orange"
+  },
+  "RAL 2004": {
+    "hex": "#E75B12",
+    "nl": "Zuiver oranje",
+    "en": "Pure orange"
+  },
+  "RAL 2005": {
+    "hex": "#FF2300",
+    "nl": "Briljant oranje",
+    "en": "Luminous orange"
+  },
+  "RAL 2007": {
+    "hex": "#FFA421",
+    "nl": "Briljant lichtoranje",
+    "en": "Luminous bright orange"
+  },
+  "RAL 2008": {
+    "hex": "#F3752C",
+    "nl": "Licht roodoranje",
+    "en": "Bright red orange"
+  },
+  "RAL 2009": {
+    "hex": "#E15501",
+    "nl": "Verkeersoranje",
+    "en": "Traffic orange"
+  },
+  "RAL 2010": {
+    "hex": "#D4652F",
+    "nl": "Signaaloranje",
+    "en": "Signal orange"
+  },
+  "RAL 2011": {
+    "hex": "#EC7C25",
+    "nl": "Dieporanje",
+    "en": "Deep orange"
+  },
+  "RAL 2012": {
+    "hex": "#DB6A50",
+    "nl": "Zalmoranje",
+    "en": "Salmon orange"
+  },
+  "RAL 2013": {
+    "hex": "#954527",
+    "nl": "Parelmoeroranje",
+    "en": "Pearl orange"
+  },
+  "RAL 3000": {
+    "hex": "#AB2524",
+    "nl": "Vuurrood",
+    "en": "Flame red"
+  },
+  "RAL 3001": {
+    "hex": "#A02128",
+    "nl": "Signaalrood",
+    "en": "Signal red"
+  },
+  "RAL 3002": {
+    "hex": "#A1232B",
+    "nl": "Karmijnrood",
+    "en": "Carmine red"
+  },
+  "RAL 3003": {
+    "hex": "#8D1D2C",
+    "nl": "Robijnrood",
+    "en": "Ruby red"
+  },
+  "RAL 3004": {
+    "hex": "#701F29",
+    "nl": "Purperrood",
+    "en": "Purple red"
+  },
+  "RAL 3005": {
+    "hex": "#5E2028",
+    "nl": "Wijnrood",
+    "en": "Wine red"
+  },
+  "RAL 3007": {
+    "hex": "#402225",
+    "nl": "Zwartrood",
+    "en": "Black red"
+  },
+  "RAL 3009": {
+    "hex": "#703731",
+    "nl": "Oxyderood",
+    "en": "Oxide red"
+  },
+  "RAL 3011": {
+    "hex": "#7E292C",
+    "nl": "Bruinrood",
+    "en": "Brown red"
+  },
+  "RAL 3012": {
+    "hex": "#CB8D73",
+    "nl": "Beigerood",
+    "en": "Beige red"
+  },
+  "RAL 3013": {
+    "hex": "#9C322E",
+    "nl": "Tomaatrood",
+    "en": "Tomato red"
+  },
+  "RAL 3014": {
+    "hex": "#D47479",
+    "nl": "Oudroze",
+    "en": "Antique pink"
+  },
+  "RAL 3015": {
+    "hex": "#E1A6AD",
+    "nl": "Lichtroze",
+    "en": "Light pink"
+  },
+  "RAL 3016": {
+    "hex": "#AC4034",
+    "nl": "Koraalrood",
+    "en": "Coral red"
+  },
+  "RAL 3017": {
+    "hex": "#D3545F",
+    "nl": "Bleekrood",
+    "en": "Rose"
+  },
+  "RAL 3018": {
+    "hex": "#D14152",
+    "nl": "Aardbeirood",
+    "en": "Strawberry red"
+  },
+  "RAL 3020": {
+    "hex": "#C1121C",
+    "nl": "Verkeersrood",
+    "en": "Traffic red"
+  },
+  "RAL 3022": {
+    "hex": "#D56D56",
+    "nl": "Zalmrood",
+    "en": "Salmon pink"
+  },
+  "RAL 3024": {
+    "hex": "#F70000",
+    "nl": "Briljantrood",
+    "en": "Luminous red"
+  },
+  "RAL 3026": {
+    "hex": "#FF0000",
+    "nl": "Briljantrood",
+    "en": "Luminous bright red"
+  },
+  "RAL 3027": {
+    "hex": "#B42041",
+    "nl": "Framboosrood",
+    "en": "Raspberry red"
+  },
+  "RAL 3028": {
+    "hex": "#E72512",
+    "nl": "Zuiverrood",
+    "en": "Pure red"
+  },
+  "RAL 3031": {
+    "hex": "#AC323B",
+    "nl": "Oriëntrood",
+    "en": "Orient red"
+  },
+  "RAL 3032": {
+    "hex": "#711521",
+    "nl": "Parelmoer donkerrood",
+    "en": "Pearl ruby red"
+  },
+  "RAL 3033": {
+    "hex": "#B24C43",
+    "nl": "Parelmoer lichtrood",
+    "en": "Pearl pink"
+  },
+  "RAL 4001": {
+    "hex": "#8A5A83",
+    "nl": "Roodlila",
+    "en": "Red lilac"
+  },
+  "RAL 4002": {
+    "hex": "#933D50",
+    "nl": "Roodpaars",
+    "en": "Red violet"
+  },
+  "RAL 4003": {
+    "hex": "#D15B8F",
+    "nl": "Heidepaars",
+    "en": "Heather violet"
+  },
+  "RAL 4004": {
+    "hex": "#691639",
+    "nl": "Bordeauxpaars",
+    "en": "Claret violet"
+  },
+  "RAL 4005": {
+    "hex": "#83639D",
+    "nl": "Blauwlila",
+    "en": "Blue lilac"
+  },
+  "RAL 4006": {
+    "hex": "#992572",
+    "nl": "Verkeerspurper",
+    "en": "Traffic purple"
+  },
+  "RAL 4007": {
+    "hex": "#4A203B",
+    "nl": "Purperviolet",
+    "en": "Purple violet"
+  },
+  "RAL 4008": {
+    "hex": "#904684",
+    "nl": "Signaalviolet",
+    "en": "Signal violet"
+  },
+  "RAL 4009": {
+    "hex": "#A38995",
+    "nl": "Pastelviolet",
+    "en": "Pastel violet"
+  },
+  "RAL 4010": {
+    "hex": "#C63678",
+    "nl": "Telemagenta",
+    "en": "Telemagenta"
+  },
+  "RAL 4011": {
+    "hex": "#8773A1",
+    "nl": "Parelmoer donkerviolet",
+    "en": "Pearl violet"
+  },
+  "RAL 4012": {
+    "hex": "#6B6880",
+    "nl": "Parelmoer lichtviolet",
+    "en": "Pearl blackberry"
+  },
+  "RAL 5000": {
+    "hex": "#384C70",
+    "nl": "Paarsblauw",
+    "en": "Violet blue"
+  },
+  "RAL 5001": {
+    "hex": "#1F4764",
+    "nl": "Groenblauw",
+    "en": "Green blue"
+  },
+  "RAL 5002": {
+    "hex": "#2B2C7C",
+    "nl": "Ultramarijnblauw",
+    "en": "Ultramarine blue"
+  },
+  "RAL 5003": {
+    "hex": "#2A3756",
+    "nl": "Saffierblauw",
+    "en": "Sapphire blue"
+  },
+  "RAL 5005": {
+    "hex": "#154889",
+    "nl": "Signaalblauw",
+    "en": "Signal blue"
+  },
+  "RAL 5007": {
+    "hex": "#41678D",
+    "nl": "Briljantblauw",
+    "en": "Brilliant blue"
+  },
+  "RAL 5008": {
+    "hex": "#313C48",
+    "nl": "Grijsblauw",
+    "en": "Grey blue"
+  },
+  "RAL 5009": {
+    "hex": "#2E5978",
+    "nl": "Azuurblauw",
+    "en": "Azure blue"
+  },
+  "RAL 5010": {
+    "hex": "#13447C",
+    "nl": "Gentiaanblauw",
+    "en": "Gentian blue"
+  },
+  "RAL 5011": {
+    "hex": "#232C3F",
+    "nl": "Staalblauw",
+    "en": "Steel blue"
+  },
+  "RAL 5012": {
+    "hex": "#3481B8",
+    "nl": "Lichtblauw",
+    "en": "Light blue"
+  },
+  "RAL 5013": {
+    "hex": "#232D53",
+    "nl": "Kobaltblauw",
+    "en": "Cobalt blue"
+  },
+  "RAL 5014": {
+    "hex": "#6C7C98",
+    "nl": "Duifblauw",
+    "en": "Pigeon blue"
+  },
+  "RAL 5015": {
+    "hex": "#2874B2",
+    "nl": "Hemelsblauw",
+    "en": "Sky blue"
+  },
+  "RAL 5017": {
+    "hex": "#0E518D",
+    "nl": "Verkeersblauw",
+    "en": "Traffic blue"
+  },
+  "RAL 5018": {
+    "hex": "#21888F",
+    "nl": "Turkooisblauw",
+    "en": "Turquoise blue"
+  },
+  "RAL 5019": {
+    "hex": "#1A5784",
+    "nl": "Capriblauw",
+    "en": "Capri blue"
+  },
+  "RAL 5020": {
+    "hex": "#0B4151",
+    "nl": "Oceaanblauw",
+    "en": "Ocean blue"
+  },
+  "RAL 5021": {
+    "hex": "#07737A",
+    "nl": "Waterblauw",
+    "en": "Water blue"
+  },
+  "RAL 5022": {
+    "hex": "#2F2A5A",
+    "nl": "Nachtblauw",
+    "en": "Night blue"
+  },
+  "RAL 5023": {
+    "hex": "#4D668E",
+    "nl": "Verblauw",
+    "en": "Distant blue"
+  },
+  "RAL 5024": {
+    "hex": "#6A93B0",
+    "nl": "Pastelblauw",
+    "en": "Pastel blue"
+  },
+  "RAL 5025": {
+    "hex": "#296478",
+    "nl": "Parelmoerblauw",
+    "en": "Pearl Gentian blue"
+  },
+  "RAL 5026": {
+    "hex": "#102C54",
+    "nl": "Nachtblauw",
+    "en": "Pearl night blue"
+  },
+  "RAL 6000": {
+    "hex": "#327662",
+    "nl": "Patinagroen",
+    "en": "Patina green"
+  },
+  "RAL 6001": {
+    "hex": "#28713E",
+    "nl": "Smaragdgroen",
+    "en": "Emerald green"
+  },
+  "RAL 6002": {
+    "hex": "#276235",
+    "nl": "Loofgroen",
+    "en": "Leaf green"
+  },
+  "RAL 6003": {
+    "hex": "#4B573E",
+    "nl": "Olijfgroen",
+    "en": "Olive green"
+  },
+  "RAL 6004": {
+    "hex": "#0E4243",
+    "nl": "Blauwgroen",
+    "en": "Blue green"
+  },
+  "RAL 6005": {
+    "hex": "#0F4336",
+    "nl": "Mosgroen",
+    "en": "Moss green"
+  },
+  "RAL 6006": {
+    "hex": "#40433B",
+    "nl": "Olijfgroen",
+    "en": "Grey olive"
+  },
+  "RAL 6007": {
+    "hex": "#283424",
+    "nl": "Flessegroen",
+    "en": "Bottle green"
+  },
+  "RAL 6008": {
+    "hex": "#35382E",
+    "nl": "Bruingroen",
+    "en": "Brown green"
+  },
+  "RAL 6009": {
+    "hex": "#26392F",
+    "nl": "Dennegroen",
+    "en": "Fir green"
+  },
+  "RAL 6010": {
+    "hex": "#3E753B",
+    "nl": "Grasgroen",
+    "en": "Grass green"
+  },
+  "RAL 6011": {
+    "hex": "#68825B",
+    "nl": "Resedagroen",
+    "en": "Reseda green"
+  },
+  "RAL 6012": {
+    "hex": "#31403D",
+    "nl": "Zwartgroen",
+    "en": "Black green"
+  },
+  "RAL 6013": {
+    "hex": "#797C5A",
+    "nl": "Rietgroen",
+    "en": "Reed green"
+  },
+  "RAL 6014": {
+    "hex": "#444337",
+    "nl": "Olijfgroen",
+    "en": "Yellow olive"
+  },
+  "RAL 6015": {
+    "hex": "#3D403A",
+    "nl": "Zwart olijfgroen",
+    "en": "Black olive"
+  },
+  "RAL 6016": {
+    "hex": "#026A52",
+    "nl": "Turkooisgroen",
+    "en": "Turquoise green"
+  },
+  "RAL 6017": {
+    "hex": "#468641",
+    "nl": "Meigroen",
+    "en": "May green"
+  },
+  "RAL 6018": {
+    "hex": "#48A43F",
+    "nl": "Geelgroen",
+    "en": "Yellow green"
+  },
+  "RAL 6019": {
+    "hex": "#B7D9B1",
+    "nl": "Witgroen",
+    "en": "Pastel green"
+  },
+  "RAL 6020": {
+    "hex": "#354733",
+    "nl": "Chroomoxydegroen",
+    "en": "Chrome green"
+  },
+  "RAL 6021": {
+    "hex": "#86A47C",
+    "nl": "Bleekgroen",
+    "en": "Pale green"
+  },
+  "RAL 6022": {
+    "hex": "#3E3C32",
+    "nl": "Bruin olijfgroen",
+    "en": "Brown olive"
+  },
+  "RAL 6024": {
+    "hex": "#008754",
+    "nl": "Verkeersgroen",
+    "en": "Traffic green"
+  },
+  "RAL 6025": {
+    "hex": "#53753C",
+    "nl": "Varengroen",
+    "en": "Fern green"
+  },
+  "RAL 6026": {
+    "hex": "#005D52",
+    "nl": "Opaalgroen",
+    "en": "Opal green"
+  },
+  "RAL 6027": {
+    "hex": "#81C0BB",
+    "nl": "Lichtgroen",
+    "en": "Light green"
+  },
+  "RAL 6028": {
+    "hex": "#2D5546",
+    "nl": "Pijnboomgroen",
+    "en": "Pine green"
+  },
+  "RAL 6032": {
+    "hex": "#0F8558",
+    "nl": "Signaalgroen",
+    "en": "Signal green"
+  },
+  "RAL 6033": {
+    "hex": "#478A84",
+    "nl": "Mintturquoise",
+    "en": "Mint turquoise"
+  },
+  "RAL 6034": {
+    "hex": "#7FB0B2",
+    "nl": "Pastelturquoise",
+    "en": "Pastel turquoise"
+  },
+  "RAL 6035": {
+    "hex": "#1B542C",
+    "nl": "Parelmoer-donkergroen",
+    "en": "Pearl green"
+  },
+  "RAL 6036": {
+    "hex": "#005D4C",
+    "nl": "Parelmoer-lichtgroen",
+    "en": "Pearl opal green"
+  },
+  "RAL 6037": {
+    "hex": "#25E712",
+    "nl": "Zuivergroen",
+    "en": "Pure green"
+  },
+  "RAL 7000": {
+    "hex": "#7E8B92",
+    "nl": "Pelsgrijs",
+    "en": "Squirrel grey"
+  },
+  "RAL 7001": {
+    "hex": "#8F999F",
+    "nl": "Zilvergrijs",
+    "en": "Silver grey"
+  },
+  "RAL 7002": {
+    "hex": "#817F68",
+    "nl": "Olijfgrijs",
+    "en": "Olive grey"
+  },
+  "RAL 7003": {
+    "hex": "#7A7B6D",
+    "nl": "Mosgrijs",
+    "en": "Moss grey"
+  },
+  "RAL 7004": {
+    "hex": "#9EA0A1",
+    "nl": "Signaalgrijs",
+    "en": "Signal grey"
+  },
+  "RAL 7005": {
+    "hex": "#6B716F",
+    "nl": "Muisgrijs",
+    "en": "Mouse grey"
+  },
+  "RAL 7006": {
+    "hex": "#756F61",
+    "nl": "Beigegrijs",
+    "en": "Beige grey"
+  },
+  "RAL 7008": {
+    "hex": "#746643",
+    "nl": "Kakigrijs",
+    "en": "Khaki grey"
+  },
+  "RAL 7009": {
+    "hex": "#5B6259",
+    "nl": "Groengrijs",
+    "en": "Green grey"
+  },
+  "RAL 7010": {
+    "hex": "#575D57",
+    "nl": "Zeildoekgrijs",
+    "en": "Tarpaulin grey"
+  },
+  "RAL 7011": {
+    "hex": "#555D61",
+    "nl": "IJzergrijs",
+    "en": "Iron grey"
+  },
+  "RAL 7012": {
+    "hex": "#596163",
+    "nl": "Bazaltgrijs",
+    "en": "Basalt grey"
+  },
+  "RAL 7013": {
+    "hex": "#555548",
+    "nl": "Bruingrijs",
+    "en": "Brown grey"
+  },
+  "RAL 7015": {
+    "hex": "#51565C",
+    "nl": "Leigrijs",
+    "en": "Slate grey"
+  },
+  "RAL 7016": {
+    "hex": "#373F43",
+    "nl": "Antracietgrijs",
+    "en": "Anthracite grey"
+  },
+  "RAL 7021": {
+    "hex": "#2E3234",
+    "nl": "Zwartgrijs",
+    "en": "Black grey"
+  },
+  "RAL 7023": {
+    "hex": "#818479",
+    "nl": "Betongrijs",
+    "en": "Concrete grey"
+  },
+  "RAL 7024": {
+    "hex": "#474A50",
+    "nl": "Grafietgrijs",
+    "en": "Graphite grey"
+  },
+  "RAL 7026": {
+    "hex": "#374447",
+    "nl": "Granietgrijs",
+    "en": "Granite grey"
+  },
+  "RAL 7030": {
+    "hex": "#939388",
+    "nl": "Steengrijs",
+    "en": "Stone grey"
+  },
+  "RAL 7031": {
+    "hex": "#5D6970",
+    "nl": "Blauwgrijs",
+    "en": "Blue grey"
+  },
+  "RAL 7032": {
+    "hex": "#B9B9A8",
+    "nl": "Kiezelgrijs",
+    "en": "Pebble grey"
+  },
+  "RAL 7033": {
+    "hex": "#818979",
+    "nl": "Cementgrijs",
+    "en": "Cement grey"
+  },
+  "RAL 7034": {
+    "hex": "#939176",
+    "nl": "Geelgrijs",
+    "en": "Yellow grey"
+  },
+  "RAL 7035": {
+    "hex": "#CBD0CC",
+    "nl": "Lichtgrijs",
+    "en": "Light grey"
+  },
+  "RAL 7037": {
+    "hex": "#7C7F7E",
+    "nl": "Stofgrijs",
+    "en": "Dusty grey"
+  },
+  "RAL 7038": {
+    "hex": "#B4B8B0",
+    "nl": "Agaatgrijs",
+    "en": "Agate grey"
+  },
+  "RAL 7040": {
+    "hex": "#9DA3A6",
+    "nl": "Venstergrijs",
+    "en": "Window grey"
+  },
+  "RAL 7042": {
+    "hex": "#8F9695",
+    "nl": "Verkeersgrijs A",
+    "en": "Traffic grey A"
+  },
+  "RAL 7043": {
+    "hex": "#4E5451",
+    "nl": "Verkeersgrijs B",
+    "en": "Traffic grey B"
+  },
+  "RAL 7044": {
+    "hex": "#BDBDB2",
+    "nl": "Zijdegrijs",
+    "en": "Silk grey"
+  },
+  "RAL 7045": {
+    "hex": "#91969A",
+    "nl": "Telegrijs 1",
+    "en": "Telegrey 1"
+  },
+  "RAL 7046": {
+    "hex": "#82898E",
+    "nl": "Telegrijs 2",
+    "en": "Telegrey 2"
+  },
+  "RAL 7047": {
+    "hex": "#CFD0CF",
+    "nl": "Telegrijs 4",
+    "en": "Telegrey 4"
+  },
+  "RAL 7048": {
+    "hex": "#888175",
+    "nl": "Parelmoer-muisgrijs",
+    "en": "Pearl mouse grey"
+  },
+  "RAL 8000": {
+    "hex": "#887142",
+    "nl": "Groenbruin",
+    "en": "Green brown"
+  },
+  "RAL 8001": {
+    "hex": "#9C6B30",
+    "nl": "Okerbruin",
+    "en": "Ochre brown"
+  },
+  "RAL 8002": {
+    "hex": "#7B5141",
+    "nl": "Signaalbruin",
+    "en": "Signal brown"
+  },
+  "RAL 8003": {
+    "hex": "#80542F",
+    "nl": "Leembruin",
+    "en": "Clay brown"
+  },
+  "RAL 8004": {
+    "hex": "#8F4E35",
+    "nl": "Koperbruin",
+    "en": "Copper brown"
+  },
+  "RAL 8007": {
+    "hex": "#6F4A2F",
+    "nl": "Reebruin",
+    "en": "Fawn brown"
+  },
+  "RAL 8008": {
+    "hex": "#6F4F28",
+    "nl": "Olijfbruin",
+    "en": "Olive brown"
+  },
+  "RAL 8011": {
+    "hex": "#5A3A29",
+    "nl": "Notebruin",
+    "en": "Nut brown"
+  },
+  "RAL 8012": {
+    "hex": "#673831",
+    "nl": "Roodbruin",
+    "en": "Red brown"
+  },
+  "RAL 8014": {
+    "hex": "#49392D",
+    "nl": "Sepiabruin",
+    "en": "Sepia brown"
+  },
+  "RAL 8015": {
+    "hex": "#633A34",
+    "nl": "Kastanjebruin",
+    "en": "Chestnut brown"
+  },
+  "RAL 8016": {
+    "hex": "#4C2F26",
+    "nl": "Mahoniebruin",
+    "en": "Mahogany brown"
+  },
+  "RAL 8017": {
+    "hex": "#44322D",
+    "nl": "Chocoladebruin",
+    "en": "Chocolate brown"
+  },
+  "RAL 8019": {
+    "hex": "#3F3A3A",
+    "nl": "Grijsbruin",
+    "en": "Grey brown"
+  },
+  "RAL 8022": {
+    "hex": "#211F20",
+    "nl": "Zwartbruin",
+    "en": "Black brown"
+  },
+  "RAL 8023": {
+    "hex": "#A65E2F",
+    "nl": "Oranjebruin",
+    "en": "Orange brown"
+  },
+  "RAL 8024": {
+    "hex": "#79553C",
+    "nl": "Beigebruin",
+    "en": "Beige brown"
+  },
+  "RAL 8025": {
+    "hex": "#755C49",
+    "nl": "Bleekbruin",
+    "en": "Pale brown"
+  },
+  "RAL 8028": {
+    "hex": "#4E3B2B",
+    "nl": "Terrabruin",
+    "en": "Terra brown"
+  },
+  "RAL 8029": {
+    "hex": "#773C27",
+    "nl": "Parelmoerkoper",
+    "en": "Pearl copper"
+  },
+  "RAL 9001": {
+    "hex": "#EFEBDC",
+    "nl": "Crèmewit",
+    "en": "Cream"
+  },
+  "RAL 9002": {
+    "hex": "#DDDED4",
+    "nl": "Grijswit",
+    "en": "Grey white"
+  },
+  "RAL 9003": {
+    "hex": "#F4F8F4",
+    "nl": "Signaalwit",
+    "en": "Signal white"
+  },
+  "RAL 9004": {
+    "hex": "#2E3032",
+    "nl": "Signaalzwart",
+    "en": "Signal black"
+  },
+  "RAL 9005": {
+    "hex": "#0A0A0D",
+    "nl": "Gitzwart",
+    "en": "Jet black"
+  },
+  "RAL 9006": {
+    "hex": "#A5A8A6",
+    "nl": "Blank aluminiumkleurig",
+    "en": "White aluminium"
+  },
+  "RAL 9007": {
+    "hex": "#8F8F8C",
+    "nl": "Grijs aluminiumkleurig",
+    "en": "Grey aluminium"
+  },
+  "RAL 9010": {
+    "hex": "#F7F9EF",
+    "nl": "Zuiverwit",
+    "en": "Pure white"
+  },
+  "RAL 9011": {
+    "hex": "#1C1C1C",
+    "nl": "Grafietzwart",
+    "en": "Graphite black"
+  },
+  "RAL 9016": {
+    "hex": "#F7FBF5",
+    "nl": "Verkeerswit",
+    "en": "Traffic white"
+  },
+  "RAL 9017": {
+    "hex": "#2A2D2F",
+    "nl": "Verkeerszwart",
+    "en": "Traffic black"
+  },
+  "RAL 9018": {
+    "hex": "#CFD3CD",
+    "nl": "Papyruswit",
+    "en": "Papyrus white"
+  },
+  "RAL 9022": {
+    "hex": "#858583",
+    "nl": "Parelmoer-lichtgrijs",
+    "en": "Pearl light grey"
+  },
+  "RAL 9023": {
+    "hex": "#7E8182",
+    "nl": "Parelmoer-donkergrijs",
+    "en": "Pearl dark grey"
+  }
+}
