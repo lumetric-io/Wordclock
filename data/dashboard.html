@@ -213,20 +213,6 @@
       </div>
     </section>
 
-    <section class="bg-white p-4 rounded-2xl shadow mb-4 hidden" id="ledDiagSection">
-      <h2 class="text-xl font-semibold mb-2">LED Diagnose</h2>
-      <p class="text-sm text-gray-500 mb-3">Stel LED index <span id="diagLedIndex">488</span> in op een testkleur.</p>
-      <div class="flex flex-wrap gap-2" id="diagColorButtons">
-        <button data-color="000000FF" class="diag-btn px-3 py-2 rounded text-sm bg-gray-100 border border-gray-300 hover:bg-gray-200">Wit (W)</button>
-        <button data-color="0000FF00" class="diag-btn px-3 py-2 rounded text-sm bg-blue-500 text-white hover:bg-blue-600">Blauw</button>
-        <button data-color="FF000000" class="diag-btn px-3 py-2 rounded text-sm bg-red-500 text-white hover:bg-red-600">Rood</button>
-        <button data-color="00FF0000" class="diag-btn px-3 py-2 rounded text-sm bg-green-500 text-white hover:bg-green-600">Groen</button>
-        <button data-color="FFFF0000" class="diag-btn px-3 py-2 rounded text-sm bg-yellow-400 text-gray-900 hover:bg-yellow-500">Geel</button>
-        <button data-color="00000000" class="diag-btn px-3 py-2 rounded text-sm bg-gray-800 text-white hover:bg-gray-900">Uit</button>
-      </div>
-      <p id="diagStatus" class="text-xs text-gray-400 mt-2"></p>
-    </section>
-
     <section class="bg-white p-4 rounded-2xl shadow">
       <h2 class="text-xl font-semibold mb-2">Logs</h2>
       <div class="flex items-center gap-3 mb-2">
@@ -1411,9 +1397,6 @@
             if (isLogoProduct) {
               initLogoControls();
             }
-            if (env === 'nextgen-logo-100x100') {
-              initLedDiag();
-            }
             if (isMiniProduct) {
               dataLoader.loaders.delete('hetIsDuration');
             }
@@ -1605,24 +1588,6 @@
       });
     }
 
-    function initLedDiag() {
-      const section = document.getElementById('ledDiagSection');
-      if (section) section.classList.remove('hidden');
-      const status = document.getElementById('diagStatus');
-      document.querySelectorAll('.diag-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const colorHex = btn.dataset.color;
-          const index = parseInt(document.getElementById('diagLedIndex').textContent, 10);
-          fetch('/api/diag/led', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ index, color: colorHex })
-          })
-          .then(r => { if (status) status.textContent = r.ok ? `Verzonden: #${colorHex}` : 'Fout'; })
-          .catch(() => { if (status) status.textContent = 'Verbindingsfout'; });
-        });
-      });
-    }
   </script>
 
 </body>
