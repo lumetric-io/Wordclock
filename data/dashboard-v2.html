@@ -296,8 +296,24 @@
               <span class="value-mono muted" id="logoStatus">—</span>
             </div>
             <div id="logoGrid" class="logo-color-grid"></div>
-            <div class="slider-meta">
-              <input type="color" id="logoAllColor" class="small" />
+            <hr class="h-rule" style="margin: 16px 0" />
+            <span class="label" data-i18n="dashboard.logo.fill_label">Fill colour</span>
+            <div class="swatch-grid" id="logoColorSwatches" aria-label="Logo color presets"></div>
+            <div class="swatch-custom-row">
+              <button type="button" class="btn line small" id="logoColorCustomBtn" data-i18n="dashboard.colour.custom">Custom…</button>
+              <button type="button" class="btn line small" id="logoColorRalBtn" data-i18n="dashboard.colour.ral.btn">RAL…</button>
+              <input type="color" id="logoAllColor" tabindex="-1" />
+              <span class="value-mono muted" id="logoColorValue">—</span>
+            </div>
+            <div class="swatch-input-row">
+              <span class="label" data-i18n="dashboard.colour.hex_label">Hex</span>
+              <input type="text" id="logoColorHexInput" class="input tight" placeholder="#FFAA00" maxlength="7" autocomplete="off" spellcheck="false" />
+              <span class="label" data-i18n="dashboard.colour.rgb_label">RGB</span>
+              <input type="number" id="logoColorRInput" class="input tight rgb-field" min="0" max="255" placeholder="R" />
+              <input type="number" id="logoColorGInput" class="input tight rgb-field" min="0" max="255" placeholder="G" />
+              <input type="number" id="logoColorBInput" class="input tight rgb-field" min="0" max="255" placeholder="B" />
+            </div>
+            <div class="slider-meta" style="margin-top: 12px">
               <button id="logoFillAll" class="btn line" data-i18n="dashboard.logo.fill_all">Fill all</button>
               <button id="logoApply" class="btn" data-i18n="dashboard.logo.save">Save</button>
             </div>
@@ -881,8 +897,104 @@
       };
       const logoApplyBtn = document.getElementById('logoApply');
       if (logoApplyBtn) logoApplyBtn.addEventListener('click', saveLogoState);
-      const logoFillAll = document.getElementById('logoFillAll');
+
+      // ─── Logo fill-all colour picker ─────────────────────────────────────
       const logoAllColor = document.getElementById('logoAllColor');
+      const logoColorSwatchEl = document.getElementById('logoColorSwatches');
+      const logoColorValueEl = document.getElementById('logoColorValue');
+      const logoColorCustomBtn = document.getElementById('logoColorCustomBtn');
+      const logoColorHexInput = document.getElementById('logoColorHexInput');
+      const logoColorRgbInputs = ['R', 'G', 'B'].map((c) => document.getElementById('logoColor' + c + 'Input'));
+
+      function paintLogoSwatch(hexUpper) {
+        if (logoColorSwatchEl) {
+          logoColorSwatchEl.querySelectorAll('.swatch').forEach((s) => {
+            s.classList.toggle('selected', s.dataset.color.toUpperCase() === hexUpper);
+          });
+        }
+        if (logoColorValueEl) logoColorValueEl.textContent = hexUpper;
+        if (logoColorHexInput && document.activeElement !== logoColorHexInput) {
+          logoColorHexInput.value = hexUpper;
+          logoColorHexInput.classList.remove('input-err');
+        }
+        const clean = hexUpper.replace('#', '');
+        if (clean.length === 6 && logoColorRgbInputs.every((el) => el)) {
+          const parts = [clean.slice(0, 2), clean.slice(2, 4), clean.slice(4, 6)].map((s) => parseInt(s, 16));
+          logoColorRgbInputs.forEach((el, i) => {
+            if (document.activeElement !== el) el.value = parts[i];
+            el.classList.remove('input-err');
+          });
+        }
+      }
+
+      function applyLogoAllColor(hex) {
+        const clean = hex.replace('#', '').toUpperCase();
+        if (clean.length !== 6) return;
+        if (logoAllColor) logoAllColor.value = '#' + clean;
+        paintLogoSwatch('#' + clean);
+      }
+
+      if (logoColorSwatchEl) {
+        COLOR_SWATCHES.forEach((hex) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'swatch';
+          btn.dataset.color = hex;
+          btn.style.background = hex;
+          btn.title = hex;
+          btn.setAttribute('aria-label', hex);
+          btn.addEventListener('click', () => applyLogoAllColor(hex));
+          logoColorSwatchEl.appendChild(btn);
+        });
+      }
+      if (logoColorCustomBtn && logoAllColor) {
+        logoColorCustomBtn.addEventListener('click', () => logoAllColor.click());
+      }
+      if (logoAllColor) {
+        logoAllColor.addEventListener('input', (e) => applyLogoAllColor(e.target.value));
+      }
+      if (logoColorHexInput) {
+        const submit = () => {
+          if (!logoColorHexInput.value.trim()) return;
+          const s = logoColorHexInput.value.trim().replace(/^#/, '');
+          let hex = null;
+          if (/^[0-9a-fA-F]{6}$/.test(s)) hex = '#' + s.toUpperCase();
+          else if (/^[0-9a-fA-F]{3}$/.test(s)) hex = '#' + s.split('').map((c) => c + c).join('').toUpperCase();
+          if (hex) { applyLogoAllColor(hex); logoColorHexInput.classList.remove('input-err'); }
+          else logoColorHexInput.classList.add('input-err');
+        };
+        logoColorHexInput.addEventListener('blur', submit);
+        logoColorHexInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+      }
+      if (logoColorRgbInputs.every((el) => el)) {
+        const submit = () => {
+          const vals = logoColorRgbInputs.map((el) => el.value);
+          if (vals.every((v) => !String(v).trim())) return;
+          const parts = vals.map((v) => parseInt(v, 10));
+          const ok = parts.every((n) => Number.isFinite(n) && n >= 0 && n <= 255);
+          logoColorRgbInputs.forEach((el) => el.classList.toggle('input-err', !ok));
+          if (!ok) return;
+          const toHex = (n) => n.toString(16).padStart(2, '0').toUpperCase();
+          applyLogoAllColor('#' + parts.map(toHex).join(''));
+        };
+        logoColorRgbInputs.forEach((el) => {
+          el.addEventListener('blur', submit);
+          el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+        });
+      }
+      const logoRalBtn = document.getElementById('logoColorRalBtn');
+      if (logoRalBtn && typeof window.initRalPicker === 'function') {
+        window.initRalPicker({
+          openBtn: logoRalBtn,
+          modal: document.getElementById('ralPickerModal'),
+          closeBtn: document.getElementById('ralPickerClose'),
+          search: document.getElementById('ralPickerSearch'),
+          list: document.getElementById('ralPickerList'),
+          onPick: applyLogoAllColor,
+        });
+      }
+
+      const logoFillAll = document.getElementById('logoFillAll');
       if (logoFillAll) logoFillAll.addEventListener('click', () => {
         if (!logoAllColor) return;
         const val = logoAllColor.value || '#000000';
