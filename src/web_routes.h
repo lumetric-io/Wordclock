@@ -996,6 +996,32 @@ void setupWebRoutes() {
     server.send(200, "application/json", out);
   });
 
+#if defined(PRODUCT_VARIANT_LOGO)
+  server.on("/api/diag/led", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, server.arg("plain"));
+    if (err) { server.send(400, "text/plain", "Invalid JSON"); return; }
+    int16_t index = doc["index"] | -1;
+    String colorHex = doc["color"] | String("");
+    if (index < 0 || colorHex.length() < 6) {
+      server.send(400, "text/plain", "Missing index or color");
+      return;
+    }
+    uint32_t val = strtoul(colorHex.c_str(), nullptr, 16);
+    uint8_t r, g, b, w;
+    if (colorHex.length() == 8) {
+      r = (val >> 24) & 0xFF; g = (val >> 16) & 0xFF;
+      b = (val >> 8)  & 0xFF; w = val & 0xFF;
+    } else {
+      r = (val >> 16) & 0xFF; g = (val >> 8) & 0xFF;
+      b = val & 0xFF;         w = 0;
+    }
+    setDiagLedOverride(index, r, g, b, w);
+    server.send(200, "text/plain", "OK");
+  });
+#endif
+
   // Turn on/off
   server.on("/toggle", []() {
     if (!ensureUiAuth()) return;

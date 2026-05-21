@@ -29,7 +29,18 @@ static Adafruit_NeoPixel strip;
 static uint16_t activeStripLength = 0;
 #endif
 static bool g_ledsSuspended = false;
+#if defined(PRODUCT_VARIANT_LOGO)
+static int16_t g_diagLedIndex = -1;
+static uint8_t g_diagLedR = 0, g_diagLedG = 0, g_diagLedB = 0, g_diagLedW = 0;
+#endif
 
+
+#if defined(PRODUCT_VARIANT_LOGO)
+void setDiagLedOverride(int16_t index, uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
+  g_diagLedIndex = index;
+  g_diagLedR = r; g_diagLedG = g; g_diagLedB = b; g_diagLedW = w;
+}
+#endif
 
 static void ensureStripLength() {
 #if defined(PRODUCT_VARIANT_LOGO)
@@ -258,6 +269,9 @@ void showLeds(const std::vector<uint16_t> &ledIndices) {
     }
   }
   renderLogoLeds();
+  if (g_diagLedIndex >= 0 && g_diagLedIndex < clockStrip.numPixels()) {
+    clockStrip.setPixelColor(g_diagLedIndex, clockStrip.Color(g_diagLedR, g_diagLedG, g_diagLedB, g_diagLedW));
+  }
   clockStrip.setBrightness(255);
 #if LOGO_HAS_DEDICATED_PIN
   logoStrip.setBrightness(255);
@@ -326,6 +340,9 @@ void showLedsColor(const std::vector<uint16_t> &ledIndices,
     }
   }
   renderLogoLeds();
+  if (g_diagLedIndex >= 0 && g_diagLedIndex < clockStrip.numPixels()) {
+    clockStrip.setPixelColor(g_diagLedIndex, clockStrip.Color(g_diagLedR, g_diagLedG, g_diagLedB, g_diagLedW));
+  }
   clockStrip.setBrightness(255);
 #if LOGO_HAS_DEDICATED_PIN
   logoStrip.setBrightness(255);
@@ -468,6 +485,9 @@ void showLedsWithBrightness(const std::vector<uint16_t> &ledIndices,
   }
 #if defined(PRODUCT_VARIANT_LOGO)
   renderLogoLeds();
+  if (g_diagLedIndex >= 0 && g_diagLedIndex < clockStrip.numPixels()) {
+    clockStrip.setPixelColor(g_diagLedIndex, clockStrip.Color(g_diagLedR, g_diagLedG, g_diagLedB, g_diagLedW));
+  }
   clockStrip.setBrightness(255);
 #if LOGO_HAS_DEDICATED_PIN
   logoStrip.setBrightness(255);
