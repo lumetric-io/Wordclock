@@ -4,6 +4,11 @@
 //
 // Wire up via initRalPicker({ openBtn, modal, closeBtn, search, list, onPick })
 // where onPick(hex) calls the page's existing applyColor flow.
+//
+// The modal element must be a plain <div hidden> — NOT a <dialog>. This avoids
+// the native showModal()/close() API which has reliability issues on mobile
+// WebKit. ral-picker.js lazily wraps the modal in a .ral-overlay backdrop div
+// and manages visibility with a single CSS class toggle.
 (function () {
   const RAL_JSON_URL = '/ral-classic.json';
   let cachedEntries = null; // [{code, key, hex, nl, en, searchIndex}, ...]
@@ -24,8 +29,6 @@
       .then((obj) => {
         cachedEntries = Object.keys(obj).map((key) => {
           const v = obj[key];
-          // Pre-compute a lowercase searchable string per entry so the input
-          // handler stays cheap even at 205 rows × every keystroke.
           const code = key.replace(/^RAL\s*/, '');
           return {
             code,
@@ -88,10 +91,40 @@
     const { openBtn, modal, closeBtn, search, list, onPick } = opts;
     if (!openBtn || !modal || !list) return;
 
-    // The native <dialog> API gives us focus trap + Esc-to-close for free.
-    // Fall back to plain display toggling on the rare ancient browser
-    // (showModal landed in all evergreen browsers by 2022).
-    const hasNativeDialog = typeof modal.showModal === 'function';
+    // Lazily create a .ral-overlay backdrop div that wraps the modal element.
+    // This is done once per modal element; subsequent initRalPicker calls for
+    // the same modal (e.g. clock colour + logo colour sharing one picker) reuse
+    // the existing overlay.
+    let overlay = modal._ralOverlay;
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'ral-overlay';
+      modal.parentNode.insertBefore(overlay, modal);
+      overlay.appendChild(modal);
+      modal.removeAttribute('hidden');
+      modal._ralOverlay = overlay;
+
+      // Backdrop click: clicking the overlay outside the modal closes it.
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) doClose();
+      });
+
+      // Esc key closes the picker.
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.classList.contains('is-open')) {
+          e.preventDefault();
+          doClose();
+        }
+      });
+    }
+
+    function doClose() {
+      overlay.classList.remove('is-open');
+    }
+
+    function pickAndClose(hex) {
+      try { onPick(hex); } finally { doClose(); }
+    }
 
     function open() {
       loadEntries().then(
@@ -99,15 +132,9 @@
           render(list, entries, pickAndClose);
           if (search) {
             search.value = '';
-            // Re-render on each keystroke. 205 rows is small enough that we
-            // can rebuild the DOM rather than show/hide.
             search.oninput = () => render(list, filter(entries, search.value), pickAndClose);
           }
-          if (hasNativeDialog) {
-            modal.showModal();
-          } else {
-            modal.setAttribute('open', '');
-          }
+          overlay.classList.add('is-open');
           if (search) setTimeout(() => search.focus(), 0);
         },
         (err) => {
@@ -117,24 +144,17 @@
           li.textContent = T('dashboard.colour.ral.load_failed', 'Could not load RAL palette') +
                            ' (' + (err.message || err) + ')';
           list.appendChild(li);
-          if (hasNativeDialog) modal.showModal(); else modal.setAttribute('open', '');
+          overlay.classList.add('is-open');
         }
       );
     }
 
-    function close() {
-      if (hasNativeDialog) modal.close(); else modal.removeAttribute('open');
-    }
-
-    function pickAndClose(hex) {
-      try { onPick(hex); } finally { close(); }
-    }
-
     openBtn.addEventListener('click', open);
-    if (closeBtn) closeBtn.addEventListener('click', close);
-    // Click on backdrop (the <dialog> itself, outside its content) closes too.
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) close();
-    });
+
+    // Close button: register only once per modal element.
+    if (!modal._ralCloseBound) {
+      modal._ralCloseBound = true;
+      if (closeBtn) closeBtn.addEventListener('click', doClose);
+    }
   };
 })();

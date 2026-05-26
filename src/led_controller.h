@@ -19,7 +19,8 @@ void showLedsWithBrightness(const std::vector<uint16_t> &ledIndices,
                             const std::vector<uint8_t> &brightnessMultipliers);
 void setLedsSuspended(bool suspended);
 #if defined(PRODUCT_VARIANT_LOGO)
-void setDiagLedOverride(int16_t index, uint8_t r, uint8_t g, uint8_t b, uint8_t w);
+void setDiagLedOverride(const uint16_t* indices, uint8_t count, uint8_t r, uint8_t g, uint8_t b, uint8_t w);
+void clearDiagLedOverride();
 #endif
 
 #ifdef PIO_UNIT_TESTING
