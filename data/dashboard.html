@@ -355,7 +355,7 @@
     </div>
   </main>
 
-  <dialog id="ralPickerModal" class="ral-modal" aria-labelledby="ralPickerTitle">
+  <div id="ralPickerModal" class="ral-modal" role="dialog" aria-modal="true" aria-labelledby="ralPickerTitle" hidden>
     <div class="ral-modal-head">
       <h3 id="ralPickerTitle" data-i18n="dashboard.colour.ral.title">RAL Classic colours</h3>
       <button type="button" class="btn line small" id="ralPickerClose" data-i18n="dashboard.colour.ral.close">Close</button>
@@ -369,7 +369,7 @@
       </p>
       <ul class="ral-list" id="ralPickerList" role="listbox"></ul>
     </div>
-  </dialog>
+  </div>
 
   <script>
     // === Identical logic to dashboard.html, with selector-only adjustments ===
