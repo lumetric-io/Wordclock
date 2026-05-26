@@ -788,6 +788,9 @@ input[type="file"]::file-selector-button {
   word-break: break-all;
   color: var(--graphite);
 }
+/* Hide the box entirely when empty — avoids a 220px blank placeholder
+   on pages where JS hasn't yet populated it (log tail, fleet response). */
+.log-output:empty { display: none; }
 
 .log-line.lvl-ERROR { color: var(--rust); font-weight: 500; }
 .log-line.lvl-WARN { color: var(--warn); font-weight: 500; }
@@ -827,6 +830,8 @@ input[type="file"]::file-selector-button {
   gap: 8px;
   margin: 0;
 }
+/* Collapse entirely when JS hasn't populated swatches yet. */
+.swatch-grid:empty { display: none; }
 
 .swatch {
   aspect-ratio: 1;
@@ -946,9 +951,17 @@ input[type="file"]::file-selector-button {
   flex-direction: column;
 }
 
-.ral-modal::backdrop {
+/* Overlay backdrop — created dynamically by ral-picker.js and wraps .ral-modal */
+.ral-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
   background: rgba(14, 14, 14, 0.45);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
 }
+.ral-overlay.is-open { display: flex; }
 
 .ral-modal-head {
   display: flex;

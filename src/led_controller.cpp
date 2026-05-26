@@ -29,7 +29,39 @@ static Adafruit_NeoPixel strip;
 static uint16_t activeStripLength = 0;
 #endif
 static bool g_ledsSuspended = false;
+#if defined(PRODUCT_VARIANT_LOGO)
+static const uint8_t DIAG_MAX = 4;
+static uint16_t g_diagIndices[DIAG_MAX] = {};
+static uint8_t g_diagCount = 0;
+static uint8_t g_diagR = 0, g_diagG = 0, g_diagB = 0, g_diagW = 0;
+#endif
 
+
+#if defined(PRODUCT_VARIANT_LOGO)
+void setDiagLedOverride(const uint16_t* indices, uint8_t count, uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
+  g_diagCount = count < DIAG_MAX ? count : DIAG_MAX;
+  for (uint8_t i = 0; i < g_diagCount; ++i) g_diagIndices[i] = indices[i];
+  g_diagR = r; g_diagG = g; g_diagB = b; g_diagW = w;
+  if (g_diagCount > 0 && clockStrip.numPixels() > 0) {
+    for (uint8_t i = 0; i < g_diagCount; ++i) {
+      if (g_diagIndices[i] < clockStrip.numPixels())
+        clockStrip.setPixelColor(g_diagIndices[i], clockStrip.Color(r, g, b, w));
+    }
+    clockStrip.show();
+  }
+}
+
+void clearDiagLedOverride() {
+  if (g_diagCount > 0 && clockStrip.numPixels() > 0) {
+    for (uint8_t i = 0; i < g_diagCount; ++i) {
+      if (g_diagIndices[i] < clockStrip.numPixels())
+        clockStrip.setPixelColor(g_diagIndices[i], 0);
+    }
+    clockStrip.show();
+  }
+  g_diagCount = 0;
+}
+#endif
 
 static void ensureStripLength() {
 #if defined(PRODUCT_VARIANT_LOGO)
@@ -258,6 +290,10 @@ void showLeds(const std::vector<uint16_t> &ledIndices) {
     }
   }
   renderLogoLeds();
+  for (uint8_t _i = 0; _i < g_diagCount; ++_i) {
+    if (g_diagIndices[_i] < clockStrip.numPixels())
+      clockStrip.setPixelColor(g_diagIndices[_i], clockStrip.Color(g_diagR, g_diagG, g_diagB, g_diagW));
+  }
   clockStrip.setBrightness(255);
 #if LOGO_HAS_DEDICATED_PIN
   logoStrip.setBrightness(255);
@@ -326,6 +362,10 @@ void showLedsColor(const std::vector<uint16_t> &ledIndices,
     }
   }
   renderLogoLeds();
+  for (uint8_t _i = 0; _i < g_diagCount; ++_i) {
+    if (g_diagIndices[_i] < clockStrip.numPixels())
+      clockStrip.setPixelColor(g_diagIndices[_i], clockStrip.Color(g_diagR, g_diagG, g_diagB, g_diagW));
+  }
   clockStrip.setBrightness(255);
 #if LOGO_HAS_DEDICATED_PIN
   logoStrip.setBrightness(255);
@@ -468,6 +508,10 @@ void showLedsWithBrightness(const std::vector<uint16_t> &ledIndices,
   }
 #if defined(PRODUCT_VARIANT_LOGO)
   renderLogoLeds();
+  for (uint8_t _i = 0; _i < g_diagCount; ++_i) {
+    if (g_diagIndices[_i] < clockStrip.numPixels())
+      clockStrip.setPixelColor(g_diagIndices[_i], clockStrip.Color(g_diagR, g_diagG, g_diagB, g_diagW));
+  }
   clockStrip.setBrightness(255);
 #if LOGO_HAS_DEDICATED_PIN
   logoStrip.setBrightness(255);

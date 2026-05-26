@@ -289,28 +289,49 @@ void setupWebRoutes() {
     serveFile("/dashboard.html", "text/html");
   });
 
-  // ── Chronolett v2 (editorial redesign) ────────────────────────────
-  // Default UI remains classic (served at "/"). v2 pages live next to
-  // the classic ones; users opt in via the "Try new design" link.
+  // ── Chronolett v2 (editorial redesign — now the default) ─────────
+  // dashboard.html IS the v2 UI. dashboard-legacy.html keeps the old
+  // classic build accessible. /dashboard-v2.html is kept as a redirect
+  // alias so any saved bookmarks still resolve.
   server.on("/dashboard-v2.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
-    serveFile("/dashboard-v2.html", "text/html");
+    serveFile("/dashboard.html", "text/html");
+  });
+  server.on("/dashboard-legacy.html", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    serveFile("/dashboard-legacy.html", "text/html");
   });
   server.on("/admin-v2.html", HTTP_GET, []() {
     if (!ensureAdminAuth()) return;
-    serveFile("/admin-v2.html", "text/html");
+    serveFile("/admin.html", "text/html");
+  });
+  server.on("/admin-legacy.html", HTTP_GET, []() {
+    if (!ensureAdminAuth()) return;
+    serveFile("/admin-legacy.html", "text/html");
   });
   server.on("/mqtt-v2.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
-    serveFile("/mqtt-v2.html", "text/html");
+    serveFile("/mqtt.html", "text/html");
+  });
+  server.on("/mqtt-legacy.html", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    serveFile("/mqtt-legacy.html", "text/html");
   });
   server.on("/logs-v2.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
-    serveFile("/logs-v2.html", "text/html");
+    serveFile("/logs.html", "text/html");
+  });
+  server.on("/logs-legacy.html", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    serveFile("/logs-legacy.html", "text/html");
   });
   server.on("/update-v2.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
-    serveFile("/update-v2.html", "text/html");
+    serveFile("/update.html", "text/html");
+  });
+  server.on("/update-legacy.html", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    serveFile("/update-legacy.html", "text/html");
   });
   server.on("/chronolett.css", HTTP_GET, []() {
     serveFile("/chronolett.css", "text/css");
@@ -995,6 +1016,40 @@ void setupWebRoutes() {
     serializeJson(doc, out);
     server.send(200, "application/json", out);
   });
+
+#if defined(PRODUCT_VARIANT_LOGO)
+  server.on("/api/diag/led", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, server.arg("plain"));
+    if (err) { server.send(400, "text/plain", "Invalid JSON"); return; }
+    JsonArray arr = doc["indices"].as<JsonArray>();
+    if (arr.isNull()) { server.send(400, "text/plain", "Missing indices"); return; }
+    if (arr.size() == 0) {
+      clearDiagLedOverride();
+      server.send(200, "text/plain", "OK");
+      return;
+    }
+    String colorHex = doc["color"] | String("");
+    if (colorHex.length() < 6) { server.send(400, "text/plain", "Missing color"); return; }
+    uint32_t val = strtoul(colorHex.c_str(), nullptr, 16);
+    uint8_t r, g, b, w;
+    if (colorHex.length() == 8) {
+      r = (val >> 24) & 0xFF; g = (val >> 16) & 0xFF;
+      b = (val >> 8)  & 0xFF; w = val & 0xFF;
+    } else {
+      r = (val >> 16) & 0xFF; g = (val >> 8) & 0xFF;
+      b = val & 0xFF;         w = 0;
+    }
+    uint16_t indices[4] = {};
+    uint8_t count = 0;
+    for (JsonVariant v : arr) {
+      if (count < 4) indices[count++] = (uint16_t)v.as<int>();
+    }
+    setDiagLedOverride(indices, count, r, g, b, w);
+    server.send(200, "text/plain", "OK");
+  });
+#endif
 
   // Turn on/off
   server.on("/toggle", []() {
