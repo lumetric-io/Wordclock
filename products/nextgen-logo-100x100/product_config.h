@@ -7,11 +7,13 @@
 #define DATA_PIN 4
 #define LOGO_DATA_PIN 18
 // Clock string is split across two data lines to fix tail corruption:
-// segment A = logical indices 0..243 on DATA_PIN, segment B = 244..end on
-// CLOCK_DATA_PIN_2. Each segment is power-injected at its head. See
+// segment A = logical indices 0..244 on DATA_PIN, segment B = 245..end on
+// CLOCK_DATA_PIN_2. Each segment is power-injected at its head. The split value
+// is the count of LEDs on DATA_PIN (== 0-based logical index of the first LED
+// on CLOCK_DATA_PIN_2): physical cut is between LED 244 and 245. See
 // src/led_segments.* and buildSegments().
 #define CLOCK_DATA_PIN_2 6
-#define CLOCK_SEGMENT_SPLIT 244
+#define CLOCK_SEGMENT_SPLIT 245
 #define SUPPORT_OTA_V2 1
 #define BLE_PROVISIONING_ENABLED 0
 #define WIFI_MANAGER_ENABLED 1
