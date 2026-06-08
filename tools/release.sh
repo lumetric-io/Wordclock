@@ -615,14 +615,29 @@ prompt_version() {
 
         if [[ $REPLY =~ ^[Nn]$ ]]; then
             echo ""
-            print_info "Enter custom version number:"
+            local product_prefix="${PRODUCT#wordclock-}"
+            print_info "Enter the version number only (the '${product_prefix}-' prefix is added automatically)."
+            print_info "Example: 26.6.2-rc.1"
             while true; do
-                read -p "Version: " NEW_VERSION
+                local version_input
+                read -p "Version: " version_input
+
+                # Tolerate a fully-qualified version if pasted: strip the prefix
+                # so we don't double it up.
+                if [[ -n "$product_prefix" && "$version_input" == "$product_prefix"-* ]]; then
+                    version_input="${version_input#${product_prefix}-}"
+                fi
+
+                if [[ -n "$product_prefix" ]]; then
+                    NEW_VERSION="${product_prefix}-${version_input}"
+                else
+                    NEW_VERSION="$version_input"
+                fi
 
                 if validate_version "$NEW_VERSION"; then
                     break
                 else
-                    print_error "Invalid version format. Must start with ${PRODUCT#wordclock-}- and follow semver: X.Y.Z[-prerelease][+build]"
+                    print_error "Invalid version format. Enter just the semver: X.Y.Z[-prerelease][+build] (e.g. 26.6.2-rc.1)"
                 fi
             done
         else
