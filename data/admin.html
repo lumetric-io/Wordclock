@@ -8,10 +8,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/chronolett.css" />
+  <link rel="stylesheet" href="/chronolett-compact.css" />
   <script src="/i18n/i18n.js" defer></script>
   <script src="/ral-picker.js" defer></script>
 </head>
-<body>
+<body class="dash-tabbed">
   <header class="topbar">
     <div class="page">
       <div class="container topbar-inner">
@@ -31,14 +32,17 @@
   <main class="page">
     <div class="container">
 
-      <section class="hero">
-        <p class="kicker" data-i18n="admin.kicker">Admin</p>
-        <h1><span data-i18n="admin.title">Service</span><span class="copper-dot">.</span></h1>
-        <p class="lede" data-i18n="admin.lede">Production and service actions. This page is protected by the manufacturer password — critical endpoints are not accessible without it.</p>
-      </section>
+      <div class="sticky-controls">
+        <div class="tabbar" role="tablist" aria-label="Admin sections">
+          <button data-tab="actions" role="tab" aria-selected="true" data-i18n="admin.tab.actions">Actions</button>
+          <button data-tab="firmware" role="tab" aria-selected="false" data-i18n="admin.tab.firmware">Firmware</button>
+          <button data-tab="system" role="tab" aria-selected="false" data-i18n="admin.tab.system">System</button>
+          <button data-tab="danger" role="tab" aria-selected="false" data-i18n="admin.tab.danger">Danger</button>
+        </div>
+      </div>
 
-      <!-- 01 — Quick actions -->
-      <section class="chapter">
+      <div class="tab-panel active" data-panel="actions" role="tabpanel">
+<section class="chapter">
         <header class="section-head">
           <span class="section-num">01</span>
           <h2 class="section-title" data-i18n="admin.actions.title">Quick actions</h2>
@@ -60,9 +64,24 @@
           </div>
         </div>
       </section>
+<section class="chapter" id="syncUiSection">
+        <header class="section-head">
+          <span class="section-num">03</span>
+          <h2 class="section-title" data-i18n="admin.sync.title">UI sync</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="admin.sync.label">Manifest</span>
+          <div class="section-body">
+            <button id="syncUiBtn" class="btn ghost" data-i18n="admin.sync.btn">Sync UI files</button>
+            <p id="syncUiMsg" class="help"></p>
+            <a href="/logs.html" class="btn line" data-i18n="admin.sync.view_logs">View logs</a>
+          </div>
+        </div>
+      </section>
+      </div>
 
-      <!-- 02 — Release channel -->
-      <section class="chapter" id="releaseChannelSection">
+      <div class="tab-panel" data-panel="firmware" role="tabpanel">
+<section class="chapter" id="releaseChannelSection">
         <header class="section-head">
           <span class="section-num">02</span>
           <h2 class="section-title" data-i18n="admin.channel.title">Release channel</h2>
@@ -86,25 +105,48 @@
           </div>
         </div>
       </section>
-
-      <!-- 03 — UI sync -->
-      <section class="chapter" id="syncUiSection">
+<section class="chapter">
         <header class="section-head">
-          <span class="section-num">03</span>
-          <h2 class="section-title" data-i18n="admin.sync.title">UI sync</h2>
+          <span class="section-num">06</span>
+          <h2 class="section-title" data-i18n="admin.upload.title">Upload</h2>
         </header>
         <div class="section-aside">
-          <span class="label" data-i18n="admin.sync.label">Manifest</span>
+          <span class="label" data-i18n="admin.upload.label_fw">Firmware</span>
           <div class="section-body">
-            <button id="syncUiBtn" class="btn ghost" data-i18n="admin.sync.btn">Sync UI files</button>
-            <p id="syncUiMsg" class="help"></p>
-            <a href="/logs.html" class="btn line" data-i18n="admin.sync.view_logs">View logs</a>
+            <form action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="field">
+              <input type="file" name="firmwareFile" accept=".bin" required />
+              <button type="submit" class="btn ghost" data-i18n="admin.upload.fw_btn">Upload firmware</button>
+            </form>
+            <p id="updateStatus" class="help"></p>
+            <hr class="h-rule" />
+            <span class="label" data-i18n="admin.upload.label_ui">UI (LittleFS)</span>
+            <form action="/uploadFs" method="POST" enctype="multipart/form-data" class="field">
+              <input type="file" name="filesystemFile" accept=".bin" required />
+              <button type="submit" class="btn ghost" data-i18n="admin.upload.ui_btn">Upload UI image</button>
+            </form>
+            <p id="updateFsStatus" class="help"></p>
           </div>
         </div>
       </section>
+<section class="chapter">
+        <header class="section-head">
+          <span class="section-num">07</span>
+          <h2 class="section-title" data-i18n="admin.fleet.title">Fleet</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="admin.fleet.label">Register</span>
+          <div class="section-body">
+            <p class="help" data-i18n="admin.fleet.help">Register this device with fleet management.</p>
+            <button id="registerBtn" class="btn copper" data-i18n="admin.fleet.btn">Register device</button>
+            <p id="registerStatus" class="help"></p>
+            <pre id="registerResponse" class="log-output hidden" style="height:auto;max-height:200px"></pre>
+          </div>
+        </div>
+      </section>
+      </div>
 
-      <!-- 04 — Log settings -->
-      <section class="chapter">
+      <div class="tab-panel" data-panel="system" role="tabpanel">
+<section class="chapter">
         <header class="section-head">
           <span class="section-num">04</span>
           <h2 class="section-title" data-i18n="admin.logs.title">Log settings</h2>
@@ -135,9 +177,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 05 — Display & color -->
-      <section class="chapter">
+<section class="chapter">
         <header class="section-head">
           <span class="section-num">05</span>
           <h2 class="section-title" data-i18n="admin.display.title">Display</h2>
@@ -171,51 +211,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 06 — Upload -->
-      <section class="chapter">
-        <header class="section-head">
-          <span class="section-num">06</span>
-          <h2 class="section-title" data-i18n="admin.upload.title">Upload</h2>
-        </header>
-        <div class="section-aside">
-          <span class="label" data-i18n="admin.upload.label_fw">Firmware</span>
-          <div class="section-body">
-            <form action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="field">
-              <input type="file" name="firmwareFile" accept=".bin" required />
-              <button type="submit" class="btn ghost" data-i18n="admin.upload.fw_btn">Upload firmware</button>
-            </form>
-            <p id="updateStatus" class="help"></p>
-            <hr class="h-rule" />
-            <span class="label" data-i18n="admin.upload.label_ui">UI (LittleFS)</span>
-            <form action="/uploadFs" method="POST" enctype="multipart/form-data" class="field">
-              <input type="file" name="filesystemFile" accept=".bin" required />
-              <button type="submit" class="btn ghost" data-i18n="admin.upload.ui_btn">Upload UI image</button>
-            </form>
-            <p id="updateFsStatus" class="help"></p>
-          </div>
-        </div>
-      </section>
-
-      <!-- 07 — Fleet registration -->
-      <section class="chapter">
-        <header class="section-head">
-          <span class="section-num">07</span>
-          <h2 class="section-title" data-i18n="admin.fleet.title">Fleet</h2>
-        </header>
-        <div class="section-aside">
-          <span class="label" data-i18n="admin.fleet.label">Register</span>
-          <div class="section-body">
-            <p class="help" data-i18n="admin.fleet.help">Register this device with fleet management.</p>
-            <button id="registerBtn" class="btn copper" data-i18n="admin.fleet.btn">Register device</button>
-            <p id="registerStatus" class="help"></p>
-            <pre id="registerResponse" class="log-output hidden" style="height:auto;max-height:200px"></pre>
-          </div>
-        </div>
-      </section>
-
-      <!-- 08 — Build info -->
-      <section class="chapter">
+<section class="chapter">
         <header class="section-head">
           <span class="section-num">08</span>
           <h2 class="section-title" data-i18n="admin.build.title">Build info</h2>
@@ -237,9 +233,10 @@
           </div>
         </div>
       </section>
+      </div>
 
-      <!-- 09 — Danger zone -->
-      <section class="chapter">
+      <div class="tab-panel" data-panel="danger" role="tabpanel">
+<section class="chapter">
         <header class="section-head">
           <span class="section-num">09</span>
           <h2 class="section-title" data-i18n="admin.danger.title">Danger</h2>
@@ -253,9 +250,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 10 — Re-install bootstrap firmware -->
-      <section class="chapter" id="installBootstrapSection">
+<section class="chapter" id="installBootstrapSection">
         <header class="section-head">
           <span class="section-num">10</span>
           <h2 class="section-title" data-i18n="admin.bootstrap.title">Re-install bootstrap</h2>
@@ -269,6 +264,7 @@
           </div>
         </div>
       </section>
+      </div>
 
       <div class="footer-sig">
         <span>Chronolett<span class="copper">.</span></span>
@@ -822,6 +818,23 @@
     window.addEventListener('chronolett:lang', () => {
       applyChannelGuardAdmin(lastAdminChannel);
     });
+  </script>
+  <script>
+    // Tabbed shell (presentational only — no admin endpoints touched).
+    (function () {
+      var bar = document.querySelector('.tabbar');
+      var panels = document.querySelectorAll('.tab-panel');
+      if (!bar) return;
+      bar.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          bar.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-selected', 'false'); });
+          btn.setAttribute('aria-selected', 'true');
+          var t = btn.dataset.tab;
+          panels.forEach(function (p) { p.classList.toggle('active', p.dataset.panel === t); });
+          window.scrollTo(0, 0);
+        });
+      });
+    })();
   </script>
 </body>
 </html>

@@ -311,5 +311,9 @@
   "dashboard.tab.light": "Licht",
   "dashboard.tab.schedule": "Schema",
   "dashboard.tab.display": "Weergave",
-  "dashboard.tab.system": "Systeem"
+  "dashboard.tab.system": "Systeem",
+  "admin.tab.actions": "Acties",
+  "admin.tab.firmware": "Firmware",
+  "admin.tab.system": "Systeem",
+  "admin.tab.danger": "Gevaar"
 }

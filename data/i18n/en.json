@@ -311,5 +311,9 @@
   "dashboard.tab.light": "Light",
   "dashboard.tab.schedule": "Schedule",
   "dashboard.tab.display": "Display",
-  "dashboard.tab.system": "System"
+  "dashboard.tab.system": "System",
+  "admin.tab.actions": "Actions",
+  "admin.tab.firmware": "Firmware",
+  "admin.tab.system": "System",
+  "admin.tab.danger": "Danger"
 }
