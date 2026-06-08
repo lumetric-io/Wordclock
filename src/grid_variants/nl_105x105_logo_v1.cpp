@@ -1,12 +1,12 @@
-#include "grid_variants/nl_100x100_logo_v1.h"
+#include "grid_variants/nl_105x105_logo_v1.h"
 
-// Mirrors the NL_55x50_LOGO_V1 layout for the 100x100 logo hardware variant.
-const uint16_t LED_COUNT_GRID_NL_100x100_LOGO_V1 = 488;
-const uint16_t LED_COUNT_EXTRA_NL_100x100_LOGO_V1 = 49;
-const uint16_t LED_COUNT_TOTAL_NL_100x100_LOGO_V1 =
-  LED_COUNT_GRID_NL_100x100_LOGO_V1 + LED_COUNT_EXTRA_NL_100x100_LOGO_V1;
+// Mirrors the NL_55x50_LOGO_V1 layout for the 105x105 logo hardware variant.
+const uint16_t LED_COUNT_GRID_NL_105x105_LOGO_V1 = 488;
+const uint16_t LED_COUNT_EXTRA_NL_105x105_LOGO_V1 = 49;
+const uint16_t LED_COUNT_TOTAL_NL_105x105_LOGO_V1 =
+  LED_COUNT_GRID_NL_105x105_LOGO_V1 + LED_COUNT_EXTRA_NL_105x105_LOGO_V1;
 
-const char* const LETTER_GRID_NL_100x100_LOGO_V1[] = {
+const char* const LETTER_GRID_NL_105x105_LOGO_V1[] = {
   "HETBISWYBRC",
   "RTIENMMUHLC",
   "VIJFCWKWART",
@@ -20,7 +20,7 @@ const char* const LETTER_GRID_NL_100x100_LOGO_V1[] = {
   "..-.-.-.-.."
 };
 
-const uint16_t EXTRA_MINUTES_NL_100x100_LOGO_V1[] = {
+const uint16_t EXTRA_MINUTES_NL_105x105_LOGO_V1[] = {
   // +1 minute symbol (4 LEDs)
   495, 496, 531, 532,
   // +2 minute symbol (4 LEDs)
@@ -31,7 +31,7 @@ const uint16_t EXTRA_MINUTES_NL_100x100_LOGO_V1[] = {
   507, 508, 519, 520
 };
 
-const WordPosition WORDS_NL_100x100_LOGO_V1[] = {
+const WordPosition WORDS_NL_105x105_LOGO_V1[] = {
   WPOS("HET",         1, 2, 3, 4, 5, 6, 41, 42, 43, 44, 45, 46),
   WPOS("IS",          9, 10, 11, 12, 35, 36, 37, 38),
   WPOS("VIJF_M",      99, 100, 101, 102, 103, 104, 105, 106, 137, 138, 139, 140, 141, 142, 143, 144),
@@ -55,7 +55,7 @@ const WordPosition WORDS_NL_100x100_LOGO_V1[] = {
   WPOS("TWAALF",      344, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389),
 };
 
-const size_t WORDS_NL_100x100_LOGO_V1_COUNT =
-  sizeof(WORDS_NL_100x100_LOGO_V1) / sizeof(WORDS_NL_100x100_LOGO_V1[0]);
-const size_t EXTRA_MINUTES_NL_100x100_LOGO_V1_COUNT =
-  sizeof(EXTRA_MINUTES_NL_100x100_LOGO_V1) / sizeof(EXTRA_MINUTES_NL_100x100_LOGO_V1[0]);
+const size_t WORDS_NL_105x105_LOGO_V1_COUNT =
+  sizeof(WORDS_NL_105x105_LOGO_V1) / sizeof(WORDS_NL_105x105_LOGO_V1[0]);
+const size_t EXTRA_MINUTES_NL_105x105_LOGO_V1_COUNT =
+  sizeof(EXTRA_MINUTES_NL_105x105_LOGO_V1) / sizeof(EXTRA_MINUTES_NL_105x105_LOGO_V1[0]);

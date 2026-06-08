@@ -86,14 +86,14 @@ if [[ -z "$PRODUCT" ]]; then
   echo "  1) nextgen-30x30"
   echo "  2) nextgen-50x50"
   echo "  3) nextgen-logo-55x50"
-  echo "  4) nextgen-logo-100x100"
+  echo "  4) nextgen-logo-105x105"
   echo "  5) nextgen-mini"
   read -rp "Product number (1-5): " PRODUCT_SELECTION
   case "$PRODUCT_SELECTION" in
     1) PRODUCT="nextgen-30x30" ;;
     2) PRODUCT="nextgen-50x50" ;;
     3) PRODUCT="nextgen-logo-55x50" ;;
-    4) PRODUCT="nextgen-logo-100x100" ;;
+    4) PRODUCT="nextgen-logo-105x105" ;;
     5) PRODUCT="nextgen-mini" ;;
     *) PRODUCT="" ;;
   esac
@@ -376,6 +376,36 @@ EOF
 
 sudo chown root:www-data "$CHANNEL_DIR/$CHANNEL.json"
 sudo chmod 644 "$CHANNEL_DIR/$CHANNEL.json"
+
+# -------------------------
+# Legacy channel mirror (OTA continuity for renamed products)
+# -------------------------
+# nextgen-logo-105x105 was previously shipped as nextgen-logo-100x100. Units
+# flashed under the old PRODUCT_ID keep polling the old channel path. Mirror the
+# channel JSON there so they still receive updates. The target's manifest URLs
+# are absolute (they point at the 105x105 artifacts), the firmware is identical
+# hardware, and the device never validates the manifest 'product' field against
+# its own PRODUCT_ID — so the unit installs this build and, on reboot, runs as
+# 105x105 and polls the new channel directly from then on.
+declare -A LEGACY_PRODUCT_ALIAS=(
+  ["nextgen-logo-105x105"]="nextgen-logo-100x100"
+)
+LEGACY_PRODUCT="${LEGACY_PRODUCT_ALIAS[$PRODUCT]:-}"
+if [[ -n "$LEGACY_PRODUCT" ]]; then
+  LEGACY_CHANNEL_DIR="$OTA_ROOT/$LEGACY_PRODUCT/channels"
+  echo "→ Mirroring channel to legacy product path: $LEGACY_PRODUCT/$CHANNEL.json"
+  sudo mkdir -p "$LEGACY_CHANNEL_DIR"
+  sudo tee "$LEGACY_CHANNEL_DIR/$CHANNEL.json" > /dev/null <<EOF
+{
+  "schema": 1,
+  "product": "$LEGACY_PRODUCT",
+  "channel": "$CHANNEL",
+  "target": $TARGET_JSON
+}
+EOF
+  sudo chown root:www-data "$LEGACY_CHANNEL_DIR/$CHANNEL.json"
+  sudo chmod 644 "$LEGACY_CHANNEL_DIR/$CHANNEL.json"
+fi
 
 echo
 echo "✅ OTA publish complete"

@@ -3,10 +3,10 @@
 
 #include <Preferences.h>
 
-// Per-product clock-brightness cap (hardware/power limit). Products override via
-// product_config.h (e.g. nextgen-logo-100x100 sets 200 to stay within its 5V
-// budget); everything else runs the full range. Clamped at every ingest point
-// below so no MQTT/web/stale-NVS value can exceed it.
+// Per-product clock-brightness cap (hardware/power limit). A product may override
+// via product_config.h to stay within its 5V budget; by default every product
+// runs the full range (255). Clamped at every ingest point below so no
+// MQTT/web/stale-NVS value can exceed it.
 #ifndef MAX_BRIGHTNESS
 #define MAX_BRIGHTNESS 255
 #endif

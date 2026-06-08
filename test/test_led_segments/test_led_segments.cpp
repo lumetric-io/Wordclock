@@ -28,7 +28,7 @@ TEST(LedSegments, NonLogoSingleStrip) {
   EXPECT_EQ(115, segs[0].length);
 }
 
-// Today's logo product (e.g. 55x50 / 100x100 before the split): clock on one
+// Today's logo product (e.g. 55x50 / 105x105 before the split): clock on one
 // pin, logo on its own pin.
 TEST(LedSegments, LogoDedicatedNoSplit) {
   LedSegmentConfig cfg;
@@ -53,9 +53,9 @@ TEST(LedSegments, LogoDedicatedNoSplit) {
   EXPECT_EQ(52, segs[1].length);
 }
 
-// Fase 2 target for nextgen-logo-100x100: clock split after index 243 (LED 244
+// Fase 2 target for nextgen-logo-105x105: clock split after index 243 (LED 244
 // begins segment B) on GPIO 6, logo still on GPIO 18.
-TEST(LedSegments, LogoDedicatedWithSplit_100x100) {
+TEST(LedSegments, LogoDedicatedWithSplit_105x105) {
   LedSegmentConfig cfg;
   cfg.clockPin = 4;
   cfg.clockPin2 = 6;

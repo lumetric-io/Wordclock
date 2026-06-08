@@ -30,7 +30,7 @@ select PRODUCT in \
   nextgen-30x30 \
   nextgen-50x50 \
   nextgen-logo-55x50 \
-  nextgen-logo-100x100 \
+  nextgen-logo-105x105 \
   nextgen-mini \
   nextgen-bootstrap; do
   [[ -n "$PRODUCT" ]] && break

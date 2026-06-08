@@ -1,5 +1,5 @@
 #include "logo_leds.h"
-#include "grid_variants/nl_100x100_logo_v1.h"
+#include "grid_variants/nl_105x105_logo_v1.h"
 #include "grid_variants/nl_55x50_logo_v1.h"
 
 #if defined(PRODUCT_VARIANT_LOGO)
@@ -83,8 +83,8 @@ uint16_t getTotalStripLength() {
 
 uint16_t getLogoLedCount() {
   switch (getActiveGridVariant()) {
-    case GridVariant::NL_100x100_LOGO_V1:
-      return nl_100x100_logo_v1::LOGO_LED_COUNT;
+    case GridVariant::NL_105x105_LOGO_V1:
+      return nl_105x105_logo_v1::LOGO_LED_COUNT;
     case GridVariant::NL_55x50_LOGO_V1:
       return nl_55x50_logo_v1::LOGO_LED_COUNT;
     default:

@@ -40,13 +40,13 @@ DIST_DIR="$PROJECT_ROOT/dist"
 MODE="full"
 SUDO_MODE="${SUDO_MODE:-auto}" # auto|always|never
 
-VALID_PRODUCTS=("nextgen-30x30" "nextgen-50x50" "nextgen-logo-55x50" "nextgen-logo-100x100" "nextgen-mini" "nextgen-bootstrap")
+VALID_PRODUCTS=("nextgen-30x30" "nextgen-50x50" "nextgen-logo-55x50" "nextgen-logo-105x105" "nextgen-mini" "nextgen-bootstrap")
 
 # Mass-build set: every nextgen-* product *except* bootstrap. Bootstrap is
 # excluded on purpose — it has its own release cadence (single channel,
 # different versioning) and rolling it into the per-channel mass build
 # would force its version to track the others'.
-ALL_NEXTGEN_NON_BOOTSTRAP=("nextgen-mini" "nextgen-30x30" "nextgen-50x50" "nextgen-logo-55x50" "nextgen-logo-100x100")
+ALL_NEXTGEN_NON_BOOTSTRAP=("nextgen-mini" "nextgen-30x30" "nextgen-50x50" "nextgen-logo-55x50" "nextgen-logo-105x105")
 
 # When set, release builds all listed products in one go (same version base, one tag/release, multiple binaries)
 BUILD_ALL_PRODUCTS=()
@@ -509,7 +509,7 @@ prompt_product_channel() {
         echo "  1) nextgen-30x30"
         echo "  2) nextgen-50x50"
         echo "  3) nextgen-logo-55x50"
-        echo "  4) nextgen-logo-100x100"
+        echo "  4) nextgen-logo-105x105"
         echo "  5) nextgen-mini"
         echo "  6) nextgen-bootstrap   (first-flash provisioning)"
         echo "  7) all nextgen products (except bootstrap)  — single channel, one version"
@@ -518,7 +518,7 @@ prompt_product_channel() {
             1) PRODUCT="nextgen-30x30" ;;
             2) PRODUCT="nextgen-50x50" ;;
             3) PRODUCT="nextgen-logo-55x50" ;;
-            4) PRODUCT="nextgen-logo-100x100" ;;
+            4) PRODUCT="nextgen-logo-105x105" ;;
             5) PRODUCT="nextgen-mini" ;;
             6) PRODUCT="nextgen-bootstrap" ;;
             7) set_build_all_nextgen ;;
@@ -1878,7 +1878,7 @@ while [[ $# -gt 0 ]]; do
             echo "  ./release.sh --help                        Show this help"
             echo ""
             echo "Mass build (--all):"
-            echo "  Brings every nextgen-mini / 30x30 / 50x50 / logo-55x50 / logo-100x100"
+            echo "  Brings every nextgen-mini / 30x30 / 50x50 / logo-55x50 / logo-105x105"
             echo "  to the same base version on the chosen channel, builds all five binaries,"
             echo "  creates a single git tag + GitHub release with all binaries attached, and"
             echo "  publishes one OTA manifest per product. Bootstrap is excluded by design."
