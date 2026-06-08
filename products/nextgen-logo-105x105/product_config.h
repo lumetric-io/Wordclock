@@ -1,8 +1,8 @@
 #pragma once
 
-#define PRODUCT_ID "nextgen-logo-100x100"
-#define FIRMWARE_VERSION "nextgen-logo-100x100-26.6.2-rc.2"
-#define UI_VERSION "ui-nextgen-logo-100x100-26.6.2-rc.2"
+#define PRODUCT_ID "nextgen-logo-105x105"
+#define FIRMWARE_VERSION "nextgen-logo-105x105-26.6.2-rc.3"
+#define UI_VERSION "ui-nextgen-logo-105x105-26.6.2-rc.3"
 #define PRODUCT_VARIANT_LOGO 1
 #define DATA_PIN 4
 #define LOGO_DATA_PIN 18
@@ -14,6 +14,10 @@
 // src/led_segments.* and buildSegments().
 #define CLOCK_DATA_PIN_2 6
 #define CLOCK_SEGMENT_SPLIT 244
+// Clock brightness is uncapped (255). The earlier 200 cap mitigated the
+// tail-corruption brownout; the split data line + split 5V injection now handle
+// the power budget, so full brightness is restored.
+#define MAX_BRIGHTNESS 255
 #define SUPPORT_OTA_V2 1
 #define BLE_PROVISIONING_ENABLED 0
 #define WIFI_MANAGER_ENABLED 1

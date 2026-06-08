@@ -13,12 +13,12 @@
 
 #if !defined(ENABLE_GRID_NL_V4) && !defined(ENABLE_GRID_NL_50X50_V3) && \
     !defined(ENABLE_GRID_NL_55X50_LOGO_V1) && !defined(ENABLE_GRID_NL_20X20_V1) && \
-    !defined(ENABLE_GRID_NL_100X100_LOGO_V1)
+    !defined(ENABLE_GRID_NL_105X105_LOGO_V1)
 #define ENABLE_GRID_NL_V4 1
 #define ENABLE_GRID_NL_50X50_V3 1
 #define ENABLE_GRID_NL_55X50_LOGO_V1 1
 #define ENABLE_GRID_NL_20X20_V1 1
-#define ENABLE_GRID_NL_100X100_LOGO_V1 1
+#define ENABLE_GRID_NL_105X105_LOGO_V1 1
 #endif
 
 #ifndef ENABLE_GRID_NL_V4
@@ -33,12 +33,12 @@
 #ifndef ENABLE_GRID_NL_20X20_V1
 #define ENABLE_GRID_NL_20X20_V1 0
 #endif
-#ifndef ENABLE_GRID_NL_100X100_LOGO_V1
-#define ENABLE_GRID_NL_100X100_LOGO_V1 0
+#ifndef ENABLE_GRID_NL_105X105_LOGO_V1
+#define ENABLE_GRID_NL_105X105_LOGO_V1 0
 #endif
 
 #if !(ENABLE_GRID_NL_V4 || ENABLE_GRID_NL_50X50_V3 || ENABLE_GRID_NL_55X50_LOGO_V1 || \
-      ENABLE_GRID_NL_20X20_V1 || ENABLE_GRID_NL_100X100_LOGO_V1)
+      ENABLE_GRID_NL_20X20_V1 || ENABLE_GRID_NL_105X105_LOGO_V1)
 #error "At least one grid variant must be enabled."
 #endif
 
@@ -54,8 +54,8 @@
 #if ENABLE_GRID_NL_20X20_V1
 #include "grid_variants/nl_20x20_v1.h"
 #endif
-#if ENABLE_GRID_NL_100X100_LOGO_V1
-#include "grid_variants/nl_100x100_logo_v1.h"
+#if ENABLE_GRID_NL_105X105_LOGO_V1
+#include "grid_variants/nl_105x105_logo_v1.h"
 #endif
 
 namespace {
@@ -123,8 +123,8 @@ static const GridVariantData GRID_VARIANTS[] = {
 #if ENABLE_GRID_NL_20X20_V1
   { GridVariant::NL_20x20_V1, "NL_20x20_V1", "Nederlands 20x20 V1", "nl", "v1", LED_COUNT_GRID_NL_20x20_V1, LED_COUNT_EXTRA_NL_20x20_V1, LED_COUNT_TOTAL_NL_20x20_V1, LETTER_GRID_NL_20x20_V1, WORDS_NL_20x20_V1, WORDS_NL_20x20_V1_COUNT, EXTRA_MINUTES_NL_20x20_V1, EXTRA_MINUTES_NL_20x20_V1_COUNT, MinuteLayout::AfterGrid, 1 },
 #endif
-#if ENABLE_GRID_NL_100X100_LOGO_V1
-  { GridVariant::NL_100x100_LOGO_V1, "NL_100x100_LOGO_V1", "Nederlands 100x100 Logo V1", "nl", "v1", LED_COUNT_GRID_NL_100x100_LOGO_V1, LED_COUNT_EXTRA_NL_100x100_LOGO_V1, LED_COUNT_TOTAL_NL_100x100_LOGO_V1, LETTER_GRID_NL_100x100_LOGO_V1, WORDS_NL_100x100_LOGO_V1, WORDS_NL_100x100_LOGO_V1_COUNT, EXTRA_MINUTES_NL_100x100_LOGO_V1, EXTRA_MINUTES_NL_100x100_LOGO_V1_COUNT, MinuteLayout::AfterGrid, 4 },
+#if ENABLE_GRID_NL_105X105_LOGO_V1
+  { GridVariant::NL_105x105_LOGO_V1, "NL_105x105_LOGO_V1", "Nederlands 105x105 Logo V1", "nl", "v1", LED_COUNT_GRID_NL_105x105_LOGO_V1, LED_COUNT_EXTRA_NL_105x105_LOGO_V1, LED_COUNT_TOTAL_NL_105x105_LOGO_V1, LETTER_GRID_NL_105x105_LOGO_V1, WORDS_NL_105x105_LOGO_V1, WORDS_NL_105x105_LOGO_V1_COUNT, EXTRA_MINUTES_NL_105x105_LOGO_V1, EXTRA_MINUTES_NL_105x105_LOGO_V1_COUNT, MinuteLayout::AfterGrid, 4 },
 #endif
 };
 
@@ -189,7 +189,7 @@ bool setActiveGridVariantById(uint8_t id) {
     case 6:  variant = GridVariant::NL_50x50_V3; break;
     case 7:  variant = GridVariant::NL_55x50_LOGO_V1; break;
     case 8:  variant = GridVariant::NL_20x20_V1; break;
-    case 10: variant = GridVariant::NL_100x100_LOGO_V1; break;
+    case 10: variant = GridVariant::NL_105x105_LOGO_V1; break;
     default: return false;
   }
   return setActiveGridVariant(variant);
@@ -208,7 +208,7 @@ GridVariant gridVariantFromId(uint8_t id) {
     case 6:  return GridVariant::NL_50x50_V3;
     case 7:  return GridVariant::NL_55x50_LOGO_V1;
     case 8:  return GridVariant::NL_20x20_V1;
-    case 10: return GridVariant::NL_100x100_LOGO_V1;
+    case 10: return GridVariant::NL_105x105_LOGO_V1;
     default: return GridVariant::NL_V4;
   }
 }

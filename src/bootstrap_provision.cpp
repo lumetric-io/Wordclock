@@ -28,7 +28,7 @@ const BootstrapProduct kBootstrapProducts[] = {
   {"nextgen-30x30",        "Wordclock 30x30",         "11x11 grid, 30x30 cm",     "Wordclock_AP"},
   {"nextgen-50x50",        "Wordclock 50x50",         "11x11 grid, 50x50 cm",     "Wordclock_AP"},
   {"nextgen-logo-55x50",   "Wordclock Logo 55x50",    "11x11 grid + logo strip",  "Wordclock_AP"},
-  {"nextgen-logo-100x100", "Wordclock Logo 100x100",  "20x20 grid + logo",        "Wordclock_AP"},
+  {"nextgen-logo-105x105", "Wordclock Logo 105x105",  "20x20 grid + logo",        "Wordclock_AP"},
 };
 const size_t kBootstrapProductCount =
   sizeof(kBootstrapProducts) / sizeof(kBootstrapProducts[0]);

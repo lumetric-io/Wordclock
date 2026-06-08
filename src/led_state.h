@@ -3,6 +3,14 @@
 
 #include <Preferences.h>
 
+// Per-product clock-brightness cap (hardware/power limit). A product may override
+// via product_config.h to stay within its 5V budget; by default every product
+// runs the full range (255). Clamped at every ingest point below so no
+// MQTT/web/stale-NVS value can exceed it.
+#ifndef MAX_BRIGHTNESS
+#define MAX_BRIGHTNESS 255
+#endif
+
 class LedState {
 public:
     /**
@@ -16,6 +24,9 @@ public:
         blue_  = prefs_.getUChar("b", 0);
         white_ = prefs_.getUChar("w", 255);
         brightness_ = prefs_.getUChar("br", 64);
+#if MAX_BRIGHTNESS < 255
+        if (brightness_ > MAX_BRIGHTNESS) brightness_ = MAX_BRIGHTNESS;  // clamp stale NVS to the cap
+#endif
         prefs_.end();
         
         dirty_ = false;
@@ -68,6 +79,9 @@ public:
      * @param b Brightness value (0-255)
      */
     void setBrightness(uint8_t b) {
+#if MAX_BRIGHTNESS < 255
+        if (b > MAX_BRIGHTNESS) b = MAX_BRIGHTNESS;  // per-product hardware cap
+#endif
         if (brightness_ == b) return;
         brightness_ = b;
         markDirty();

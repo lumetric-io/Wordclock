@@ -15,7 +15,7 @@ enum class GridVariant : uint8_t {
   NL_50x50_V3 = 6,
   NL_55x50_LOGO_V1 = 7,
   NL_20x20_V1 = 8,
-  NL_100x100_LOGO_V1 = 10,
+  NL_105x105_LOGO_V1 = 10,
 };
 
 struct GridVariantInfo {
