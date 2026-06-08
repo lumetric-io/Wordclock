@@ -307,5 +307,9 @@
   "dashboard.led.mqtt_disc": "MQTT verbroken",
   "dashboard.led.ble_prov": "BLE-provisioning",
   "dashboard.led.wifi_portal": "Wi-Fi-portal",
-  "dashboard.classic_title": "Wissel naar klassiek ontwerp"
+  "dashboard.classic_title": "Wissel naar klassiek ontwerp",
+  "dashboard.tab.light": "Licht",
+  "dashboard.tab.schedule": "Schema",
+  "dashboard.tab.display": "Weergave",
+  "dashboard.tab.system": "Systeem"
 }
