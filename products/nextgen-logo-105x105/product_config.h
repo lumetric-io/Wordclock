@@ -1,8 +1,8 @@
 #pragma once
 
 #define PRODUCT_ID "nextgen-logo-105x105"
-#define FIRMWARE_VERSION "nextgen-logo-105x105-26.6.2-rc.3"
-#define UI_VERSION "ui-nextgen-logo-105x105-26.6.2-rc.3"
+#define FIRMWARE_VERSION "nextgen-logo-105x105-26.06.08"
+#define UI_VERSION "ui-nextgen-logo-105x105-26.06.08"
 #define PRODUCT_VARIANT_LOGO 1
 #define DATA_PIN 4
 #define LOGO_DATA_PIN 18
