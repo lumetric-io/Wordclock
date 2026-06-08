@@ -33,6 +33,7 @@ boards/
 *.bak
 *.tmp
 *.swp
+handover/
 
 # PlatformIO (indien gebruikt)
 .pio/
