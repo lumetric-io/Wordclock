@@ -321,7 +321,7 @@ increment_version() {
         # Has pre-release with number (e.g., -dev.5, -rc.1)
         local prerelease_type="${BASH_REMATCH[1]}"
         local prerelease_num="${BASH_REMATCH[2]}"
-        local incremented_num=$((prerelease_num + 1))
+        local incremented_num=$((10#$prerelease_num + 1))
         echo "${prefix_to_apply}${base_version%-${prerelease_type}.${prerelease_num}}-${prerelease_type}.${incremented_num}"
     elif [[ "$base_version" =~ -([a-zA-Z]+)$ ]]; then
         # Has pre-release without number (e.g., -dev) - add .1
@@ -333,7 +333,7 @@ increment_version() {
             local major="${BASH_REMATCH[1]}"
             local minor="${BASH_REMATCH[2]}"
             local patch="${BASH_REMATCH[3]}"
-            local incremented_patch=$((patch + 1))
+            local incremented_patch=$((10#$patch + 1))
             echo "${prefix_to_apply}${major}.${minor}.${incremented_patch}"
         else
             # Unknown format, return as-is
@@ -601,12 +601,29 @@ prompt_version() {
         elif [[ "$CHANNEL" == "early" ]] && [[ "$current_version" =~ -dev([._-]|$) ]]; then
             proposed_version=$(strip_prerelease_version "$current_version")
         else
-            proposed_version=$(increment_version "$current_version" "$current_branch")
+            # Date-based scheme (YY.MM.DD): default to today's date.
+            local today
+            today=$(date +%y.%m.%d)
+            local product_prefix="${PRODUCT#wordclock-}"
+            # Compare today against the current version's date core (strip
+            # product prefix, build metadata, and any prerelease tag).
+            local current_core
+            current_core=$(get_base_version "$current_version" "$product_prefix")
+            current_core="${current_core%%-*}"
+            if [[ "$current_core" == "$today" ]]; then
+                # A release already happened today — bump the last field so the
+                # tag stays unique (e.g. 26.06.08 -> 26.06.9, -rc.1 -> -rc.2).
+                proposed_version=$(increment_version "$current_version" "$current_branch")
+            elif [[ -n "$product_prefix" ]]; then
+                proposed_version="${product_prefix}-${today}"
+            else
+                proposed_version="$today"
+            fi
         fi
 
         proposed_version=$(add_channel_prerelease_if_missing "$proposed_version")
 
-        print_info "Proposed version (auto-incremented): $proposed_version"
+        print_info "Proposed version (date-based): $proposed_version"
         echo ""
 
         # Ask user to confirm or enter different version
