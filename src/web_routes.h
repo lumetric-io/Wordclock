@@ -336,6 +336,9 @@ void setupWebRoutes() {
   server.on("/chronolett.css", HTTP_GET, []() {
     serveFile("/chronolett.css", "text/css");
   });
+  server.on("/chronolett-compact.css", HTTP_GET, []() {
+    serveFile("/chronolett-compact.css", "text/css");
+  });
   // i18n: shared loader + per-language dictionaries (EN/NL).
   // Lives in /i18n/ so future languages slot in next to the existing JSON.
   server.on("/i18n/i18n.js", HTTP_GET, []() {

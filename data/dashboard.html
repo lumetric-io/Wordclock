@@ -8,10 +8,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/chronolett.css" />
+  <link rel="stylesheet" href="/chronolett-compact.css" />
   <script src="/i18n/i18n.js" defer></script>
   <script src="/ral-picker.js" defer></script>
 </head>
-<body>
+<body class="dash-tabbed">
   <header class="topbar">
     <div class="page">
       <div class="container topbar-inner">
@@ -19,7 +20,6 @@
         <nav class="topnav">
           <a href="/mqtt.html" data-i18n="common.nav.mqtt">MQTT</a>
           <a href="/logs.html" data-i18n="common.nav.logs">Logs</a>
-          <a href="/admin.html" data-i18n="common.nav.admin">Admin</a>
           <span class="lang-toggle">
             <a href="#" data-lang-toggle="en" data-i18n="common.lang.en">EN</a>
             <a href="#" data-lang-toggle="nl" data-i18n="common.lang.nl">NL</a>
@@ -32,41 +32,32 @@
   <main class="page">
     <div class="container">
 
-      <section class="hero">
-        <p class="kicker" data-i18n="dashboard.kicker">Dashboard</p>
-        <h1>Wordclock<span class="copper-dot">.</span></h1>
-        <p class="lede" data-i18n="dashboard.lede">Manage your clock — colour, brightness, schedule, and firmware. Settings save instantly.</p>
-      </section>
-
-      <!-- 01 — Status -->
-      <section class="chapter">
-        <header class="section-head">
-          <span class="section-num">01</span>
-          <h2 class="section-title" data-i18n="dashboard.status.title">Status</h2>
-        </header>
-        <div class="section-aside">
-          <span class="label" data-i18n="dashboard.status.label">State</span>
-          <div class="section-body">
-            <div class="status-row">
-              <div class="status-pill">
-                <span id="statusIndicator" class="dot off"></span>
-                <span id="statusText">—</span>
-              </div>
-            </div>
-            <div id="ledEventRow" class="event-row">
-              <span class="event-label" data-i18n="dashboard.status.led_event">LED event</span>
-              <span id="ledEventText">—</span>
-            </div>
-            <div class="btn-row">
-              <button id="toggleClockOn" class="btn copper" data-i18n="dashboard.status.on_btn">On</button>
-              <button id="toggleClockOff" class="btn ghost" data-i18n="dashboard.status.off_btn">Off</button>
-            </div>
+      <div class="sticky-controls">
+        <div class="statusbar">
+          <div class="status-line">
+            <span id="statusIndicator" class="dot off"></span>
+            <span id="statusText" class="status-text">—</span>
+          </div>
+          <div class="power-switch" role="group" aria-label="Power">
+            <button id="toggleClockOn" class="on" data-i18n="dashboard.status.on_btn">On</button>
+            <button id="toggleClockOff" class="off" data-i18n="dashboard.status.off_btn">Off</button>
           </div>
         </div>
-      </section>
+        <div class="tabbar" role="tablist" aria-label="Controls">
+          <button data-tab="light" role="tab" aria-selected="true" data-i18n="dashboard.tab.light">Light</button>
+          <button data-tab="schedule" role="tab" aria-selected="false" data-i18n="dashboard.tab.schedule">Schedule</button>
+          <button data-tab="display" role="tab" aria-selected="false" data-i18n="dashboard.tab.display">Display</button>
+          <button data-tab="system" role="tab" aria-selected="false" data-i18n="dashboard.tab.system">System</button>
+        </div>
+      </div>
 
-      <!-- 02 — Colour -->
-      <section class="chapter">
+      <div id="ledEventRow" class="event-row">
+        <span class="event-label" data-i18n="dashboard.status.led_event">LED event</span>
+        <span id="ledEventText">—</span>
+      </div>
+
+      <div class="tab-panel active" data-panel="light" role="tabpanel">
+<section class="chapter">
         <header class="section-head">
           <span class="section-num">02</span>
           <h2 class="section-title" data-i18n="dashboard.colour.title">Colour</h2>
@@ -93,9 +84,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 03 — Brightness -->
-      <section class="chapter">
+<section class="chapter">
         <header class="section-head">
           <span class="section-num">03</span>
           <h2 class="section-title" data-i18n="dashboard.brightness.title">Brightness</h2>
@@ -132,9 +121,46 @@
           </div>
         </div>
       </section>
+<section class="chapter hidden" id="logoLedsSection">
+        <header class="section-head">
+          <span class="section-num">08</span>
+          <h2 class="section-title" data-i18n="dashboard.logo.title">Logo LEDs</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.logo.label">Pixels</span>
+          <div class="section-body">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="value-mono muted" id="logoStatus">—</span>
+            </div>
+            <div id="logoGrid" class="logo-color-grid"></div>
+            <hr class="h-rule" style="margin: 16px 0" />
+            <span class="label" data-i18n="dashboard.logo.fill_label">Fill colour</span>
+            <div class="swatch-grid" id="logoColorSwatches" aria-label="Logo color presets"></div>
+            <div class="swatch-custom-row">
+              <button type="button" class="btn line small" id="logoColorCustomBtn" data-i18n="dashboard.colour.custom">Custom…</button>
+              <button type="button" class="btn line small" id="logoColorRalBtn" data-i18n="dashboard.colour.ral.btn">RAL…</button>
+              <input type="color" id="logoAllColor" tabindex="-1" />
+              <span class="value-mono muted" id="logoColorValue">—</span>
+            </div>
+            <div class="swatch-input-row">
+              <span class="label" data-i18n="dashboard.colour.hex_label">Hex</span>
+              <input type="text" id="logoColorHexInput" class="input tight" placeholder="#FFAA00" maxlength="7" autocomplete="off" spellcheck="false" />
+              <span class="label" data-i18n="dashboard.colour.rgb_label">RGB</span>
+              <input type="number" id="logoColorRInput" class="input tight rgb-field" min="0" max="255" placeholder="R" />
+              <input type="number" id="logoColorGInput" class="input tight rgb-field" min="0" max="255" placeholder="G" />
+              <input type="number" id="logoColorBInput" class="input tight rgb-field" min="0" max="255" placeholder="B" />
+            </div>
+            <div class="slider-meta" style="margin-top: 12px">
+              <button id="logoFillAll" class="btn line" data-i18n="dashboard.logo.fill_all">Fill all</button>
+              <button id="logoApply" class="btn" data-i18n="dashboard.logo.save">Save</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      </div>
 
-      <!-- 04 — Nightmode -->
-      <section class="chapter">
+      <div class="tab-panel" data-panel="schedule" role="tabpanel">
+<section class="chapter">
         <header class="section-head">
           <span class="section-num">04</span>
           <h2 class="section-title" data-i18n="dashboard.nightmode.title">Nightmode</h2>
@@ -178,9 +204,47 @@
           </div>
         </div>
       </section>
+      </div>
 
-      <!-- 05 — Actions -->
-      <section class="chapter">
+      <div class="tab-panel" data-panel="display" role="tabpanel">
+<section class="chapter">
+        <header class="section-head">
+          <span class="section-num">07</span>
+          <h2 class="section-title" data-i18n="dashboard.display.title">Display</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.display.label">Words</span>
+          <div class="section-body">
+            <label class="check-row">
+              <input type="checkbox" id="animateWords" />
+              <span data-i18n="dashboard.display.animate">Word-by-word animation</span>
+            </label>
+            <div id="hetIsSection">
+              <hr class="h-rule" />
+              <label class="check-row">
+                <input type="checkbox" id="hetIsAlways2" />
+                <span data-i18n="dashboard.display.always_het_is">Always show "HET IS"</span>
+              </label>
+              <div class="field" style="margin-top:12px">
+                <span class="label"><span data-i18n="dashboard.display.show_het_is">Show "HET IS"</span> — <span id="hetIsDurationValue2" class="value-mono">30</span>s</span>
+                <div class="slider-meta">
+                  <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="input tight short" />
+                  <div class="step-btns">
+                    <button id="hetIsDec" class="btn line small">−5s</button>
+                    <button id="hetIsInc" class="btn line small">+5s</button>
+                  </div>
+                </div>
+                <input type="range" min="0" max="360" value="360" id="hetIsDuration2" />
+                <p class="help" data-i18n="dashboard.display.het_is_help">0 = never · 360 = always</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <div class="tab-panel" data-panel="system" role="tabpanel">
+<section class="chapter">
         <header class="section-head">
           <span class="section-num">05</span>
           <h2 class="section-title" data-i18n="dashboard.actions.title">Actions</h2>
@@ -196,9 +260,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 06 — Firmware updates -->
-      <section class="chapter" id="firmwareUpdateSection">
+<section class="chapter" id="firmwareUpdateSection">
         <header class="section-head">
           <span class="section-num">06</span>
           <h2 class="section-title" data-i18n="dashboard.firmware.title">Firmware</h2>
@@ -245,83 +307,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 07 — Display -->
-      <section class="chapter">
-        <header class="section-head">
-          <span class="section-num">07</span>
-          <h2 class="section-title" data-i18n="dashboard.display.title">Display</h2>
-        </header>
-        <div class="section-aside">
-          <span class="label" data-i18n="dashboard.display.label">Words</span>
-          <div class="section-body">
-            <label class="check-row">
-              <input type="checkbox" id="animateWords" />
-              <span data-i18n="dashboard.display.animate">Word-by-word animation</span>
-            </label>
-            <div id="hetIsSection">
-              <hr class="h-rule" />
-              <label class="check-row">
-                <input type="checkbox" id="hetIsAlways2" />
-                <span data-i18n="dashboard.display.always_het_is">Always show "HET IS"</span>
-              </label>
-              <div class="field" style="margin-top:12px">
-                <span class="label"><span data-i18n="dashboard.display.show_het_is">Show "HET IS"</span> — <span id="hetIsDurationValue2" class="value-mono">30</span>s</span>
-                <div class="slider-meta">
-                  <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="input tight short" />
-                  <div class="step-btns">
-                    <button id="hetIsDec" class="btn line small">−5s</button>
-                    <button id="hetIsInc" class="btn line small">+5s</button>
-                  </div>
-                </div>
-                <input type="range" min="0" max="360" value="360" id="hetIsDuration2" />
-                <p class="help" data-i18n="dashboard.display.het_is_help">0 = never · 360 = always</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 08 — Logo LEDs (logo product only) -->
-      <section class="chapter hidden" id="logoLedsSection">
-        <header class="section-head">
-          <span class="section-num">08</span>
-          <h2 class="section-title" data-i18n="dashboard.logo.title">Logo LEDs</h2>
-        </header>
-        <div class="section-aside">
-          <span class="label" data-i18n="dashboard.logo.label">Pixels</span>
-          <div class="section-body">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span class="value-mono muted" id="logoStatus">—</span>
-            </div>
-            <div id="logoGrid" class="logo-color-grid"></div>
-            <hr class="h-rule" style="margin: 16px 0" />
-            <span class="label" data-i18n="dashboard.logo.fill_label">Fill colour</span>
-            <div class="swatch-grid" id="logoColorSwatches" aria-label="Logo color presets"></div>
-            <div class="swatch-custom-row">
-              <button type="button" class="btn line small" id="logoColorCustomBtn" data-i18n="dashboard.colour.custom">Custom…</button>
-              <button type="button" class="btn line small" id="logoColorRalBtn" data-i18n="dashboard.colour.ral.btn">RAL…</button>
-              <input type="color" id="logoAllColor" tabindex="-1" />
-              <span class="value-mono muted" id="logoColorValue">—</span>
-            </div>
-            <div class="swatch-input-row">
-              <span class="label" data-i18n="dashboard.colour.hex_label">Hex</span>
-              <input type="text" id="logoColorHexInput" class="input tight" placeholder="#FFAA00" maxlength="7" autocomplete="off" spellcheck="false" />
-              <span class="label" data-i18n="dashboard.colour.rgb_label">RGB</span>
-              <input type="number" id="logoColorRInput" class="input tight rgb-field" min="0" max="255" placeholder="R" />
-              <input type="number" id="logoColorGInput" class="input tight rgb-field" min="0" max="255" placeholder="G" />
-              <input type="number" id="logoColorBInput" class="input tight rgb-field" min="0" max="255" placeholder="B" />
-            </div>
-            <div class="slider-meta" style="margin-top: 12px">
-              <button id="logoFillAll" class="btn line" data-i18n="dashboard.logo.fill_all">Fill all</button>
-              <button id="logoApply" class="btn" data-i18n="dashboard.logo.save">Save</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 09 — Logs -->
-      <section class="chapter">
+<section class="chapter">
         <header class="section-head">
           <span class="section-num">09</span>
           <h2 class="section-title" data-i18n="dashboard.logs.title">Logs</h2>
@@ -346,6 +332,7 @@
           </div>
         </div>
       </section>
+      </div>
 
       <div class="footer-sig">
         <span>Chronolett<span class="copper">.</span></span>
@@ -1558,6 +1545,43 @@
       if (logLevelSel && logLevelStatus && logLevelSel.value) setLogLevelUI(logLevelSel.value);
       if (logSummaryEl) dataLoader.load('logSummary');
     });
+  </script>
+
+  <script>
+    // ─── Tabbed shell + power-state mirror ───────────────────────────
+    // Purely presentational: switches control groups and reflects the
+    // device's live on/off state (read from #statusIndicator, which the
+    // main script keeps current) onto the segmented power control. No
+    // device endpoints are touched here.
+    (function () {
+      var bar = document.querySelector('.tabbar');
+      var panels = document.querySelectorAll('.tab-panel');
+      if (bar) {
+        bar.querySelectorAll('button').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            bar.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-selected', 'false'); });
+            btn.setAttribute('aria-selected', 'true');
+            var t = btn.dataset.tab;
+            panels.forEach(function (p) { p.classList.toggle('active', p.dataset.panel === t); });
+            window.scrollTo(0, 0);
+          });
+        });
+      }
+      // Mirror on/off onto the power segments by watching the status dot.
+      var ind = document.getElementById('statusIndicator');
+      var onBtn = document.getElementById('toggleClockOn');
+      var offBtn = document.getElementById('toggleClockOff');
+      function sync() {
+        if (!ind) return;
+        var on = ind.classList.contains('on');
+        if (onBtn) onBtn.setAttribute('aria-pressed', String(on));
+        if (offBtn) offBtn.setAttribute('aria-pressed', String(!on));
+      }
+      if (ind && window.MutationObserver) {
+        new MutationObserver(sync).observe(ind, { attributes: true, attributeFilter: ['class'] });
+      }
+      sync();
+    })();
   </script>
 </body>
 </html>

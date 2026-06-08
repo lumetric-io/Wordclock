@@ -1,0 +1,304 @@
+/* Chronolett — compact layer
+   ───────────────────────────────────────────────────────────────────────
+   Loaded AFTER chronolett.css. It overrides the SAME class names the
+   editorial pages already use (.chapter, .section-head, .section-aside,
+   .hero, .label …), so dropping this one file onto Admin / MQTT / Logs /
+   Update collapses those pages into the same dense, phone-first layout —
+   no per-page markup changes required.
+
+   What changes vs. the editorial sheet:
+     • The 200px label rail is removed — controls run full width.
+     • Chapter padding (56→128px) becomes a tight bordered card.
+     • The full-screen hero shrinks; a sticky app-bar carries live status
+       + the primary On/Off control to the top, in thumb reach.
+     • Touch targets meet the 44px floor (swatches, sliders, buttons).
+   Brand tokens (ink / bone / copper / rust, Inter + JetBrains Mono, square
+   corners, hairline rules) are inherited untouched. */
+
+/* ─── Page shell: full-bleed on phones, capped on desktop ─────────── */
+.page {
+  padding-left: clamp(14px, 4vw, 40px);
+  padding-right: clamp(14px, 4vw, 40px);
+}
+.container { max-width: 680px; }
+main { padding-bottom: clamp(40px, 7vw, 72px); }
+
+/* ─── Sticky app-bar — replaces the giant editorial hero ──────────────
+   Brand mark + live state + power, glued to the top so the two things a
+   user opens this page to do (see if it's on, turn it on/off) never
+   require a scroll. */
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+  margin: 0 calc(-1 * clamp(14px, 4vw, 40px));
+  padding: 0 clamp(14px, 4vw, 40px);
+}
+.appbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+}
+.appbar .brand { font-size: 14px; line-height: 1; flex-shrink: 0; }
+.appbar .appbar-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--graphite-60);
+  white-space: nowrap;
+}
+.appbar .appbar-state .dot { width: 7px; height: 7px; }
+
+/* Power as a compact segmented switch; copper = live, ink = off. */
+.power-switch {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  flex-shrink: 0;
+}
+.power-switch button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: var(--paper);
+  color: var(--graphite-60);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 8px 13px;
+  min-height: 38px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.power-switch button + button { border-left: 1px solid var(--line-strong); }
+.power-switch button[aria-pressed="true"] { background: var(--copper); color: var(--paper); }
+.power-switch button.off[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+/* Slim text hero — kept for pages that still want a title line. */
+.hero {
+  padding: 18px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+.hero .kicker { margin: 0 0 7px; font-size: 10px; }
+.hero h1 { font-size: clamp(26px, 8vw, 38px); font-weight: 300; margin: 0 0 6px; line-height: 1; }
+.hero .lede { font-size: 13px; line-height: 1.5; max-width: 56ch; }
+
+/* ─── Chapters become bordered control cards ──────────────────────── */
+section.chapter {
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  margin: 12px 0 0;
+}
+section.chapter:last-of-type { border-bottom: 1px solid var(--line); }
+
+/* Header: number + title on one tight row, hairline beneath. */
+.section-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: baseline;
+  margin: 0;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.section-head .section-num {
+  display: inline-block;
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--copper);
+}
+.section-head .section-title {
+  display: inline;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+/* Keep the phone collapse behaviour aligned with this denser grid. */
+@media (max-width: 640px) {
+  .section-head { grid-template-columns: auto 1fr; gap: 10px; }
+}
+
+/* Body: drop the 200px rail entirely; single column inside the card.
+   The rail label ("State / Pick / Level") is redundant beside the title
+   in dense mode, so the TOP-LEVEL one is hidden — inner field labels stay. */
+.section-aside {
+  display: block;
+  grid-template-columns: none;
+  gap: 0;
+  padding: 14px 15px 16px;
+}
+@media (max-width: 640px) { .section-aside { grid-template-columns: none; } }
+.section-aside > .label { display: none; }
+.section-body { display: grid; gap: 14px; }
+
+/* ─── Bigger touch targets (44px floor) ───────────────────────────── */
+.swatch-grid { grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 7px; }
+input[type="range"] { height: 42px; }
+input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -11px; }
+input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; }
+.btn { min-height: 44px; }
+.btn.small { min-height: 40px; padding: 9px 12px; font-size: 10px; }
+.status-row { padding: 13px 15px; }
+
+/* ─── Direction B — accordion ─────────────────────────────────────────
+   A chapter marked .collapsible turns its header into a tap target and
+   hides its body until .open. Status stays open / pinned. */
+.chapter.collapsible .section-head {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  grid-template-columns: auto 1fr auto;
+  border-bottom: 1px solid transparent;
+  transition: border-color .2s, background .15s;
+}
+.chapter.collapsible .section-head:hover { background: var(--bone); }
+.chapter.collapsible .section-head::after {
+  content: "";
+  grid-column: 3;
+  justify-self: end;
+  align-self: center;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid var(--graphite-60);
+  border-bottom: 1.5px solid var(--graphite-60);
+  transform: rotate(45deg);
+  transition: transform .2s;
+}
+.chapter.collapsible.open .section-head { border-bottom-color: var(--line-soft); }
+.chapter.collapsible.open .section-head::after { transform: rotate(225deg); }
+.chapter.collapsible:not(.open) .section-aside { display: none; }
+/* A tiny status summary that rides on the right of a collapsed header.
+   Only meaningful in the accordion's collapsed state — hidden in the
+   compact-scroll and tabbed directions, and once a panel is expanded,
+   because the same value is then visible in the body. */
+.head-summary { display: none; }
+.dir-b .chapter.collapsible:not(.open) .head-summary {
+  display: inline;
+  grid-column: 2;
+  justify-self: end;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--graphite-60);
+}
+.head-summary .sw {
+  display: inline-block;
+  width: 11px; height: 11px;
+  border: 1px solid var(--line-strong);
+  vertical-align: -1px;
+  margin-left: 6px;
+}
+
+/* ─── Direction C — tabbed / segmented ───────────────────────────────
+   A sticky segmented control under the app-bar; panels show one group at
+   a time so the page never exceeds ~1.5 screens. */
+.tabbar {
+  position: sticky;
+  top: 60px;
+  z-index: 30;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  margin-top: 12px;
+}
+.tabbar button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--graphite-60);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 12px 4px;
+  min-height: 44px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.tabbar button:first-child { border-left: 0; }
+.tabbar button[aria-selected="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+/* In tabbed mode the first card sits flush under the tabbar. */
+.tab-panel.active section.chapter:first-child { margin-top: 12px; }
+
+/* ─── Footer trim ─────────────────────────────────────────────────── */
+.footer-sig { padding: 18px 0 24px; }
+
+/* ─── Real dashboard (.dash-tabbed) — sticky control header ───────────
+   On the production page the .topbar carries cross-page nav (MQTT / Logs /
+   Admin / language). That's secondary, so it scrolls away; the things you
+   came to do — see state, toggle power, switch control groups — live in a
+   single sticky unit pinned to the top. */
+.dash-tabbed .topbar { position: static; }
+
+.sticky-controls {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Status + power live on one row above the tabs. */
+.statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0 0;
+}
+.statusbar .status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+.statusbar .status-line .dot { width: 8px; height: 8px; }
+.statusbar .status-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* In the production header the tabbar is not independently sticky — the
+   whole .sticky-controls unit pins instead. */
+.dash-tabbed .tabbar {
+  position: static;
+  top: auto;
+  margin: 11px 0 0;
+  border-left: 1px solid var(--line-strong);
+  border-right: 1px solid var(--line-strong);
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 0;
+}
+
+/* LED-event banner rides full width just under the sticky controls, so an
+   alert ("Firmware downloading…") is visible on whichever tab is open. */
+.dash-tabbed #ledEventRow { margin: 12px 0 0; }
+
+/* First card in each panel sits flush under the sticky controls. */
+.dash-tabbed .tab-panel.active section.chapter:first-child { margin-top: 12px; }

@@ -307,5 +307,9 @@
   "dashboard.led.mqtt_disc": "MQTT disconnected",
   "dashboard.led.ble_prov": "BLE provisioning",
   "dashboard.led.wifi_portal": "Wi-Fi manager portal",
-  "dashboard.classic_title": "Switch to classic design"
+  "dashboard.classic_title": "Switch to classic design",
+  "dashboard.tab.light": "Light",
+  "dashboard.tab.schedule": "Schedule",
+  "dashboard.tab.display": "Display",
+  "dashboard.tab.system": "System"
 }
