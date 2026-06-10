@@ -52,6 +52,7 @@ lib/
 !CHANGELOG.md
 !CONTRIBUTING.md
 !ROADMAP.md
+!app-device-api.md
 
 # Claude
 .claude/
