@@ -24,6 +24,49 @@ won't reproduce accurately under emissive light — especially matte
 coatings. Mark RAL input as "preview only — LED gamut differs from
 coating" so customers don't expect an exact match.
 
+## Multi-language — language & dialect picker in the dashboard
+
+Surfaced 2026-08-09, after the firmware side landed. The device can already do
+this; nothing here needs a firmware change.
+
+**What exists.** `GET/POST /api/language` and `GET/POST /api/dialect`
+(`app-device-api.md` §1.3). A language is a physical front plate, so switching
+it reboots; a dialect is a second way of reading the same plate and applies
+live. German ships two dialects on one plate — `de-nord` ("viertel nach zehn")
+and `de-sued` ("viertel elf"). Dutch has exactly one, so the same UI serves
+both: the dialect section simply has a list of length 1 and collapses.
+
+**What's missing.** No way to reach any of it from a browser. Today it's curl
+only.
+
+- **Where**: the Display tab of `data/dashboard.html`, next to the animation
+  setting. *Not* `admin.html` — that page is behind `ensureAdminAuth()` (real
+  HTTP Basic), so a customer would need the admin password to change their own
+  clock's dialect, and it's the page holding factory reset and bootstrap
+  re-install. Dialect belongs with brightness, colour and night mode. Put it in
+  one page only; two places writing the same NVS key will diverge.
+- **Build it data-driven.** `/api/dialect` returns `id`, `label` and `sample`
+  per dialect — render whatever the device reports, never a hardcoded list. A
+  Dutch product then exercises the same code path as a German one, so the
+  single-language case can't rot.
+- **Pick on the sample sentence**, not the label: "ES IST VIERTEL NACH DREI" vs
+  "ES IST VIERTEL VIER" tells a customer something; "Hochdeutsch" vs "Süd-Ost"
+  does not.
+- **Preview live.** A dialect change needs no reboot, so the physical clock can
+  follow the radio button while the customer is choosing. They look at the
+  wall, not the screen.
+- **Language change reboots** — warn, then poll `/api/firmware/identity` until
+  the device is back, and confirm afterwards ("your clock now shows German —
+  does that look right?") with a way back.
+- Ships as an `fs.bin` OTA (it's `data/`-only), not an app-only update.
+- Still open elsewhere: `data/i18n/de.json` + a `DE` entry in the language
+  pill, in the Sie-form used by the website's `de.json`. UI language stays
+  separate from clock language.
+
+Independent of the display gate (that's a later, telemetry-gated phase); this
+picker can ship as soon as it's built. Full design: `multi-language-design.md`
+§6 and §12 (untracked — `.gitignore` whitelists only a few `*.md`).
+
 ## Security hardening — full-repo review findings
 
 Surfaced 2026-07-04 from a full firmware security review. The device's whole
