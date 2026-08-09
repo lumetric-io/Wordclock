@@ -36,8 +36,21 @@ live. German ships two dialects on one plate — `de-nord` ("viertel nach zehn")
 and `de-sued` ("viertel elf"). Dutch has exactly one, so the same UI serves
 both: the dialect section simply has a list of length 1 and collapses.
 
-**What's missing.** No way to reach any of it from a browser. Today it's curl
-only.
+**Built 2026-08-09** — section `10 Language` at the top of the Display tab in
+`data/dashboard.html`, plus `dashboard.language.*` in `en.json`/`nl.json`. The
+notes below record why it is shaped the way it is. Still open after it:
+
+- **Whether to offer German at all.** `nextgen-50x50` compiles the German plate
+  in so the multi-language path runs on real hardware — that is not the same as
+  selling German plates, and a Dutch customer who picks German gets an
+  unreadable wall until they switch back. The `OFFERED_LANGUAGES` constant in
+  the picker is the one-line control: `null` offers whatever the firmware
+  reports, `['nl']` holds German back. It ships as `null` today. **Decide before
+  this reaches a customer channel.** The active language is always offered even
+  when filtered out, so a device switched over by hand can always switch back.
+- **"Kiezen op beeld"** (design doc §6) — showing the actual letter grid per
+  language instead of a name — needs `/api/language` to return grid data. That
+  is a firmware change, out of scope for a `data/`-only ship.
 
 - **Where**: the Display tab of `data/dashboard.html`, next to the animation
   setting. *Not* `admin.html` — that page is behind `ensureAdminAuth()` (real
