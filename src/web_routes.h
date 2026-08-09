@@ -290,45 +290,55 @@ void setupWebRoutes() {
     serveFile("/dashboard.html", "text/html");
   });
 
-  // ── Chronolett v2 (editorial redesign — now the default) ─────────
-  // dashboard.html IS the v2 UI. dashboard-legacy.html keeps the old
-  // classic build accessible. /dashboard-v2.html is kept as a redirect
-  // alias so any saved bookmarks still resolve.
-  server.on("/dashboard-v2.html", HTTP_GET, []() {
+  // ── Page aliases ────────────────────────────────────────────────
+  // The editorial redesign is the default and lives under the plain names;
+  // there has never been a *-v2.html file in data/. The -v2 URLs only ever
+  // served the plain file under a second name, which is why they looked
+  // identical. They are now 301s: a bookmark still resolves, but the browser
+  // rewrites it to the canonical URL, so the alias retires itself and these
+  // five routes can be deleted outright later without 404ing anyone.
+  // The -legacy pages are different: real files, the old Tailwind build,
+  // reachable by URL only as a fallback.
+  auto redirectPermanent = [](const char* target) {
+    server.sendHeader("Location", target);
+    server.send(301, "text/plain", "");
+  };
+
+  server.on("/dashboard-v2.html", HTTP_GET, [redirectPermanent]() {
     if (!ensureUiAuth()) return;
-    serveFile("/dashboard.html", "text/html");
+    redirectPermanent("/dashboard.html");
   });
   server.on("/dashboard-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     serveFile("/dashboard-legacy.html", "text/html");
   });
-  server.on("/admin-v2.html", HTTP_GET, []() {
+  server.on("/admin-v2.html", HTTP_GET, [redirectPermanent]() {
     if (!ensureAdminAuth()) return;
-    serveFile("/admin.html", "text/html");
+    redirectPermanent("/admin.html");
   });
   server.on("/admin-legacy.html", HTTP_GET, []() {
     if (!ensureAdminAuth()) return;
     serveFile("/admin-legacy.html", "text/html");
   });
-  server.on("/mqtt-v2.html", HTTP_GET, []() {
+  server.on("/mqtt-v2.html", HTTP_GET, [redirectPermanent]() {
     if (!ensureUiAuth()) return;
-    serveFile("/mqtt.html", "text/html");
+    redirectPermanent("/mqtt.html");
   });
   server.on("/mqtt-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     serveFile("/mqtt-legacy.html", "text/html");
   });
-  server.on("/logs-v2.html", HTTP_GET, []() {
+  server.on("/logs-v2.html", HTTP_GET, [redirectPermanent]() {
     if (!ensureUiAuth()) return;
-    serveFile("/logs.html", "text/html");
+    redirectPermanent("/logs.html");
   });
   server.on("/logs-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     serveFile("/logs-legacy.html", "text/html");
   });
-  server.on("/update-v2.html", HTTP_GET, []() {
+  server.on("/update-v2.html", HTTP_GET, [redirectPermanent]() {
     if (!ensureUiAuth()) return;
-    serveFile("/update.html", "text/html");
+    redirectPermanent("/update.html");
   });
   server.on("/update-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
