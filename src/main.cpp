@@ -28,6 +28,7 @@
 #include "display_settings.h"
 #include "ui_auth.h"
 #include "night_mode.h"
+#include "language_settings.h"
 #include "settings_migration.h"
 #include "system_utils.h"
 #include "ble_provisioning.h"
@@ -77,6 +78,11 @@ void setup() {
 
   // Load persisted display settings (e.g. auto-update preference) before running dependent flows
   displaySettings.begin();
+
+  // Selects the grid variant and phrase table. Must run before anything reads
+  // ACTIVE_WORDS or the LED counts, i.e. before initDisplay() below.
+  LanguageSettings::begin();
+
   nightMode.begin();
 
   // Mount filesystem (LittleFS)

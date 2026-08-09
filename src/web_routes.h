@@ -29,6 +29,7 @@
 #include "led_events.h"
 #include "config.h"
 #include "display_settings.h"
+#include "language_settings.h"
 #include "ui_auth.h"
 #include "wordclock.h"
 #include "clock_display.h"
@@ -898,6 +899,92 @@ void setupWebRoutes() {
 #if defined(ARDUINO_ARCH_ESP32)
     doc["temp_c"] = temperatureRead();
 #endif
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  // ---------------------------------------------------------------------
+  // Language and dialect
+  // ---------------------------------------------------------------------
+  // The language is which front plate this clock has, so switching it swaps
+  // the letter grid, the word table and the LED counts. Doing that under a
+  // running render loop is not worth the risk for a setting a customer touches
+  // once, so a language change is persisted and applied by a reboot. The
+  // dialect only swaps the phrase table and takes effect immediately.
+  server.on("/api/language", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    JsonDocument doc;
+    doc["active"] = LanguageSettings::activeLanguage();
+    doc["stored"] = LanguageSettings::storedLanguage();
+    doc["source"] = LanguageSettings::sourceName();
+    doc["setupComplete"] = LanguageSettings::isSetupComplete();
+    doc["rebootRequired"] = LanguageSettings::rebootRequired();
+    JsonArray available = doc["available"].to<JsonArray>();
+    for (size_t i = 0; i < getLanguageCount(); ++i) {
+      available.add(getLanguageCode(i));
+    }
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  server.on("/api/language", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    const String code = server.hasArg("lang") ? server.arg("lang") : String();
+    if (code.length() == 0) {
+      server.send(400, "text/plain", "Missing 'lang'");
+      return;
+    }
+    if (!LanguageSettings::setLanguage(code.c_str())) {
+      server.send(400, "text/plain", "Unknown language: " + code);
+      return;
+    }
+    const bool reboot = LanguageSettings::rebootRequired();
+    JsonDocument doc;
+    doc["stored"] = LanguageSettings::storedLanguage();
+    doc["source"] = LanguageSettings::sourceName();
+    doc["rebootRequired"] = reboot;
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+    if (reboot) {
+      delay(100);  // let the response leave before the radio goes down
+      safeRestart();
+    }
+  });
+
+  server.on("/api/dialect", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    JsonDocument doc;
+    doc["active"] = LanguageSettings::activeDialect();
+    JsonArray available = doc["available"].to<JsonArray>();
+    for (size_t i = 0; i < getDialectCount(); ++i) {
+      const ClockDialect* d = getDialect(i);
+      if (!d) continue;
+      JsonObject item = available.add<JsonObject>();
+      item["id"] = d->id;
+      item["label"] = d->label;
+      item["sample"] = d->sample;
+    }
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  server.on("/api/dialect", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    const String id = server.hasArg("dialect") ? server.arg("dialect") : String();
+    if (id.length() == 0) {
+      server.send(400, "text/plain", "Missing 'dialect'");
+      return;
+    }
+    if (!LanguageSettings::setDialect(id.c_str())) {
+      server.send(400, "text/plain", "Unknown dialect for active language: " + id);
+      return;
+    }
+    JsonDocument doc;
+    doc["active"] = LanguageSettings::activeDialect();
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);

@@ -30,7 +30,7 @@ enum class WordAnimationMode : uint8_t { Classic = 0, Smart = 1 };
 
 namespace ClockDisplayHelpers {
     static bool isHetIs(const WordSegment& seg) {
-        return strcmp(seg.key, "HET") == 0 || strcmp(seg.key, "IS") == 0;
+        return strcmp(seg.key, "PREFIX_A") == 0 || strcmp(seg.key, "PREFIX_B") == 0;
     }
 
     static void stripHetIsIfDisabled(std::vector<WordSegment>& segs, uint16_t hetIsDurationSec) {
@@ -151,7 +151,7 @@ protected:
 
 TEST_F(ClockDisplayTest, IsHetIs_IdentifiesHet) {
     WordSegment seg;
-    seg.key = "HET";
+    seg.key = "PREFIX_A";
     seg.leds = {0, 1, 2};
     
     EXPECT_TRUE(isHetIs(seg));
@@ -159,7 +159,7 @@ TEST_F(ClockDisplayTest, IsHetIs_IdentifiesHet) {
 
 TEST_F(ClockDisplayTest, IsHetIs_IdentifiesIs) {
     WordSegment seg;
-    seg.key = "IS";
+    seg.key = "PREFIX_B";
     seg.leds = {3, 4};
     
     EXPECT_TRUE(isHetIs(seg));
@@ -167,7 +167,7 @@ TEST_F(ClockDisplayTest, IsHetIs_IdentifiesIs) {
 
 TEST_F(ClockDisplayTest, IsHetIs_RejectsOtherWords) {
     WordSegment seg;
-    seg.key = "VIJF";
+    seg.key = "H_5";
     seg.leds = {5, 6, 7, 8};
     
     EXPECT_FALSE(isHetIs(seg));
@@ -175,22 +175,22 @@ TEST_F(ClockDisplayTest, IsHetIs_RejectsOtherWords) {
 
 TEST_F(ClockDisplayTest, StripHetIsIfDisabled_RemovesWhenZero) {
     std::vector<WordSegment> segments = {
-        {"HET", {0, 1, 2}},
-        {"IS", {3, 4}},
-        {"VIJF", {5, 6, 7, 8}}
+        {"PREFIX_A", {0, 1, 2}},
+        {"PREFIX_B", {3, 4}},
+        {"H_5", {5, 6, 7, 8}}
     };
     
     stripHetIsIfDisabled(segments, 0);
     
     EXPECT_EQ(1, segments.size());
-    EXPECT_STREQ("VIJF", segments[0].key);
+    EXPECT_STREQ("H_5", segments[0].key);
 }
 
 TEST_F(ClockDisplayTest, StripHetIsIfDisabled_KeepsWhenNonzero) {
     std::vector<WordSegment> segments = {
-        {"HET", {0, 1, 2}},
-        {"IS", {3, 4}},
-        {"VIJF", {5, 6, 7, 8}}
+        {"PREFIX_A", {0, 1, 2}},
+        {"PREFIX_B", {3, 4}},
+        {"H_5", {5, 6, 7, 8}}
     };
     
     stripHetIsIfDisabled(segments, 5);
@@ -200,9 +200,9 @@ TEST_F(ClockDisplayTest, StripHetIsIfDisabled_KeepsWhenNonzero) {
 
 TEST_F(ClockDisplayTest, FlattenSegments) {
     std::vector<WordSegment> segments = {
-        {"HET", {0, 1, 2}},
-        {"IS", {3, 4}},
-        {"VIJF", {5, 6, 7, 8}}
+        {"PREFIX_A", {0, 1, 2}},
+        {"PREFIX_B", {3, 4}},
+        {"H_5", {5, 6, 7, 8}}
     };
     
     std::vector<uint16_t> flattened = flattenSegments(segments);
@@ -214,21 +214,21 @@ TEST_F(ClockDisplayTest, FlattenSegments) {
 
 TEST_F(ClockDisplayTest, FindSegment_FindsExisting) {
     std::vector<WordSegment> segments = {
-        {"HET", {0, 1, 2}},
-        {"IS", {3, 4}},
-        {"VIJF", {5, 6, 7, 8}}
+        {"PREFIX_A", {0, 1, 2}},
+        {"PREFIX_B", {3, 4}},
+        {"H_5", {5, 6, 7, 8}}
     };
     
-    const WordSegment* found = findSegment(segments, "VIJF");
+    const WordSegment* found = findSegment(segments, "H_5");
     
     EXPECT_NE(nullptr, found);
-    EXPECT_STREQ("VIJF", found->key);
+    EXPECT_STREQ("H_5", found->key);
 }
 
 TEST_F(ClockDisplayTest, FindSegment_ReturnsNullForMissing) {
     std::vector<WordSegment> segments = {
-        {"HET", {0, 1, 2}},
-        {"IS", {3, 4}}
+        {"PREFIX_A", {0, 1, 2}},
+        {"PREFIX_B", {3, 4}}
     };
     
     const WordSegment* found = findSegment(segments, "MISSING");
@@ -287,9 +287,9 @@ TEST_F(ClockDisplayTest, HetIsCurrentlyVisible_FalseWhenExpired) {
 
 TEST_F(ClockDisplayTest, BuildClassicFrames_CreatesCumulativeFrames) {
     std::vector<WordSegment> segments = {
-        {"HET", {0, 1, 2}},
-        {"IS", {3, 4}},
-        {"VIJF", {5, 6, 7, 8}}
+        {"PREFIX_A", {0, 1, 2}},
+        {"PREFIX_B", {3, 4}},
+        {"H_5", {5, 6, 7, 8}}
     };
     std::vector<std::vector<uint16_t>> frames;
     
@@ -313,8 +313,8 @@ TEST_F(ClockDisplayTest, BuildClassicFrames_EmptyInput) {
 TEST_F(ClockDisplayTest, BuildSmartFrames_FallsBackToClassicWhenNoPrevious) {
     std::vector<WordSegment> prevSegments;  // Empty
     std::vector<WordSegment> nextSegments = {
-        {"HET", {0, 1, 2}},
-        {"IS", {3, 4}}
+        {"PREFIX_A", {0, 1, 2}},
+        {"PREFIX_B", {3, 4}}
     };
     std::vector<std::vector<uint16_t>> frames;
     

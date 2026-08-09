@@ -22,7 +22,7 @@ protected:
 
 // Test: get_leds_for_word function
 TEST_F(TimeMapperTest, GetLedsForWord_HET) {
-    auto leds = get_leds_for_word("HET");
+    auto leds = get_leds_for_word("PREFIX_A");
     ASSERT_EQ(3, leds.size());
     ASSERT_EQ(1, leds[0]);
     ASSERT_EQ(2, leds[1]);
@@ -30,7 +30,7 @@ TEST_F(TimeMapperTest, GetLedsForWord_HET) {
 }
 
 TEST_F(TimeMapperTest, GetLedsForWord_IS) {
-    auto leds = get_leds_for_word("IS");
+    auto leds = get_leds_for_word("PREFIX_B");
     ASSERT_EQ(2, leds.size());
     ASSERT_EQ(5, leds[0]);
     ASSERT_EQ(6, leds[1]);
@@ -67,13 +67,13 @@ TEST_F(TimeMapperTest, FiveMinutesPast_12_05) {
     // Should contain: HET, IS, VIJF, OVER, TWAALF
     ASSERT_FALSE(leds.empty());
     
-    // Verify "VIJF_M" is included
-    auto vijfLeds = get_leds_for_word("VIJF_M");
+    // Verify "MIN_5" is included
+    auto vijfLeds = get_leds_for_word("MIN_5");
     ASSERT_TRUE(vectorContainsAll(leds, vijfLeds))
         << "VIJF_M LEDs not found in result";
     
-    // Verify "OVER" is included
-    auto overLeds = get_leds_for_word("OVER");
+    // Verify "PAST" is included
+    auto overLeds = get_leds_for_word("PAST");
     ASSERT_TRUE(vectorContainsAll(leds, overLeds))
         << "OVER LEDs not found in result";
 }
@@ -86,8 +86,8 @@ TEST_F(TimeMapperTest, TenMinutesPast_12_10) {
     // Should contain: HET, IS, TIEN, OVER, TWAALF
     ASSERT_FALSE(leds.empty());
     
-    // Verify "TIEN_M" is included
-    auto tienLeds = get_leds_for_word("TIEN_M");
+    // Verify "MIN_10" is included
+    auto tienLeds = get_leds_for_word("MIN_10");
     ASSERT_TRUE(vectorContainsAll(leds, tienLeds))
         << "TIEN_M LEDs not found in result";
 }
@@ -100,8 +100,8 @@ TEST_F(TimeMapperTest, QuarterPast_12_15) {
     // Should contain: HET, IS, KWART, OVER, TWAALF
     ASSERT_FALSE(leds.empty());
     
-    // Verify "KWART" is included
-    auto kwartLeds = get_leds_for_word("KWART");
+    // Verify "QUARTER" is included
+    auto kwartLeds = get_leds_for_word("QUARTER");
     ASSERT_TRUE(vectorContainsAll(leds, kwartLeds))
         << "KWART LEDs not found in result";
 }
@@ -114,12 +114,12 @@ TEST_F(TimeMapperTest, TwentyPast_12_20) {
     // Should contain: HET, IS, TIEN, VOOR, HALF, EEN (next hour!)
     ASSERT_FALSE(leds.empty());
     
-    // Verify "TIEN_M" is included
-    auto tienLeds = get_leds_for_word("TIEN_M");
+    // Verify "MIN_10" is included
+    auto tienLeds = get_leds_for_word("MIN_10");
     ASSERT_TRUE(vectorContainsAll(leds, tienLeds));
     
-    // Verify "VOOR" is included
-    auto voorLeds = get_leds_for_word("VOOR");
+    // Verify "TO" is included
+    auto voorLeds = get_leds_for_word("TO");
     ASSERT_TRUE(vectorContainsAll(leds, voorLeds));
     
     // Verify "HALF" is included
@@ -141,7 +141,7 @@ TEST_F(TimeMapperTest, HalfPast_12_30) {
         << "HALF LEDs not found in result";
     
     // After 20 minutes, it shows the next hour (12:30 = half een)
-    auto eenLeds = get_leds_for_word("EEN");
+    auto eenLeds = get_leds_for_word("H_1");
     ASSERT_TRUE(vectorContainsAll(leds, eenLeds))
         << "EEN LEDs not found in result (should show next hour)";
 }
@@ -154,12 +154,12 @@ TEST_F(TimeMapperTest, QuarterTo_12_45) {
     // Should contain: HET, IS, KWART, VOOR, EEN
     ASSERT_FALSE(leds.empty());
     
-    // Verify "KWART" is included
-    auto kwartLeds = get_leds_for_word("KWART");
+    // Verify "QUARTER" is included
+    auto kwartLeds = get_leds_for_word("QUARTER");
     ASSERT_TRUE(vectorContainsAll(leds, kwartLeds));
     
-    // Verify "VOOR" is included
-    auto voorLeds = get_leds_for_word("VOOR");
+    // Verify "TO" is included
+    auto voorLeds = get_leds_for_word("TO");
     ASSERT_TRUE(vectorContainsAll(leds, voorLeds));
 }
 
@@ -203,8 +203,8 @@ TEST_F(TimeMapperTest, Midnight_00_00) {
     // Should contain: HET, IS, TWAALF, UUR
     ASSERT_FALSE(leds.empty());
     
-    // Verify "TWAALF" is included (0 % 12 = 0 = TWAALF)
-    auto twaalfLeds = get_leds_for_word("TWAALF");
+    // Verify "H_12" is included (0 % 12 = 0 = TWAALF)
+    auto twaalfLeds = get_leds_for_word("H_12");
     ASSERT_TRUE(vectorContainsAll(leds, twaalfLeds))
         << "TWAALF LEDs not found for midnight";
 }
@@ -217,16 +217,16 @@ TEST_F(TimeMapperTest, MidnightWraparound_23_55) {
     // 23:55 = "vijf voor twaalf" (5 to 12)
     ASSERT_FALSE(leds.empty());
     
-    // Verify "VIJF_M" is included
-    auto vijfLeds = get_leds_for_word("VIJF_M");
+    // Verify "MIN_5" is included
+    auto vijfLeds = get_leds_for_word("MIN_5");
     ASSERT_TRUE(vectorContainsAll(leds, vijfLeds));
     
-    // Verify "VOOR" is included
-    auto voorLeds = get_leds_for_word("VOOR");
+    // Verify "TO" is included
+    auto voorLeds = get_leds_for_word("TO");
     ASSERT_TRUE(vectorContainsAll(leds, voorLeds));
     
-    // Verify "TWAALF" is included
-    auto twaalfLeds = get_leds_for_word("TWAALF");
+    // Verify "H_12" is included
+    auto twaalfLeds = get_leds_for_word("H_12");
     ASSERT_TRUE(vectorContainsAll(leds, twaalfLeds));
 }
 
@@ -256,13 +256,13 @@ TEST_F(TimeMapperTest, WordSegmentsWithKeys_12_15) {
     ASSERT_GT(segments.size(), 0);
     
     // First two should be HET and IS
-    ASSERT_STREQ("HET", segments[0].key);
-    ASSERT_STREQ("IS", segments[1].key);
+    ASSERT_STREQ("PREFIX_A", segments[0].key);
+    ASSERT_STREQ("PREFIX_B", segments[1].key);
     
     // Should include KWART
     bool hasKwart = false;
     for (const auto& seg : segments) {
-        if (strcmp(seg.key, "KWART") == 0) {
+        if (strcmp(seg.key, "QUARTER") == 0) {
             hasKwart = true;
             break;
         }

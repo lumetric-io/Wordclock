@@ -5,6 +5,12 @@
 #include <cstring>
 #include "../../src/wordposition.h"
 
+// Real phrase-rule data — the tables are plain data with no Arduino/ESP
+// dependency, so tests exercise the production tables rather than a copy.
+// Every test dir is a single translation unit, so pulling in the .cpp here is
+// safe and saves each test from including it separately.
+#include "../../src/phrase_rules.cpp"
+
 // Simple test grid for unit testing (Dutch word clock)
 const char* const LETTER_GRID_TEST[] = {
     "HETLISAVIJF",
@@ -23,27 +29,27 @@ const char* const LETTER_GRID_TEST[] = {
 
 // Test word definitions - minimal set for testing
 const WordPosition WORDS_TEST[] = {
-    WPOS("HET",    1, 2, 3),
-    WPOS("IS",     5, 6),
-    WPOS("VIJF_M", 8, 9, 10, 11),
-    WPOS("TIEN_M", 12, 13, 14, 15),
-    WPOS("VOOR",   19, 20, 21, 22),
-    WPOS("OVER",   23, 24, 25, 26),
-    WPOS("KWART",  29, 30, 31, 32, 33),
-    WPOS("HALF",   34, 35, 36, 37),
-    WPOS("EEN",    56, 57, 58),
-    WPOS("TWEE",   60, 61, 62, 63),
-    WPOS("DRIE",   64, 65, 66, 67),
-    WPOS("VIER",   67, 68, 69, 70),
-    WPOS("VIJF",   72, 73, 74, 75),
-    WPOS("ZES",    76, 77, 78),
-    WPOS("ZEVEN",  78, 79, 80, 81, 82),
-    WPOS("ACHT",   89, 90, 91, 92),
-    WPOS("NEGEN",  85, 86, 87, 88, 89),
-    WPOS("TIEN",   93, 94, 95, 96),
-    WPOS("ELF",    100, 101, 102),
-    WPOS("TWAALF", 103, 104, 105, 106, 107, 108),
-    WPOS("UUR",    109, 110, 111),
+    WPOS("PREFIX_A", 1, 2, 3),                      // HET
+    WPOS("PREFIX_B", 5, 6),                         // IS
+    WPOS("MIN_5",    8, 9, 10, 11),                 // VIJF_M
+    WPOS("MIN_10",   12, 13, 14, 15),               // TIEN_M
+    WPOS("TO",       19, 20, 21, 22),               // VOOR
+    WPOS("PAST",     23, 24, 25, 26),               // OVER
+    WPOS("QUARTER",  29, 30, 31, 32, 33),           // KWART
+    WPOS("HALF",     34, 35, 36, 37),               // HALF
+    WPOS("H_1",      56, 57, 58),                   // EEN
+    WPOS("H_2",      60, 61, 62, 63),               // TWEE
+    WPOS("H_3",      64, 65, 66, 67),               // DRIE
+    WPOS("H_4",      67, 68, 69, 70),               // VIER
+    WPOS("H_5",      72, 73, 74, 75),               // VIJF
+    WPOS("H_6",      76, 77, 78),                   // ZES
+    WPOS("H_7",      78, 79, 80, 81, 82),           // ZEVEN
+    WPOS("H_8",      89, 90, 91, 92),               // ACHT
+    WPOS("H_9",      85, 86, 87, 88, 89),           // NEGEN
+    WPOS("H_10",     93, 94, 95, 96),               // TIEN
+    WPOS("H_11",     100, 101, 102),                // ELF
+    WPOS("H_12",     103, 104, 105, 106, 107, 108), // TWAALF
+    WPOS("OCLOCK",   109, 110, 111),                // UUR
 };
 
 const size_t WORDS_TEST_COUNT = sizeof(WORDS_TEST) / sizeof(WORDS_TEST[0]);
@@ -78,6 +84,11 @@ inline const WordPosition* find_word(const char* name) {
     }
     return nullptr;
 }
+
+// The test grid is Dutch, so it runs the Dutch rule table by default. Tests
+// that swap ACTIVE_WORDS for another variant swap this along with it.
+const PhraseRules* ACTIVE_PHRASE_RULES = &PHRASE_RULES_NL;
+inline const PhraseRules* getActivePhraseRules() { return ACTIVE_PHRASE_RULES; }
 
 // Mock grid functions
 inline uint16_t getActiveLedCountGrid() { return 111; }

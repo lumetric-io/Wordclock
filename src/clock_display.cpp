@@ -371,8 +371,9 @@ void ClockDisplay::forceAnimationForTime(const struct tm& time) {
 // Helper Methods (static)
 // ============================================================================
 
+// "het is" / "es ist" — the language-neutral prefix slots.
 bool ClockDisplay::isHetIs(const WordSegment& seg) {
-    return strcmp(seg.key, "HET") == 0 || strcmp(seg.key, "IS") == 0;
+    return strcmp(seg.key, "PREFIX_A") == 0 || strcmp(seg.key, "PREFIX_B") == 0;
 }
 
 void ClockDisplay::stripHetIsIfDisabled(std::vector<WordSegment>& segs, uint16_t hetIsDurationSec) {

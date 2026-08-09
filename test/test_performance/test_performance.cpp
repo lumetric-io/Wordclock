@@ -61,7 +61,7 @@ TEST_F(PerformanceTest, TimeMapper_AllTimes_Under10ms) {
 TEST_F(PerformanceTest, WordLookup_Fast) {
     long elapsed = measureMicroseconds([&]() {
         for (int i = 0; i < 1000; i++) {
-            auto word = get_leds_for_word("HET");
+            auto word = get_leds_for_word("PREFIX_A");
             (void)word;
         }
     });

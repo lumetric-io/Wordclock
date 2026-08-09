@@ -100,6 +100,85 @@ Response (both GET and the POST reply), from `sendNightModeConfig()`
 }
 ```
 
+### 1.3 Language & dialect
+
+The language is which **front plate** the clock physically has — a German plate
+rendering Dutch words spells nonsense. So switching language swaps the letter
+grid, the word table and the LED counts, and is applied by a **reboot**; the
+dialect only swaps the phrase table and takes effect immediately.
+
+A build contains one plate per language it supports. `available` therefore
+lists what this specific firmware can render, which is a property of the
+product, not of the app — never hardcode the list.
+
+| Endpoint | Method | Params | Response | Notes |
+|---|---|---|---|---|
+| `/api/language` | GET | — | `200` JSON (below) | `web_routes.h:915` |
+| `/api/language` | POST | `lang=<iso>` (query) | `200` JSON / `400 "Missing 'lang'"` / `400 "Unknown language: X"` | **Device reboots** when the code differs from the running one. `web_routes.h:932` |
+| `/api/dialect` | GET | — | `200` JSON (below) | Dialects of the **active** language only. `web_routes.h:957` |
+| `/api/dialect` | POST | `dialect=<id>` (query) | `200` JSON / `400 "Missing 'dialect'"` / `400 "Unknown dialect for active language: X"` | Applied live, no reboot. `web_routes.h:975` |
+
+`GET /api/language`:
+
+```json
+{
+  "active": "nl",
+  "stored": "nl",
+  "source": "default",
+  "setupComplete": false,
+  "rebootRequired": false,
+  "available": ["nl", "de"]
+}
+```
+
+- `active` — what is rendering right now.
+- `stored` — what is in NVS. Differs from `active` only between a POST and the
+  reboot that carries it out.
+- `source` — `default` \| `user` \| `migrated`. `default` means nobody has
+  chosen and the build's first plate is rendering; `migrated` means the field
+  migration pinned this device to the language it already spoke.
+- `setupComplete` — `source != "default"`. Reported now; nothing is gated on it
+  yet (see the phasing note below).
+
+`POST /api/language` replies before rebooting:
+
+```json
+{ "stored": "de", "source": "user", "rebootRequired": true }
+```
+
+⚠️ When `rebootRequired` is `true` the connection drops ~100 ms after the
+response. Treat the reply as final and poll `/api/firmware/identity` to detect
+the device coming back.
+
+Posting the **already active** language is still a choice: it moves `source` to
+`user` without a reboot. That is the whole interaction on a single-language
+product — one confirmation.
+
+`GET /api/dialect`:
+
+```json
+{
+  "active": "de-nord",
+  "available": [
+    { "id": "de-nord", "label": "Hochdeutsch", "sample": "viertel nach zehn · viertel vor elf" },
+    { "id": "de-sued", "label": "Süd-Ost",     "sample": "viertel elf · dreiviertel elf" }
+  ]
+}
+```
+
+`sample` is the phrasing that distinguishes this dialect — it is what the user
+picks on, since "Hochdeutsch" vs "Süd-Ost" means little on its own. Dutch has
+exactly one dialect (`nl`), so the list is never empty and the app can use the
+same UI for both languages.
+
+⚠️ A language switch **clears the stored dialect** — a dialect belongs to one
+plate. Re-read `/api/dialect` after the device comes back up.
+
+**Phasing note:** the display is *not* gated on `setupComplete` in this
+firmware. Every clock keeps showing the time regardless of `source`. The gate
+is a later change, and it will only be armed once fleet telemetry shows no
+device still reporting `langSrc: "default"`.
+
 ---
 
 ## 2. Device info & identity

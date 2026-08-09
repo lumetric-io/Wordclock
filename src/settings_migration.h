@@ -2,6 +2,7 @@
 #define SETTINGS_MIGRATION_H
 
 #include <Preferences.h>
+#include "language_settings.h"
 #include "log.h"
 
 class SettingsMigration {
@@ -9,8 +10,15 @@ public:
     static void migrateIfNeeded() {
         migrateLogDeleteOnBootDefault();
 
+        // MUST stay above the migrated_v2 early-return below. That key is the
+        // strongest evidence that this chip has booted per-device firmware
+        // before, and it is written at the end of this very function on the
+        // first boot of a brand-new chip too. Move this call down and every
+        // new device would look like a field device from its second boot on.
+        LanguageSettings::pinExistingDeviceIfNeeded();
+
         Preferences prefs;
-        
+
         // Check if migration already done
         prefs.begin("wc_system", true);
         bool migrated = prefs.getBool("migrated_v2", false);
