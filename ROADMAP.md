@@ -5,12 +5,12 @@ place to capture context so the idea isn't lost when the conversation ends.
 
 ## Color picker — extend input methods
 
-Surfaced 2026-05-10. Today the v2 swatch palette + native "Custom…" picker
+Surfaced 2026-05-10. Today the swatch palette + native "Custom…" picker
 covers the common case; these are extensions for power users.
 
 - **Hex text field** (`#RRGGBB` / `RRGGBB`). Cheapest to ship — server's
   `/setColor?color=…` already accepts any hex. ~30 lines of JS in
-  `data/dashboard-v2.html` (and `data/admin-v2.html`) next to the
+  `data/dashboard.html` (and `data/admin.html`) next to the
   "Custom…" button. Validate, then call existing `applyColor(hex)`.
 - **RGB triplet** (`r,g,b` 0–255). Three small numeric fields, convert
   client-side to hex, reuse `/setColor`.
