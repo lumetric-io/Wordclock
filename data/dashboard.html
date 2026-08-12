@@ -207,37 +207,6 @@
       </div>
 
       <div class="tab-panel" data-panel="display" role="tabpanel">
-<section class="chapter hidden" id="languageSection">
-        <header class="section-head">
-          <span class="section-num">10</span>
-          <h2 class="section-title" data-i18n="dashboard.language.title">Language</h2>
-        </header>
-        <div class="section-aside">
-          <span class="label" data-i18n="dashboard.language.label">Front plate</span>
-          <div class="section-body">
-            <div class="field hidden" id="languageConfirm">
-              <p class="help text-warn" id="languageConfirmText"></p>
-              <div class="btn-row">
-                <button id="languageConfirmOk" class="btn line small" data-i18n="dashboard.language.confirm_ok">That's right</button>
-                <button id="languageConfirmBack" class="btn line small"></button>
-              </div>
-              <hr class="h-rule" />
-            </div>
-            <div class="field hidden" id="languageField">
-              <div id="languageOptions"></div>
-              <p class="help" data-i18n="dashboard.language.help">Pick the language printed on your clock's front plate. Switching restarts the clock.</p>
-            </div>
-            <div class="field hidden" id="dialectField">
-              <hr class="h-rule" id="dialectRule" />
-              <span class="label" data-i18n="dashboard.language.dialect_label">Reading</span>
-              <p class="help" data-i18n="dashboard.language.dialect_question">How does your clock say a quarter past three?</p>
-              <div id="dialectOptions"></div>
-              <p class="help" data-i18n="dashboard.language.dialect_help">Applies immediately — watch the clock while you choose.</p>
-            </div>
-            <p id="languageStatus" class="help muted"></p>
-          </div>
-        </div>
-      </section>
 <section class="chapter">
         <header class="section-head">
           <span class="section-num">07</span>
@@ -269,6 +238,41 @@
                 <p class="help" data-i18n="dashboard.display.het_is_help">0 = never · 360 = always</p>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+<!-- Last section in the tab on purpose. Language is a once-ever setting a
+     customer should be able to reach when something is wrong, not something
+     to trip over while adjusting the display. It also hides itself entirely
+     when there is nothing to choose. -->
+<section class="chapter hidden" id="languageSection">
+        <header class="section-head">
+          <span class="section-num">10</span>
+          <h2 class="section-title" data-i18n="dashboard.language.title">Language</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.language.label">Front plate</span>
+          <div class="section-body">
+            <div class="field hidden" id="languageConfirm">
+              <p class="help text-warn" id="languageConfirmText"></p>
+              <div class="btn-row">
+                <button id="languageConfirmOk" class="btn line small" data-i18n="dashboard.language.confirm_ok">That's right</button>
+                <button id="languageConfirmBack" class="btn line small"></button>
+              </div>
+              <hr class="h-rule" />
+            </div>
+            <div class="field hidden" id="languageField">
+              <div id="languageOptions"></div>
+              <p class="help" data-i18n="dashboard.language.help">Pick the language printed on your clock's front plate. Switching restarts the clock.</p>
+            </div>
+            <div class="field hidden" id="dialectField">
+              <hr class="h-rule" id="dialectRule" />
+              <span class="label" data-i18n="dashboard.language.dialect_label">Reading</span>
+              <p class="help" data-i18n="dashboard.language.dialect_question">How does your clock say a quarter past three?</p>
+              <div id="dialectOptions"></div>
+              <p class="help" data-i18n="dashboard.language.dialect_help">Applies immediately — watch the clock while you choose.</p>
+            </div>
+            <p id="languageStatus" class="help muted"></p>
           </div>
         </div>
       </section>
@@ -1468,12 +1472,17 @@
       const ENDONYMS = { nl: 'Nederlands', de: 'Deutsch', en: 'English' };
       const languageName = (code) => ENDONYMS[code] || String(code || '').toUpperCase();
 
-      // null = offer whatever the firmware reports. Set to a list (e.g.
-      // ['nl']) to hold a language back while its front plates are not
-      // shipping: nextgen-50x50 compiles the German plate in so the code path
-      // runs on real hardware, which is not the same as selling it. The active
-      // language is always offered, so a device switched over by hand can
-      // always switch back.
+      // null = offer whatever the firmware reports. Decided 2026-08-09: keep it
+      // null. The customer picks their language at setup, but when that goes
+      // wrong — wrong pick, wrong plate shipped, someone else set it up — they
+      // must be able to fix it themselves rather than needing support. That is
+      // worth more than hiding German from a Dutch owner who has no reason to
+      // pick it. The section sits last in the tab for the same reason: reachable,
+      // not prominent.
+      //
+      // Set to a list (e.g. ['nl']) if a language ever has to be held back. The
+      // active language is always offered even when filtered out, so a device
+      // switched over by hand can never get stuck.
       const OFFERED_LANGUAGES = null;
 
       const SWITCH_KEY = 'chronolett.langSwitch';
