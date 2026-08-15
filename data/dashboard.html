@@ -268,8 +268,9 @@
             <div class="field hidden" id="dialectField">
               <hr class="h-rule" id="dialectRule" />
               <span class="label" data-i18n="dashboard.language.dialect_label">Reading</span>
-              <p class="help" data-i18n="dashboard.language.dialect_question">How does your clock say a quarter past three?</p>
-              <div id="dialectOptions"></div>
+              <p class="help" id="dialectQuestion" data-i18n="dashboard.language.dialect_question">How does your clock say a quarter past three?</p>
+              <p class="help hidden" id="dialectAxisIntro" data-i18n="dashboard.language.dialect_axis_intro">Your plate can be read in more than one way. Answer both questions the way you say the time.</p>
+              <div id="dialectOptions" class="field"></div>
               <p class="help" data-i18n="dashboard.language.dialect_help">Applies immediately — watch the clock while you choose.</p>
             </div>
             <p id="languageStatus" class="help muted"></p>
@@ -1488,7 +1489,7 @@
       const SWITCH_KEY = 'chronolett.langSwitch';
 
       let langs    = { active: null, available: [] };
-      let dialects = { active: null, available: [] };
+      let dialects = { active: null, available: [], axes: [] };
       let busy     = false;
 
       const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg || ''; };
@@ -1528,35 +1529,78 @@
         langField.classList.toggle('hidden', codes.length < 2);
       }
 
+      // One radio row. The sample sentence leads: "Hochdeutsch" vs "Süd-Ost"
+      // means little to a customer, "viertel nach zehn" is the actual choice.
+      function dialectRow(groupName, value, sample, name, checked, onPick) {
+        const label = document.createElement('label');
+        label.className = 'check-row';
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = groupName;
+        input.value = value;
+        input.checked = checked;
+        input.addEventListener('change', () => { if (input.checked) onPick(); });
+        const span = document.createElement('span');
+        const sampleEl = document.createElement('span');
+        sampleEl.className = 'value-mono';
+        sampleEl.textContent = sample || value;
+        span.appendChild(sampleEl);
+        if (name) {
+          const nameEl = document.createElement('span');
+          nameEl.className = 'muted';
+          nameEl.textContent = ' — ' + name;
+          span.appendChild(nameEl);
+        }
+        label.appendChild(input);
+        label.appendChild(span);
+        return label;
+      }
+
       function renderDialects() {
         const list = dialects.available || [];
+        const axes = dialects.axes || [];
         dialectOpts.innerHTML = '';
-        list.forEach((d) => {
-          const label = document.createElement('label');
-          label.className = 'check-row';
-          const input = document.createElement('input');
-          input.type = 'radio';
-          input.name = 'clockDialect';
-          input.value = d.id;
-          input.checked = (d.id === dialects.active);
-          input.addEventListener('change', () => { if (input.checked) pickDialect(d.id); });
-          // The sample sentence leads: "Hochdeutsch" vs "Süd-Ost" means little
-          // to a customer, "ES IST VIERTEL VIER" is the actual choice.
-          const span = document.createElement('span');
-          const sample = document.createElement('span');
-          sample.className = 'value-mono';
-          sample.textContent = d.sample || d.id;
-          span.appendChild(sample);
-          if (d.label) {
-            const name = document.createElement('span');
-            name.className = 'muted';
-            name.textContent = ' — ' + d.label;
-            span.appendChild(name);
-          }
-          label.appendChild(input);
-          label.appendChild(span);
-          dialectOpts.appendChild(label);
-        });
+
+        // A variant that declares axes asks one question per axis instead of
+        // showing the cross-product as a flat list: German has four readings
+        // but only two independent decisions, and "viertel elf" vs "zwanzig
+        // vor elf" are unrelated things to know about your own dialect. A
+        // variant that declares none (Dutch, and any older firmware whose
+        // /api/dialect predates `axes`) falls back to the flat list.
+        if (axes.length) {
+          axes.forEach((axis) => {
+            const group = document.createElement('div');
+            group.className = 'field';
+            const heading = document.createElement('span');
+            heading.className = 'label';
+            heading.textContent = T('dashboard.language.axis.' + axis.id, axis.label || axis.id);
+            group.appendChild(heading);
+            (axis.options || []).forEach((opt) => {
+              group.appendChild(dialectRow(
+                'clockAxis_' + axis.id,
+                opt.value,
+                opt.sample,
+                opt.label,
+                opt.value === axis.active,
+                () => pickAxis(axis.id, opt.value)
+              ));
+            });
+            dialectOpts.appendChild(group);
+          });
+        } else {
+          list.forEach((d) => {
+            dialectOpts.appendChild(dialectRow(
+              'clockDialect', d.id, d.sample, d.label,
+              d.id === dialects.active,
+              () => pickDialect(d.id)
+            ));
+          });
+        }
+
+        const question = document.getElementById('dialectQuestion');
+        const axisIntro = document.getElementById('dialectAxisIntro');
+        if (question)  question.classList.toggle('hidden', axes.length > 0);
+        if (axisIntro) axisIntro.classList.toggle('hidden', axes.length === 0);
         dialectField.classList.toggle('hidden', list.length < 2);
         // The divider only separates something when there is a language list
         // above it — on a single-language product it would open the section.
@@ -1582,9 +1626,13 @@
         langs = { active: l.active, available: Array.isArray(l.available) ? l.available : [] };
         if (dialRes.ok) {
           const d = await dialRes.json();
-          dialects = { active: d.active, available: Array.isArray(d.available) ? d.available : [] };
+          dialects = {
+            active: d.active,
+            available: Array.isArray(d.available) ? d.available : [],
+            axes: Array.isArray(d.axes) ? d.axes : []
+          };
         } else {
-          dialects = { active: null, available: [] };
+          dialects = { active: null, available: [], axes: [] };
         }
         renderLanguages();
         renderDialects();
@@ -1593,25 +1641,40 @@
         showPendingConfirmation();
       }
 
-      async function pickDialect(id) {
+      // Both entry points go through here. The device answers with the reading
+      // it settled on plus its axis values, and we adopt those rather than what
+      // we asked for: on an axis change the resulting dialect id is the
+      // device's to decide, and the other axis must be shown as it really is.
+      async function postDialect(query) {
         if (busy) return;
         busy = true;
-        const previous = dialects.active;
+        const previous = JSON.parse(JSON.stringify({ active: dialects.active, axes: dialects.axes }));
         setStatus(T('common.saving', 'Saving…'));
         try {
-          const res = await fetchTimeout('/api/dialect?dialect=' + encodeURIComponent(id), { method: 'POST' });
+          const res = await fetchTimeout('/api/dialect?' + query, { method: 'POST' });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const body = await res.json();
-          dialects.active = body.active || id;
+          if (body.active) dialects.active = body.active;
+          if (body.axes) {
+            dialects.axes = (dialects.axes || []).map(a => (
+              body.axes[a.id] ? { ...a, active: body.axes[a.id] } : a
+            ));
+          }
+          renderDialects();
           setStatus(T('common.saved', 'Saved'));
         } catch (err) {
-          dialects.active = previous;
+          dialects.active = previous.active;
+          dialects.axes = previous.axes;
           renderDialects();
           setStatus(T('dashboard.language.save_failed', 'Could not change it; keeping the previous setting.'));
         } finally {
           busy = false;
         }
       }
+
+      const pickDialect = (id) => postDialect('dialect=' + encodeURIComponent(id));
+      const pickAxis = (axisId, value) =>
+        postDialect('axis=' + encodeURIComponent(axisId) + '&value=' + encodeURIComponent(value));
 
       // Waits out the reboot the device performs ~100 ms after answering.
       // Two signals, because either can be missed on its own: the device going
@@ -1725,6 +1788,9 @@
 
       window.addEventListener('chronolett:lang', () => {
         renderConfirmation();
+        // The axis headings are the only translated strings in this section
+        // that JS writes rather than data-i18n, so they need re-rendering.
+        renderDialects();
         if (statusEl && statusEl.textContent) setStatus('');
       });
     })();
