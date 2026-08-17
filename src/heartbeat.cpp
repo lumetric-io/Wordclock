@@ -12,6 +12,7 @@
 #include "device_registration.h"
 #include "display_settings.h"
 #include "grid_layout.h"
+#include "language_settings.h"
 #include "led_state.h"
 #include "log.h"
 #include "night_mode.h"
@@ -189,7 +190,14 @@ bool sendHeartbeat() {
   if (gridInfo && gridInfo->key) {
     req["gridVariant"] = gridInfo->key;
   }
-  
+
+  // Language, dialect and — the one that matters for the rollout — who chose
+  // the language. Arming the display gate is only safe once no device in the
+  // fleet still reports langSrc "default".
+  req["lang"] = LanguageSettings::activeLanguage();
+  req["dialect"] = LanguageSettings::activeDialect();
+  req["langSrc"] = LanguageSettings::sourceName();
+
   // Extended system diagnostics
   req["minFreeHeap"] = (long)ESP.getMinFreeHeap();
   req["heapSize"] = (long)ESP.getHeapSize();

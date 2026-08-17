@@ -15,6 +15,7 @@
 #include <WiFiManager.h>
 #endif
 
+#include "config.h"
 #include "fs_compat.h"
 #include "log.h"
 #include "secrets.h"
@@ -96,13 +97,62 @@ void connectWifi() {
 #endif
 }
 
+// mDNS is the only way an operator reaches this firmware: bootstrap joins a
+// factory AP whose DHCP lease they never see, and the picker lives at
+// http://wordclock.local/. So a responder that dies with the Wi-Fi link — it
+// is bound to the STA netif — has to come back on its own. Registration is
+// therefore a loop-serviced state, not a one-shot setup step.
+bool g_mdnsRegistered = false;
+unsigned long g_mdnsNextAttemptMs = 0;
+
+// How often to look at the link. The loop spins every 2 ms; polling
+// WiFi.status() that often during a firmware download is pointless work.
+constexpr unsigned long kMdnsCheckIntervalMs = 1000;
+
 void startMdns() {
-  if (MDNS.begin("wordclock")) {
-    MDNS.addService("http", "tcp", 80);
-    logInfo("[bootstrap] mDNS: http://wordclock.local");
-  } else {
-    logWarn("[bootstrap] mDNS responder failed to start");
+  // end() only when re-registering. Unlike the per-device firmware nothing
+  // else here shares the mDNS stack (no ArduinoOTA), but tearing down a
+  // responder that was never begun is still noise we don't need.
+  static bool registeredBefore = false;
+  if (registeredBefore) {
+    MDNS.end();
   }
+  if (!MDNS.begin(MDNS_HOSTNAME)) {
+    logWarn("[bootstrap] mDNS responder failed to start");
+    g_mdnsNextAttemptMs = millis() + MDNS_RETRY_INTERVAL_MS;
+    return;
+  }
+  MDNS.addService("http", "tcp", 80);
+  registeredBefore = true;
+  g_mdnsRegistered = true;
+  g_mdnsNextAttemptMs = 0;
+  logInfo("[bootstrap] mDNS: http://" MDNS_HOSTNAME ".local");
+}
+
+// Keep the responder matched to the link state. Called from loop().
+void serviceMdns() {
+  static unsigned long nextCheckMs = 0;
+  static bool wasConnected = true;  // setup() only gets here once connected
+
+  const unsigned long now = millis();
+  if (now < nextCheckMs) return;
+  nextCheckMs = now + kMdnsCheckIntervalMs;
+
+  const bool connected = WiFi.status() == WL_CONNECTED;
+  if (!connected) {
+    if (wasConnected) {
+      logWarn("[bootstrap] Wi-Fi lost — mDNS will re-register on reconnect");
+    }
+    wasConnected = false;
+    g_mdnsRegistered = false;
+    g_mdnsNextAttemptMs = 0;
+    return;
+  }
+  wasConnected = true;
+
+  if (g_mdnsRegistered) return;
+  if (g_mdnsNextAttemptMs != 0 && now < g_mdnsNextAttemptMs) return;
+  startMdns();
 }
 
 }  // namespace
@@ -133,6 +183,7 @@ void setup() {
 }
 
 void loop() {
+  serviceMdns();
   server.handleClient();
   // Yield so the provisioning task gets CPU during the long downloads.
   delay(2);

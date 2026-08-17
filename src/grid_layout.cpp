@@ -13,12 +13,13 @@
 
 #if !defined(ENABLE_GRID_NL_V4) && !defined(ENABLE_GRID_NL_50X50_V3) && \
     !defined(ENABLE_GRID_NL_55X50_LOGO_V1) && !defined(ENABLE_GRID_NL_20X20_V1) && \
-    !defined(ENABLE_GRID_NL_105X105_LOGO_V1)
+    !defined(ENABLE_GRID_NL_105X105_LOGO_V1) && !defined(ENABLE_GRID_DE_50X50_V1)
 #define ENABLE_GRID_NL_V4 1
 #define ENABLE_GRID_NL_50X50_V3 1
 #define ENABLE_GRID_NL_55X50_LOGO_V1 1
 #define ENABLE_GRID_NL_20X20_V1 1
 #define ENABLE_GRID_NL_105X105_LOGO_V1 1
+#define ENABLE_GRID_DE_50X50_V1 1
 #endif
 
 #ifndef ENABLE_GRID_NL_V4
@@ -36,9 +37,12 @@
 #ifndef ENABLE_GRID_NL_105X105_LOGO_V1
 #define ENABLE_GRID_NL_105X105_LOGO_V1 0
 #endif
+#ifndef ENABLE_GRID_DE_50X50_V1
+#define ENABLE_GRID_DE_50X50_V1 0
+#endif
 
 #if !(ENABLE_GRID_NL_V4 || ENABLE_GRID_NL_50X50_V3 || ENABLE_GRID_NL_55X50_LOGO_V1 || \
-      ENABLE_GRID_NL_20X20_V1 || ENABLE_GRID_NL_105X105_LOGO_V1)
+      ENABLE_GRID_NL_20X20_V1 || ENABLE_GRID_NL_105X105_LOGO_V1 || ENABLE_GRID_DE_50X50_V1)
 #error "At least one grid variant must be enabled."
 #endif
 
@@ -56,6 +60,9 @@
 #endif
 #if ENABLE_GRID_NL_105X105_LOGO_V1
 #include "grid_variants/nl_105x105_logo_v1.h"
+#endif
+#if ENABLE_GRID_DE_50X50_V1
+#include "grid_variants/de_50x50_v1.h"
 #endif
 
 namespace {
@@ -81,6 +88,12 @@ struct GridVariantData {
   size_t minuteCount;
   MinuteLayout minuteLayout;
   size_t minuteGroupSize;
+  const ClockDialect* dialects;  // never empty; [0] is the fallback
+  size_t dialectCount;
+  // Optional. A variant with no axes offers its dialects as one flat list;
+  // one with axes offers a group per axis and resolves the tuple to a dialect.
+  const DialectAxis* axes;
+  size_t axisCount;
 };
 
 // Helper to compute array length at compile time
@@ -112,27 +125,35 @@ uint16_t computeExtraLedCount(const GridVariantData* data) {
 
 static const GridVariantData GRID_VARIANTS[] = {
 #if ENABLE_GRID_NL_V4
-  { GridVariant::NL_V4, "NL_V4", "Nederlands 30x30 V4", "nl", "v4", LED_COUNT_GRID_NL_V4, LED_COUNT_EXTRA_NL_V4, LED_COUNT_TOTAL_NL_V4, LETTER_GRID_NL_V4, WORDS_NL_V4, WORDS_NL_V4_COUNT, EXTRA_MINUTES_NL_V4, EXTRA_MINUTES_NL_V4_COUNT, MinuteLayout::AfterGrid, 1 },
+  { GridVariant::NL_V4, "NL_V4", "Nederlands 30x30 V4", "nl", "v4", LED_COUNT_GRID_NL_V4, LED_COUNT_EXTRA_NL_V4, LED_COUNT_TOTAL_NL_V4, LETTER_GRID_NL_V4, WORDS_NL_V4, WORDS_NL_V4_COUNT, EXTRA_MINUTES_NL_V4, EXTRA_MINUTES_NL_V4_COUNT, MinuteLayout::AfterGrid, 1, DIALECTS_NL, DIALECTS_NL_COUNT },
 #endif
 #if ENABLE_GRID_NL_50X50_V3
-  { GridVariant::NL_50x50_V3, "NL_50x50_V3", "Nederlands 50x50 V3", "nl", "v3", LED_COUNT_GRID_NL_50x50_V3, LED_COUNT_EXTRA_NL_50x50_V3, LED_COUNT_TOTAL_NL_50x50_V3, LETTER_GRID_NL_50x50_V3, WORDS_NL_50x50_V3, WORDS_NL_50x50_V3_COUNT, EXTRA_MINUTES_NL_50x50_V3, EXTRA_MINUTES_NL_50x50_V3_COUNT, MinuteLayout::AfterGrid, 1 },
+  { GridVariant::NL_50x50_V3, "NL_50x50_V3", "Nederlands 50x50 V3", "nl", "v3", LED_COUNT_GRID_NL_50x50_V3, LED_COUNT_EXTRA_NL_50x50_V3, LED_COUNT_TOTAL_NL_50x50_V3, LETTER_GRID_NL_50x50_V3, WORDS_NL_50x50_V3, WORDS_NL_50x50_V3_COUNT, EXTRA_MINUTES_NL_50x50_V3, EXTRA_MINUTES_NL_50x50_V3_COUNT, MinuteLayout::AfterGrid, 1, DIALECTS_NL, DIALECTS_NL_COUNT },
 #endif
 #if ENABLE_GRID_NL_55X50_LOGO_V1
-  { GridVariant::NL_55x50_LOGO_V1, "NL_55x50_LOGO_V1", "Nederlands 55x50 Logo V1", "nl", "v1", LED_COUNT_GRID_NL_55x50_LOGO_V1, LED_COUNT_EXTRA_NL_55x50_LOGO_V1, LED_COUNT_TOTAL_NL_55x50_LOGO_V1, LETTER_GRID_NL_55x50_LOGO_V1, WORDS_NL_55x50_LOGO_V1, WORDS_NL_55x50_LOGO_V1_COUNT, EXTRA_MINUTES_NL_55x50_LOGO_V1, EXTRA_MINUTES_NL_55x50_LOGO_V1_COUNT, MinuteLayout::AfterGrid, 1 },
+  { GridVariant::NL_55x50_LOGO_V1, "NL_55x50_LOGO_V1", "Nederlands 55x50 Logo V1", "nl", "v1", LED_COUNT_GRID_NL_55x50_LOGO_V1, LED_COUNT_EXTRA_NL_55x50_LOGO_V1, LED_COUNT_TOTAL_NL_55x50_LOGO_V1, LETTER_GRID_NL_55x50_LOGO_V1, WORDS_NL_55x50_LOGO_V1, WORDS_NL_55x50_LOGO_V1_COUNT, EXTRA_MINUTES_NL_55x50_LOGO_V1, EXTRA_MINUTES_NL_55x50_LOGO_V1_COUNT, MinuteLayout::AfterGrid, 1, DIALECTS_NL, DIALECTS_NL_COUNT },
 #endif
 #if ENABLE_GRID_NL_20X20_V1
-  { GridVariant::NL_20x20_V1, "NL_20x20_V1", "Nederlands 20x20 V1", "nl", "v1", LED_COUNT_GRID_NL_20x20_V1, LED_COUNT_EXTRA_NL_20x20_V1, LED_COUNT_TOTAL_NL_20x20_V1, LETTER_GRID_NL_20x20_V1, WORDS_NL_20x20_V1, WORDS_NL_20x20_V1_COUNT, EXTRA_MINUTES_NL_20x20_V1, EXTRA_MINUTES_NL_20x20_V1_COUNT, MinuteLayout::AfterGrid, 1 },
+  { GridVariant::NL_20x20_V1, "NL_20x20_V1", "Nederlands 20x20 V1", "nl", "v1", LED_COUNT_GRID_NL_20x20_V1, LED_COUNT_EXTRA_NL_20x20_V1, LED_COUNT_TOTAL_NL_20x20_V1, LETTER_GRID_NL_20x20_V1, WORDS_NL_20x20_V1, WORDS_NL_20x20_V1_COUNT, EXTRA_MINUTES_NL_20x20_V1, EXTRA_MINUTES_NL_20x20_V1_COUNT, MinuteLayout::AfterGrid, 1, DIALECTS_NL, DIALECTS_NL_COUNT },
 #endif
 #if ENABLE_GRID_NL_105X105_LOGO_V1
-  { GridVariant::NL_105x105_LOGO_V1, "NL_105x105_LOGO_V1", "Nederlands 105x105 Logo V1", "nl", "v1", LED_COUNT_GRID_NL_105x105_LOGO_V1, LED_COUNT_EXTRA_NL_105x105_LOGO_V1, LED_COUNT_TOTAL_NL_105x105_LOGO_V1, LETTER_GRID_NL_105x105_LOGO_V1, WORDS_NL_105x105_LOGO_V1, WORDS_NL_105x105_LOGO_V1_COUNT, EXTRA_MINUTES_NL_105x105_LOGO_V1, EXTRA_MINUTES_NL_105x105_LOGO_V1_COUNT, MinuteLayout::AfterGrid, 4 },
+  { GridVariant::NL_105x105_LOGO_V1, "NL_105x105_LOGO_V1", "Nederlands 105x105 Logo V1", "nl", "v1", LED_COUNT_GRID_NL_105x105_LOGO_V1, LED_COUNT_EXTRA_NL_105x105_LOGO_V1, LED_COUNT_TOTAL_NL_105x105_LOGO_V1, LETTER_GRID_NL_105x105_LOGO_V1, WORDS_NL_105x105_LOGO_V1, WORDS_NL_105x105_LOGO_V1_COUNT, EXTRA_MINUTES_NL_105x105_LOGO_V1, EXTRA_MINUTES_NL_105x105_LOGO_V1_COUNT, MinuteLayout::AfterGrid, 4, DIALECTS_NL, DIALECTS_NL_COUNT },
+#endif
+#if ENABLE_GRID_DE_50X50_V1
+  { GridVariant::DE_50x50_V1, "DE_50x50_V1", "Deutsch 50x50 V1", "de", "v1", LED_COUNT_GRID_DE_50x50_V1, LED_COUNT_EXTRA_DE_50x50_V1, LED_COUNT_TOTAL_DE_50x50_V1, LETTER_GRID_DE_50x50_V1, WORDS_DE_50x50_V1, WORDS_DE_50x50_V1_COUNT, EXTRA_MINUTES_DE_50x50_V1, EXTRA_MINUTES_DE_50x50_V1_COUNT, MinuteLayout::AfterGrid, 1, DIALECTS_DE_50x50_V1, DIALECTS_DE_50x50_V1_COUNT, DIALECT_AXES_DE_50x50_V1, DIALECT_AXES_DE_50x50_V1_COUNT },
 #endif
 };
 
 static const GridVariantData* activeVariant = &GRID_VARIANTS[0];
 static MinuteLayout activeMinuteLayout = MinuteLayout::AfterGrid;
+// Index into activeVariant->dialects. Reset on every variant switch: a dialect
+// belongs to one plate, so carrying an index across variants could point at a
+// phrase table the new plate has no words for.
+static size_t activeDialectIndex = 0;
 
 void applyActiveVariant(const GridVariantData* data) {
   activeVariant = data;
+  activeDialectIndex = 0;
   LETTER_GRID = data->letterGrid;
   ACTIVE_WORDS = data->words;
   ACTIVE_WORD_COUNT = data->wordCount;
@@ -155,6 +176,19 @@ const GridVariantData* findVariantByKey(const char* key) {
   if (!key) return nullptr;
   for (size_t i = 0; i < countof(GRID_VARIANTS); ++i) {
     if (strcmp(GRID_VARIANTS[i].key, key) == 0) {
+      return &GRID_VARIANTS[i];
+    }
+  }
+  return nullptr;
+}
+
+// First variant carrying this ISO code. A product ships at most one plate per
+// language, so "first" is also "only"; the language listing relies on this to
+// deduplicate without a separate table.
+const GridVariantData* findVariantByLanguage(const char* language) {
+  if (!language) return nullptr;
+  for (size_t i = 0; i < countof(GRID_VARIANTS); ++i) {
+    if (strcmp(GRID_VARIANTS[i].language, language) == 0) {
       return &GRID_VARIANTS[i];
     }
   }
@@ -190,6 +224,7 @@ bool setActiveGridVariantById(uint8_t id) {
     case 7:  variant = GridVariant::NL_55x50_LOGO_V1; break;
     case 8:  variant = GridVariant::NL_20x20_V1; break;
     case 10: variant = GridVariant::NL_105x105_LOGO_V1; break;
+    case 11: variant = GridVariant::DE_50x50_V1; break;
     default: return false;
   }
   return setActiveGridVariant(variant);
@@ -209,6 +244,7 @@ GridVariant gridVariantFromId(uint8_t id) {
     case 7:  return GridVariant::NL_55x50_LOGO_V1;
     case 8:  return GridVariant::NL_20x20_V1;
     case 10: return GridVariant::NL_105x105_LOGO_V1;
+    case 11: return GridVariant::DE_50x50_V1;
     default: return GridVariant::NL_V4;
   }
 }
@@ -260,6 +296,148 @@ const GridVariantInfo* getGridVariantInfo(GridVariant variant) {
   info.language = data->language;
   info.version = data->version;
   return &info;
+}
+
+const PhraseRules* getActivePhraseRules() {
+  const ClockDialect* dialect = getActiveDialect();
+  return dialect ? dialect->rules : nullptr;
+}
+
+// ---------------------------------------------------------------------------
+// Language and dialect
+// ---------------------------------------------------------------------------
+
+size_t getLanguageCount() {
+  size_t count = 0;
+  for (size_t i = 0; i < countof(GRID_VARIANTS); ++i) {
+    if (findVariantByLanguage(GRID_VARIANTS[i].language) == &GRID_VARIANTS[i]) {
+      ++count;  // first variant carrying this language
+    }
+  }
+  return count;
+}
+
+const char* getLanguageCode(size_t index) {
+  size_t seen = 0;
+  for (size_t i = 0; i < countof(GRID_VARIANTS); ++i) {
+    if (findVariantByLanguage(GRID_VARIANTS[i].language) != &GRID_VARIANTS[i]) {
+      continue;  // duplicate of an earlier variant's language
+    }
+    if (seen == index) return GRID_VARIANTS[i].language;
+    ++seen;
+  }
+  return nullptr;
+}
+
+const char* getActiveLanguage() {
+  return activeVariant->language;
+}
+
+bool hasLanguage(const char* code) {
+  return findVariantByLanguage(code) != nullptr;
+}
+
+bool setActiveLanguage(const char* code) {
+  const GridVariantData* data = findVariantByLanguage(code);
+  if (!data) return false;
+  applyActiveVariant(data);
+  return true;
+}
+
+size_t getDialectCount() {
+  return activeVariant->dialectCount;
+}
+
+const ClockDialect* getDialect(size_t index) {
+  if (index >= activeVariant->dialectCount) return nullptr;
+  return &activeVariant->dialects[index];
+}
+
+const ClockDialect* getActiveDialect() {
+  // Defensive: a variant registered with an empty dialect list would otherwise
+  // read past the array. The registry never does this, but getActivePhraseRules
+  // dereferences the result on every render.
+  if (!activeVariant || activeVariant->dialectCount == 0) return nullptr;
+  const size_t index =
+      activeDialectIndex < activeVariant->dialectCount ? activeDialectIndex : 0;
+  return &activeVariant->dialects[index];
+}
+
+bool setActiveDialect(const char* id) {
+  if (!id) return false;
+  for (size_t i = 0; i < activeVariant->dialectCount; ++i) {
+    if (strcmp(activeVariant->dialects[i].id, id) == 0) {
+      activeDialectIndex = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+size_t getDialectAxisCount() {
+  return activeVariant ? activeVariant->axisCount : 0;
+}
+
+const DialectAxis* getDialectAxis(size_t index) {
+  if (!activeVariant || index >= activeVariant->axisCount) return nullptr;
+  return &activeVariant->axes[index];
+}
+
+// Index of `axisId` within the active variant's axis list. Also the index into
+// every dialect's axisValues array, which is what makes the parallel arrays
+// line up.
+static bool findAxisIndex(const char* axisId, size_t* out) {
+  if (!axisId || !activeVariant) return false;
+  for (size_t i = 0; i < activeVariant->axisCount; ++i) {
+    if (strcmp(activeVariant->axes[i].id, axisId) == 0) {
+      *out = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool axisHasValue(const DialectAxis& axis, const char* value) {
+  if (!value) return false;
+  for (size_t i = 0; i < axis.optionCount; ++i) {
+    if (strcmp(axis.options[i].value, value) == 0) return true;
+  }
+  return false;
+}
+
+const char* getActiveDialectAxisValue(const char* axisId) {
+  size_t index = 0;
+  if (!findAxisIndex(axisId, &index)) return nullptr;
+  const ClockDialect* active = getActiveDialect();
+  if (!active || !active->axisValues) return nullptr;
+  return active->axisValues[index];
+}
+
+const ClockDialect* findDialectByAxisChange(const char* axisId, const char* value) {
+  size_t changed = 0;
+  if (!findAxisIndex(axisId, &changed)) return nullptr;
+  if (!axisHasValue(activeVariant->axes[changed], value)) return nullptr;
+
+  const ClockDialect* active = getActiveDialect();
+  if (!active || !active->axisValues) return nullptr;
+
+  // Keep every other axis where it is; only the named one moves. This is what
+  // makes the two questions independent from the customer's point of view:
+  // answering one never silently re-answers the other.
+  for (size_t d = 0; d < activeVariant->dialectCount; ++d) {
+    const ClockDialect& candidate = activeVariant->dialects[d];
+    if (!candidate.axisValues) continue;
+    bool match = true;
+    for (size_t a = 0; a < activeVariant->axisCount; ++a) {
+      const char* want = (a == changed) ? value : active->axisValues[a];
+      if (strcmp(candidate.axisValues[a], want) != 0) {
+        match = false;
+        break;
+      }
+    }
+    if (match) return &candidate;
+  }
+  return nullptr;
 }
 
 const WordPosition* find_word(const char* name) {

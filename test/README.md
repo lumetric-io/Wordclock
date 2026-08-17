@@ -14,6 +14,10 @@ test/
 │   └── test_led_controller.cpp
 ├── test_night_mode/          # Night mode scheduling tests
 │   └── test_night_mode.cpp
+├── test_phrase_rules/        # Per-language phrase tables (German plate)
+│   └── test_phrase_rules.cpp
+├── test_language/            # Language + dialect selection, all variants at once
+│   └── test_language.cpp
 ├── mocks/                    # Mock implementations for testing
 │   ├── mock_arduino.h        # Mock Arduino core functions
 │   ├── mock_preferences.h    # Mock ESP32 Preferences/NVS
@@ -71,6 +75,8 @@ pio test -e native --clean
 | time_mapper.cpp | test_time_mapper.cpp | 20+ tests | 90% |
 | led_controller.cpp | test_led_controller.cpp | 10+ tests | 85% |
 | night_mode.cpp | test_night_mode.cpp | 30+ tests | 85% |
+| phrase_rules.cpp + de_50x50_v1.cpp | test_phrase_rules.cpp | 20+ tests | 90% |
+| grid_layout.cpp (language/dialect) | test_language.cpp | 16 tests | 90% |
 
 ## Writing New Tests
 
@@ -174,9 +180,15 @@ struct tm time = createTestTime(12, 30, 0);
 ```cpp
 #include "../mocks/mock_grid_layout.h"
 
-// Provides test word definitions and LED mapping
-auto word = find_word("HET");
+// Provides test word definitions and LED mapping. Words are addressed by
+// language-neutral slot key (PREFIX_A, MIN_5, QUARTER, H_1 … H_12, OCLOCK),
+// not by the Dutch word itself — see src/phrase_rules.h.
+auto word = find_word("PREFIX_A");
 ASSERT_NE(nullptr, word);
+
+// The mock also exposes the active phrase-rule table. Swap it (together with
+// ACTIVE_WORDS) to run the engine against another language's plate:
+ACTIVE_PHRASE_RULES = &DE_RULES_STANDARD;
 ```
 
 ### Custom Assertions

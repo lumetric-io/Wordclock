@@ -18,25 +18,25 @@ const char* const LETTER_GRID_NL_20x20_V1[] = {
 };
 
 const WordPosition WORDS_NL_20x20_V1[] = {
-  WPOS("VIJF_M",      20, 19, 18, 17),
-  WPOS("TIEN_M",      0, 1, 2, 3),
-  WPOS("OVER",        24, 25, 26, 27),
-  WPOS("VOOR",        15, 14, 13, 12),
-  WPOS("KWART",       4, 5, 6, 7, 8),
-  WPOS("HALF",        29, 30, 31, 32),
-  WPOS("UUR",         102, 103, 104),
-  WPOS("EEN",         48, 49, 50),
-  WPOS("TWEE",        39, 38, 37, 36),
-  WPOS("DRIE",        52, 53, 54, 55),
-  WPOS("VIER",        68, 67, 66, 65),
-  WPOS("VIJF",        64, 63, 62, 61),
-  WPOS("ZES",         56, 60, 80),
-  WPOS("ZEVEN",       44, 43, 42, 41, 40),
-  WPOS("ACHT",        72, 73, 74, 75),
-  WPOS("NEGEN",       96, 97, 98, 99, 100),
-  WPOS("TIEN",        76, 77, 78, 79),
-  WPOS("ELF",         86, 85, 84),
-  WPOS("TWAALF",      92, 91, 90, 89, 88, 87),
+  WPOS("MIN_5",   20, 19, 18, 17),         // VIJF_M
+  WPOS("MIN_10",  0, 1, 2, 3),             // TIEN_M
+  WPOS("PAST",    24, 25, 26, 27),         // OVER
+  WPOS("TO",      15, 14, 13, 12),         // VOOR
+  WPOS("QUARTER", 4, 5, 6, 7, 8),          // KWART
+  WPOS("HALF",    29, 30, 31, 32),         // HALF
+  WPOS("OCLOCK",  102, 103, 104),          // UUR
+  WPOS("H_1",     48, 49, 50),             // EEN
+  WPOS("H_2",     39, 38, 37, 36),         // TWEE
+  WPOS("H_3",     52, 53, 54, 55),         // DRIE
+  WPOS("H_4",     68, 67, 66, 65),         // VIER
+  WPOS("H_5",     64, 63, 62, 61),         // VIJF
+  WPOS("H_6",     56, 60, 80),             // ZES
+  WPOS("H_7",     44, 43, 42, 41, 40),     // ZEVEN
+  WPOS("H_8",     72, 73, 74, 75),         // ACHT
+  WPOS("H_9",     96, 97, 98, 99, 100),    // NEGEN
+  WPOS("H_10",    76, 77, 78, 79),         // TIEN
+  WPOS("H_11",    86, 85, 84),             // ELF
+  WPOS("H_12",    92, 91, 90, 89, 88, 87), // TWAALF
 };
 
 const size_t WORDS_NL_20x20_V1_COUNT = sizeof(WORDS_NL_20x20_V1) / sizeof(WORDS_NL_20x20_V1[0]);

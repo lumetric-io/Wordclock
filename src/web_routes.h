@@ -29,6 +29,7 @@
 #include "led_events.h"
 #include "config.h"
 #include "display_settings.h"
+#include "language_settings.h"
 #include "ui_auth.h"
 #include "wordclock.h"
 #include "clock_display.h"
@@ -289,45 +290,29 @@ void setupWebRoutes() {
     serveFile("/dashboard.html", "text/html");
   });
 
-  // ── Chronolett v2 (editorial redesign — now the default) ─────────
-  // dashboard.html IS the v2 UI. dashboard-legacy.html keeps the old
-  // classic build accessible. /dashboard-v2.html is kept as a redirect
-  // alias so any saved bookmarks still resolve.
-  server.on("/dashboard-v2.html", HTTP_GET, []() {
-    if (!ensureUiAuth()) return;
-    serveFile("/dashboard.html", "text/html");
-  });
+  // ── Page aliases ────────────────────────────────────────────────
+  // The `-v2` URLs are gone (2026-08-17). They never had files of their own —
+  // the editorial redesign always shipped under the plain names — and their
+  // last form was a 301 to the canonical URL, so any bookmark that still
+  // pointed at one has had its browser rewrite it. They now 404 like any other
+  // unknown path.
+  // The -legacy pages are different: real files, the old Tailwind build,
+  // reachable by URL only as a fallback.
   server.on("/dashboard-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     serveFile("/dashboard-legacy.html", "text/html");
-  });
-  server.on("/admin-v2.html", HTTP_GET, []() {
-    if (!ensureAdminAuth()) return;
-    serveFile("/admin.html", "text/html");
   });
   server.on("/admin-legacy.html", HTTP_GET, []() {
     if (!ensureAdminAuth()) return;
     serveFile("/admin-legacy.html", "text/html");
   });
-  server.on("/mqtt-v2.html", HTTP_GET, []() {
-    if (!ensureUiAuth()) return;
-    serveFile("/mqtt.html", "text/html");
-  });
   server.on("/mqtt-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     serveFile("/mqtt-legacy.html", "text/html");
   });
-  server.on("/logs-v2.html", HTTP_GET, []() {
-    if (!ensureUiAuth()) return;
-    serveFile("/logs.html", "text/html");
-  });
   server.on("/logs-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     serveFile("/logs-legacy.html", "text/html");
-  });
-  server.on("/update-v2.html", HTTP_GET, []() {
-    if (!ensureUiAuth()) return;
-    serveFile("/update.html", "text/html");
   });
   server.on("/update-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
@@ -352,7 +337,7 @@ void setupWebRoutes() {
   });
 
   // RAL Classic colour picker: shared JS module + 205-entry palette.
-  // Lazy-loaded only when the user opens the RAL dialog in the v2 UI.
+  // Lazy-loaded only when the user opens the RAL dialog in the brand UI.
   server.on("/ral-picker.js", HTTP_GET, []() {
     serveFile("/ral-picker.js", "application/javascript");
   });
@@ -898,6 +883,132 @@ void setupWebRoutes() {
 #if defined(ARDUINO_ARCH_ESP32)
     doc["temp_c"] = temperatureRead();
 #endif
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  // ---------------------------------------------------------------------
+  // Language and dialect
+  // ---------------------------------------------------------------------
+  // The language is which front plate this clock has, so switching it swaps
+  // the letter grid, the word table and the LED counts. Doing that under a
+  // running render loop is not worth the risk for a setting a customer touches
+  // once, so a language change is persisted and applied by a reboot. The
+  // dialect only swaps the phrase table and takes effect immediately.
+  server.on("/api/language", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    JsonDocument doc;
+    doc["active"] = LanguageSettings::activeLanguage();
+    doc["stored"] = LanguageSettings::storedLanguage();
+    doc["source"] = LanguageSettings::sourceName();
+    doc["setupComplete"] = LanguageSettings::isSetupComplete();
+    doc["rebootRequired"] = LanguageSettings::rebootRequired();
+    JsonArray available = doc["available"].to<JsonArray>();
+    for (size_t i = 0; i < getLanguageCount(); ++i) {
+      available.add(getLanguageCode(i));
+    }
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  server.on("/api/language", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    const String code = server.hasArg("lang") ? server.arg("lang") : String();
+    if (code.length() == 0) {
+      server.send(400, "text/plain", "Missing 'lang'");
+      return;
+    }
+    if (!LanguageSettings::setLanguage(code.c_str())) {
+      server.send(400, "text/plain", "Unknown language: " + code);
+      return;
+    }
+    const bool reboot = LanguageSettings::rebootRequired();
+    JsonDocument doc;
+    doc["stored"] = LanguageSettings::storedLanguage();
+    doc["source"] = LanguageSettings::sourceName();
+    doc["rebootRequired"] = reboot;
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+    if (reboot) {
+      delay(100);  // let the response leave before the radio goes down
+      safeRestart();
+    }
+  });
+
+  server.on("/api/dialect", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    JsonDocument doc;
+    doc["active"] = LanguageSettings::activeDialect();
+    JsonArray available = doc["available"].to<JsonArray>();
+    for (size_t i = 0; i < getDialectCount(); ++i) {
+      const ClockDialect* d = getDialect(i);
+      if (!d) continue;
+      JsonObject item = available.add<JsonObject>();
+      item["id"] = d->id;
+      item["label"] = d->label;
+      item["sample"] = d->sample;
+    }
+    // Axes, when the variant has them. A client that ignores this key still
+    // works off `available` exactly as before — which is what keeps older
+    // dashboards (and Home Assistant) functioning against new firmware.
+    for (size_t i = 0; i < getDialectAxisCount(); ++i) {
+      const DialectAxis* axis = getDialectAxis(i);
+      if (!axis) continue;
+      JsonObject a = doc["axes"].add<JsonObject>();
+      a["id"] = axis->id;
+      a["label"] = axis->label;
+      a["active"] = getActiveDialectAxisValue(axis->id);
+      for (size_t o = 0; o < axis->optionCount; ++o) {
+        JsonObject opt = a["options"].add<JsonObject>();
+        opt["value"] = axis->options[o].value;
+        opt["label"] = axis->options[o].label;
+        opt["sample"] = axis->options[o].sample;
+      }
+    }
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  server.on("/api/dialect", HTTP_POST, []() {
+    if (!ensureUiAuth()) return;
+    // Two ways in. `?dialect=<id>` sets the whole reading at once and is what
+    // older clients send. `?axis=<id>&value=<v>` moves one axis and leaves the
+    // others alone — the device resolves the resulting tuple, so the mapping
+    // from answers to a dialect id lives with the data rather than in the UI.
+    String id = server.hasArg("dialect") ? server.arg("dialect") : String();
+    if (id.length() == 0 && server.hasArg("axis")) {
+      const String axis = server.arg("axis");
+      const String value = server.hasArg("value") ? server.arg("value") : String();
+      if (value.length() == 0) {
+        server.send(400, "text/plain", "Missing 'value' for axis " + axis);
+        return;
+      }
+      const ClockDialect* resolved = findDialectByAxisChange(axis.c_str(), value.c_str());
+      if (!resolved) {
+        server.send(400, "text/plain", "No dialect for axis " + axis + "=" + value);
+        return;
+      }
+      id = resolved->id;
+    }
+    if (id.length() == 0) {
+      server.send(400, "text/plain", "Missing 'dialect' or 'axis'");
+      return;
+    }
+    if (!LanguageSettings::setDialect(id.c_str())) {
+      server.send(400, "text/plain", "Unknown dialect for active language: " + id);
+      return;
+    }
+    JsonDocument doc;
+    doc["active"] = LanguageSettings::activeDialect();
+    for (size_t i = 0; i < getDialectAxisCount(); ++i) {
+      const DialectAxis* axis = getDialectAxis(i);
+      if (!axis) continue;
+      doc["axes"][axis->id] = getActiveDialectAxisValue(axis->id);
+    }
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);

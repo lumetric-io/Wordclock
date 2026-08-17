@@ -11,7 +11,6 @@
 // - Loop: verwerkt webrequests, OTA, MQTT en kloklogica
 
 #include <Arduino.h>
-#include <ESPmDNS.h>
 #include "fs_compat.h"
 #include <WiFiClient.h>
 #include <WiFiServer.h>
@@ -28,6 +27,7 @@
 #include "display_settings.h"
 #include "ui_auth.h"
 #include "night_mode.h"
+#include "language_settings.h"
 #include "settings_migration.h"
 #include "system_utils.h"
 #include "ble_provisioning.h"
@@ -68,15 +68,19 @@ void setup() {
   });
 #endif
 
-  // Start mDNS voor lokale netwerknaam
-  if (MDNS.begin(MDNS_HOSTNAME)) {
-    logInfo("🌐 mDNS active at http://" MDNS_HOSTNAME ".local");
-  } else {
-    logError("❌ mDNS start failed");
-  }
+  // mDNS is registered by runtimeInitOnSetup() below, together with the web
+  // server and the other services that need a live STA interface — and
+  // re-registered from the loop after a reconnect. It used to be started here,
+  // which meant a boot without WiFi left the clock nameless until someone
+  // power-cycled it. See runtime_services.cpp:startMdns().
 
   // Load persisted display settings (e.g. auto-update preference) before running dependent flows
   displaySettings.begin();
+
+  // Selects the grid variant and phrase table. Must run before anything reads
+  // ACTIVE_WORDS or the LED counts, i.e. before initDisplay() below.
+  LanguageSettings::begin();
+
   nightMode.begin();
 
   // Mount filesystem (LittleFS)

@@ -39,9 +39,9 @@ TEST_F(GridLayoutTest, ExtraMinuteLeds_Defined) {
 
 // Word Lookup Tests  
 TEST_F(GridLayoutTest, FindWord_ExistingWord_ReturnsPointer) {
-    const WordPosition* word = find_word("HET");
+    const WordPosition* word = find_word("PREFIX_A");
     ASSERT_NE(nullptr, word);
-    ASSERT_STREQ("HET", word->word);
+    ASSERT_STREQ("PREFIX_A", word->word);
 }
 
 TEST_F(GridLayoutTest, FindWord_NonExistent_ReturnsNull) {
@@ -68,9 +68,9 @@ TEST_F(GridLayoutTest, GetLedCounts_Mock) {
 // Words Available Test
 TEST_F(GridLayoutTest, CommonWords_Available) {
     // Test that common words are available
-    ASSERT_NE(nullptr, find_word("HET"));
-    ASSERT_NE(nullptr, find_word("IS"));
-    ASSERT_NE(nullptr, find_word("UUR"));
+    ASSERT_NE(nullptr, find_word("PREFIX_A"));
+    ASSERT_NE(nullptr, find_word("PREFIX_B"));
+    ASSERT_NE(nullptr, find_word("OCLOCK"));
 }
 
 int main(int argc, char **argv) {

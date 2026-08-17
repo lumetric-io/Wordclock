@@ -100,6 +100,135 @@ Response (both GET and the POST reply), from `sendNightModeConfig()`
 }
 ```
 
+### 1.3 Language & dialect
+
+The language is which **front plate** the clock physically has — a German plate
+rendering Dutch words spells nonsense. So switching language swaps the letter
+grid, the word table and the LED counts, and is applied by a **reboot**; the
+dialect only swaps the phrase table and takes effect immediately.
+
+A build contains one plate per language it supports. `available` therefore
+lists what this specific firmware can render, which is a property of the
+product, not of the app — never hardcode the list.
+
+| Endpoint | Method | Params | Response | Notes |
+|---|---|---|---|---|
+| `/api/language` | GET | — | `200` JSON (below) | `web_routes.h:925` |
+| `/api/language` | POST | `lang=<iso>` (query) | `200` JSON / `400 "Missing 'lang'"` / `400 "Unknown language: X"` | **Device reboots** when the code differs from the running one. `web_routes.h:942` |
+| `/api/dialect` | GET | — | `200` JSON (below) | Dialects of the **active** language only. `web_routes.h:967` |
+| `/api/dialect` | POST | `dialect=<id>` **or** `axis=<id>&value=<v>` (query) | `200` JSON / `400 "Missing 'dialect' or 'axis'"` / `400 "Missing 'value' for axis X"` / `400 "No dialect for axis X=Y"` / `400 "Unknown dialect for active language: X"` | Applied live, no reboot. `web_routes.h:1002` |
+
+`GET /api/language`:
+
+```json
+{
+  "active": "nl",
+  "stored": "nl",
+  "source": "default",
+  "setupComplete": false,
+  "rebootRequired": false,
+  "available": ["nl", "de"]
+}
+```
+
+- `active` — what is rendering right now.
+- `stored` — what is in NVS. Differs from `active` only between a POST and the
+  reboot that carries it out.
+- `source` — `default` \| `user` \| `migrated`. `default` means nobody has
+  chosen and the build's first plate is rendering; `migrated` means the field
+  migration pinned this device to the language it already spoke.
+- `setupComplete` — `source != "default"`. Reported now; nothing is gated on it
+  yet (see the phasing note below).
+
+`POST /api/language` replies before rebooting:
+
+```json
+{ "stored": "de", "source": "user", "rebootRequired": true }
+```
+
+⚠️ When `rebootRequired` is `true` the connection drops ~100 ms after the
+response. Treat the reply as final and poll `/api/firmware/identity` to detect
+the device coming back.
+
+Posting the **already active** language is still a choice: it moves `source` to
+`user` without a reboot. That is the whole interaction on a single-language
+product — one confirmation.
+
+`GET /api/dialect`:
+
+```json
+{
+  "active": "de-nord",
+  "available": [
+    { "id": "de-nord",         "label": "Hochdeutsch",        "sample": "viertel nach zehn · zwanzig vor elf" },
+    { "id": "de-sued",         "label": "Süd-Ost",            "sample": "viertel elf · zehn nach halb elf" },
+    { "id": "de-nord-halb",    "label": "Gemischt (nach)",    "sample": "viertel nach zehn · zehn nach halb elf" },
+    { "id": "de-sued-zwanzig", "label": "Gemischt (viertel)", "sample": "viertel elf · zwanzig vor elf" }
+  ],
+  "axes": [
+    {
+      "id": "quarters",
+      "label": "Quarter hours",
+      "active": "nach",
+      "options": [
+        { "value": "nach",    "label": "viertel nach / viertel vor", "sample": "viertel nach zehn · viertel vor elf" },
+        { "value": "viertel", "label": "viertel / dreiviertel",      "sample": "viertel elf · dreiviertel elf" }
+      ]
+    },
+    {
+      "id": "twenties",
+      "label": "Twenty past and to",
+      "active": "zwanzig",
+      "options": [
+        { "value": "zwanzig", "label": "zwanzig nach / zwanzig vor", "sample": "zwanzig nach zehn · zwanzig vor elf" },
+        { "value": "halb",    "label": "über halb",                  "sample": "zehn vor halb elf · zehn nach halb elf" }
+      ]
+    }
+  ]
+}
+```
+
+`sample` is the phrasing that distinguishes this dialect — it is what the user
+picks on, since "Hochdeutsch" vs "Süd-Ost" means little on its own. Dutch has
+exactly one dialect (`nl`), so the list is never empty and the app can use the
+same UI for both languages.
+
+**Axes.** `axes` is present only for a plate whose dialects decompose into
+independent questions. German does: how it says the quarter hours, and how it
+says :20 and :40, are two unrelated things about a dialect, so the four dialects
+are the cross-product of two two-way choices. Asking two questions instead of
+offering four sentences is what the dashboard does; asking them independently is
+also the only way a customer can express a reading that mixes the two, which
+half of them do.
+
+- `axes[].active` is the active dialect's value on that axis.
+- Every combination of option values maps to exactly one entry in `available`
+  — the firmware asserts this in its tests, so a client may treat the axis
+  answers as exhaustive and never has to handle "no such dialect".
+- Dutch reports **no** `axes` key. A client that ignores `axes` entirely still
+  works off `available` exactly as before, which is what keeps older apps and
+  Home Assistant functioning against this firmware.
+
+`POST /api/dialect?axis=twenties&value=halb` moves one axis and leaves the
+others where they are; the device resolves the resulting combination, so the
+mapping from answers to a dialect id stays with the data rather than in the app.
+It replies with the reading it settled on:
+
+```json
+{ "active": "de-nord-halb", "axes": { "quarters": "nach", "twenties": "halb" } }
+```
+
+Adopt those values rather than what you asked for — on an axis change the
+dialect id is the device's to decide.
+
+⚠️ A language switch **clears the stored dialect** — a dialect belongs to one
+plate. Re-read `/api/dialect` after the device comes back up.
+
+**Phasing note:** the display is *not* gated on `setupComplete` in this
+firmware. Every clock keeps showing the time regardless of `source`. The gate
+is a later change, and it will only be armed once fleet telemetry shows no
+device still reporting `langSrc: "default"`.
+
 ---
 
 ## 2. Device info & identity

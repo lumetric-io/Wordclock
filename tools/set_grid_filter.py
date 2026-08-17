@@ -28,6 +28,7 @@ GRID_MAP = {
     "nl_55x50_logo_v1": ("ENABLE_GRID_NL_55X50_LOGO_V1", "grid_variants/nl_55x50_logo_v1.cpp"),
     "nl_105x105_logo_v1": ("ENABLE_GRID_NL_105X105_LOGO_V1", "grid_variants/nl_105x105_logo_v1.cpp"),
     "nl_20x20_v1": ("ENABLE_GRID_NL_20X20_V1", "grid_variants/nl_20x20_v1.cpp"),
+    "de_50x50_v1": ("ENABLE_GRID_DE_50X50_V1", "grid_variants/de_50x50_v1.cpp"),
 }
 
 
