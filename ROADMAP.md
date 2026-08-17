@@ -253,6 +253,59 @@ and no body. Compute the version string once at boot rather than calling
 
 Effort: S. Worth doing before the next `fs.bin` release, not after.
 
+## A heartbeat that lands is reported as failed, and freezes the display for 15 s
+
+Found 2026-08-17 on the 50x50 dev clock (`f316287d`), right after flashing
+`26.08.17-dev.3`:
+
+```
+[21:35:13][WARN] 💓 HTTP error: read Timeout
+[21:40:01][INFO] 💓 Heartbeat sent successfully
+[21:40:01][WARN] Anim step 2/6 dt=982ms (Δ2 leds) ⚠️ slow
+```
+
+**The "failed" heartbeat had landed.** Row written server-side at 19:34:58 UTC;
+the device gave up at 19:35:13 — exactly the 15 s from `http.setTimeout(15000)`
+(`src/heartbeat.cpp:176`). The request arrived and was processed, only the
+response never got back in time. The portal answers that endpoint in ~0.09 s
+including TLS, so this is not server latency.
+
+Cause is the radio, not the firmware. That heartbeat carried **RSSI −91 dBm**;
+every other beacon from that clock sits between −66 and −70, and the retry five
+minutes later was −69. Across the fleet it is the one device whose average
+(−69) and minimum (−91) are 22 dB apart — every other clock stays within a few
+dB of its own average. The link is not weak, it is unstable.
+
+Not heap: `freeHeap` 221 KB and `minFreeHeap` 182 KB on the failing beacon, in
+line with every other one. Ruled out.
+
+Two consequences, in order of how much they matter:
+
+1. **The display freezes.** `sendHeartbeat()` runs synchronously in `loop()`.
+   A *successful* one already costs ~1 s — that is what the `Anim step` warning
+   above is, logged in the same millisecond as the heartbeat. On a timeout the
+   animation stalls for the full 15 s, visible on a clock on someone's wall.
+   The `:30 s`-only send window (`isAtHalfMinute()`) shows the conflict was
+   known; the size of it on the failure path was not.
+2. **A duplicate row per dip.** The device sets `s_lastFailureMs`, retries
+   after `HEARTBEAT_RETRY_INTERVAL_MS`, and writes a second row for the same
+   beacon — confirmed: 19:34:58 and 19:40:01, 5.0 min apart, both with
+   `log_level=info`. The hourly cadence had been exactly 60.0 min for hours
+   before this. With the server's 100-rows-per-device live ring, dips shorten
+   the retained history.
+
+Fix for (1) is small and worth doing: **drop the timeout from 15 s to ~5 s**. A
+response that has not arrived in 5 s is not arriving; the trade is 10 seconds of
+frozen display for an identical outcome. Anything better means getting the HTTPS
+call off the render loop, which is a much larger change.
+
+(2) is not worth fixing properly — an idempotency key on the heartbeat is out of
+proportion to a duplicate row now and then. Worth knowing when reading fleet
+data: heartbeat gaps well under 60 min are the retry path, not a reconfigured
+device.
+
+Effort: S for the timeout. Diagnosis only so far, nothing changed.
+
 ## Security hardening — full-repo review findings
 
 Surfaced 2026-07-04 from a full firmware security review. The device's whole
