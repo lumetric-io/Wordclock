@@ -132,9 +132,12 @@ const size_t EXTRA_MINUTES_DE_50x50_V1_COUNT =
 // ==========================================================================
 // Phrase rules — two dialects on one plate
 // ==========================================================================
-// The tables differ on four steps only (:15, :20, :40, :45). This plate
-// carries ZWANZIG, VIERTEL *and* DREIVIERTEL, so both are supported and the
-// dialect stays a firmware setting instead of a second plate.
+// The tables differ on four steps only (:15, :20, :40, :45), and those four
+// split cleanly into two independent axes: :15/:45 (quarters) and :20/:40
+// (twenties). Hence four tables, one per combination — see the axis block
+// below. This plate carries ZWANZIG, VIERTEL *and* DREIVIERTEL, so every
+// combination is spellable and the dialect stays a firmware setting instead of
+// a second plate.
 //
 // EIN vs EINS: German says "es ist ein Uhr" but "fünf nach eins". The engine
 // needs no extra data for that — on a step that lights OCLOCK it prefers
@@ -180,13 +183,100 @@ const PhraseRules DE_RULES_SUED = {
   }
 };
 
-// The samples are the two steps where the dialects actually diverge (:15/:45
-// and :20/:40). Showing 10:15 and 10:45 side by side is what lets a customer
-// recognise their own way of speaking without knowing the word "dialect".
-// Index 0 is the fallback when nothing is stored.
+// Mixed: quarters like the north, twenties via halb. Common well outside the
+// "viertel elf" area — this is the combination that had no table until the two
+// axes were split, and the reason a customer could previously only choose
+// which half of the hour would be wrong.
+const PhraseRules DE_RULES_NORD_HALB = {
+  "de-nord-halb",
+  {
+    /* :00 */ { { nullptr,   nullptr, nullptr }, 0, true  },  // es ist ein Uhr
+    /* :05 */ { { "MIN_5",   "PAST",  nullptr }, 0, false },  // fünf nach
+    /* :10 */ { { "MIN_10",  "PAST",  nullptr }, 0, false },  // zehn nach
+    /* :15 */ { { "QUARTER", "PAST",  nullptr }, 0, false },  // viertel nach
+    /* :20 */ { { "MIN_10",  "TO",    "HALF"  }, 1, false },  // zehn vor halb
+    /* :25 */ { { "MIN_5",   "TO",    "HALF"  }, 1, false },  // fünf vor halb
+    /* :30 */ { { "HALF",    nullptr, nullptr }, 1, false },  // halb
+    /* :35 */ { { "MIN_5",   "PAST",  "HALF"  }, 1, false },  // fünf nach halb
+    /* :40 */ { { "MIN_10",  "PAST",  "HALF"  }, 1, false },  // zehn nach halb
+    /* :45 */ { { "QUARTER", "TO",    nullptr }, 1, false },  // viertel vor
+    /* :50 */ { { "MIN_10",  "TO",    nullptr }, 1, false },  // zehn vor
+    /* :55 */ { { "MIN_5",   "TO",    nullptr }, 1, false },  // fünf vor
+  }
+};
+
+// Mixed the other way: viertel/dreiviertel name the coming hour, but :20/:40
+// stay on zwanzig rather than going via halb.
+const PhraseRules DE_RULES_SUED_ZWANZIG = {
+  "de-sued-zwanzig",
+  {
+    /* :00 */ { { nullptr,        nullptr, nullptr }, 0, true  },  // es ist ein Uhr
+    /* :05 */ { { "MIN_5",        "PAST",  nullptr }, 0, false },  // fünf nach
+    /* :10 */ { { "MIN_10",       "PAST",  nullptr }, 0, false },  // zehn nach
+    /* :15 */ { { "QUARTER",      nullptr, nullptr }, 1, false },  // viertel <nächste>
+    /* :20 */ { { "MIN_20",       "PAST",  nullptr }, 0, false },  // zwanzig nach
+    /* :25 */ { { "MIN_5",        "TO",    "HALF"  }, 1, false },  // fünf vor halb
+    /* :30 */ { { "HALF",         nullptr, nullptr }, 1, false },  // halb
+    /* :35 */ { { "MIN_5",        "PAST",  "HALF"  }, 1, false },  // fünf nach halb
+    /* :40 */ { { "MIN_20",       "TO",    nullptr }, 1, false },  // zwanzig vor
+    /* :45 */ { { "THREEQUARTER", nullptr, nullptr }, 1, false },  // dreiviertel <nächste>
+    /* :50 */ { { "MIN_10",       "TO",    nullptr }, 1, false },  // zehn vor
+    /* :55 */ { { "MIN_5",        "TO",    nullptr }, 1, false },  // fünf vor
+  }
+};
+
+// ==========================================================================
+// Dialect axes
+// ==========================================================================
+// Two independent questions, each answered with a sentence rather than a
+// region name: "Hochdeutsch" vs "Süd-Ost" asks the customer to place
+// themselves on a dialect map, which is a question they can get wrong about
+// their own speech. "viertel nach zehn" vs "viertel elf" is just recognition.
+//
+// The samples deliberately show both halves of each axis, because the choice
+// governs two moments per hour, not one.
+
+const DialectAxisOption DE_AXIS_QUARTERS_OPTIONS[] = {
+  { "nach",    "viertel nach / viertel vor",  "viertel nach zehn · viertel vor elf" },
+  { "viertel", "viertel / dreiviertel",       "viertel elf · dreiviertel elf" },
+};
+
+const DialectAxisOption DE_AXIS_TWENTIES_OPTIONS[] = {
+  { "zwanzig", "zwanzig nach / zwanzig vor",  "zwanzig nach zehn · zwanzig vor elf" },
+  { "halb",    "über halb",                   "zehn vor halb elf · zehn nach halb elf" },
+};
+
+const DialectAxis DIALECT_AXES_DE_50x50_V1[] = {
+  { "quarters", "Quarter hours", DE_AXIS_QUARTERS_OPTIONS,
+    sizeof(DE_AXIS_QUARTERS_OPTIONS) / sizeof(DE_AXIS_QUARTERS_OPTIONS[0]) },
+  { "twenties", "Twenty past and to", DE_AXIS_TWENTIES_OPTIONS,
+    sizeof(DE_AXIS_TWENTIES_OPTIONS) / sizeof(DE_AXIS_TWENTIES_OPTIONS[0]) },
+};
+const size_t DIALECT_AXES_DE_50x50_V1_COUNT =
+    sizeof(DIALECT_AXES_DE_50x50_V1) / sizeof(DIALECT_AXES_DE_50x50_V1[0]);
+
+// Axis values, in the order the axes are declared above: { quarters, twenties }.
+static const char* const AXES_NORD[]         = { "nach",    "zwanzig" };
+static const char* const AXES_SUED[]         = { "viertel", "halb"    };
+static const char* const AXES_NORD_HALB[]    = { "nach",    "halb"    };
+static const char* const AXES_SUED_ZWANZIG[] = { "viertel", "zwanzig" };
+
+// All four combinations of the two axes. `de-nord` and `de-sued` keep their
+// ids and their tables: they are what is already stored in the field, and the
+// matched pairs remain the two most common answers. Index 0 is the fallback
+// when nothing is stored.
+//
+// The per-dialect `sample` is now only used by clients that ignore axes; the
+// dashboard renders one group per axis and uses the axis samples instead.
 const ClockDialect DIALECTS_DE_50x50_V1[] = {
-  { "de-nord", "Hochdeutsch", "viertel nach zehn · viertel vor elf", &DE_RULES_STANDARD },
-  { "de-sued", "Süd-Ost",     "viertel elf · dreiviertel elf",       &DE_RULES_SUED },
+  { "de-nord",         "Hochdeutsch",       "viertel nach zehn · zwanzig vor elf",
+    &DE_RULES_STANDARD,     AXES_NORD },
+  { "de-sued",         "Süd-Ost",           "viertel elf · zehn nach halb elf",
+    &DE_RULES_SUED,         AXES_SUED },
+  { "de-nord-halb",    "Gemischt (nach)",   "viertel nach zehn · zehn nach halb elf",
+    &DE_RULES_NORD_HALB,    AXES_NORD_HALB },
+  { "de-sued-zwanzig", "Gemischt (viertel)","viertel elf · zwanzig vor elf",
+    &DE_RULES_SUED_ZWANZIG, AXES_SUED_ZWANZIG },
 };
 const size_t DIALECTS_DE_50x50_V1_COUNT =
     sizeof(DIALECTS_DE_50x50_V1) / sizeof(DIALECTS_DE_50x50_V1[0]);

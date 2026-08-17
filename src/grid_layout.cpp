@@ -90,6 +90,10 @@ struct GridVariantData {
   size_t minuteGroupSize;
   const ClockDialect* dialects;  // never empty; [0] is the fallback
   size_t dialectCount;
+  // Optional. A variant with no axes offers its dialects as one flat list;
+  // one with axes offers a group per axis and resolves the tuple to a dialect.
+  const DialectAxis* axes;
+  size_t axisCount;
 };
 
 // Helper to compute array length at compile time
@@ -136,7 +140,7 @@ static const GridVariantData GRID_VARIANTS[] = {
   { GridVariant::NL_105x105_LOGO_V1, "NL_105x105_LOGO_V1", "Nederlands 105x105 Logo V1", "nl", "v1", LED_COUNT_GRID_NL_105x105_LOGO_V1, LED_COUNT_EXTRA_NL_105x105_LOGO_V1, LED_COUNT_TOTAL_NL_105x105_LOGO_V1, LETTER_GRID_NL_105x105_LOGO_V1, WORDS_NL_105x105_LOGO_V1, WORDS_NL_105x105_LOGO_V1_COUNT, EXTRA_MINUTES_NL_105x105_LOGO_V1, EXTRA_MINUTES_NL_105x105_LOGO_V1_COUNT, MinuteLayout::AfterGrid, 4, DIALECTS_NL, DIALECTS_NL_COUNT },
 #endif
 #if ENABLE_GRID_DE_50X50_V1
-  { GridVariant::DE_50x50_V1, "DE_50x50_V1", "Deutsch 50x50 V1", "de", "v1", LED_COUNT_GRID_DE_50x50_V1, LED_COUNT_EXTRA_DE_50x50_V1, LED_COUNT_TOTAL_DE_50x50_V1, LETTER_GRID_DE_50x50_V1, WORDS_DE_50x50_V1, WORDS_DE_50x50_V1_COUNT, EXTRA_MINUTES_DE_50x50_V1, EXTRA_MINUTES_DE_50x50_V1_COUNT, MinuteLayout::AfterGrid, 1, DIALECTS_DE_50x50_V1, DIALECTS_DE_50x50_V1_COUNT },
+  { GridVariant::DE_50x50_V1, "DE_50x50_V1", "Deutsch 50x50 V1", "de", "v1", LED_COUNT_GRID_DE_50x50_V1, LED_COUNT_EXTRA_DE_50x50_V1, LED_COUNT_TOTAL_DE_50x50_V1, LETTER_GRID_DE_50x50_V1, WORDS_DE_50x50_V1, WORDS_DE_50x50_V1_COUNT, EXTRA_MINUTES_DE_50x50_V1, EXTRA_MINUTES_DE_50x50_V1_COUNT, MinuteLayout::AfterGrid, 1, DIALECTS_DE_50x50_V1, DIALECTS_DE_50x50_V1_COUNT, DIALECT_AXES_DE_50x50_V1, DIALECT_AXES_DE_50x50_V1_COUNT },
 #endif
 };
 
@@ -368,6 +372,72 @@ bool setActiveDialect(const char* id) {
     }
   }
   return false;
+}
+
+size_t getDialectAxisCount() {
+  return activeVariant ? activeVariant->axisCount : 0;
+}
+
+const DialectAxis* getDialectAxis(size_t index) {
+  if (!activeVariant || index >= activeVariant->axisCount) return nullptr;
+  return &activeVariant->axes[index];
+}
+
+// Index of `axisId` within the active variant's axis list. Also the index into
+// every dialect's axisValues array, which is what makes the parallel arrays
+// line up.
+static bool findAxisIndex(const char* axisId, size_t* out) {
+  if (!axisId || !activeVariant) return false;
+  for (size_t i = 0; i < activeVariant->axisCount; ++i) {
+    if (strcmp(activeVariant->axes[i].id, axisId) == 0) {
+      *out = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool axisHasValue(const DialectAxis& axis, const char* value) {
+  if (!value) return false;
+  for (size_t i = 0; i < axis.optionCount; ++i) {
+    if (strcmp(axis.options[i].value, value) == 0) return true;
+  }
+  return false;
+}
+
+const char* getActiveDialectAxisValue(const char* axisId) {
+  size_t index = 0;
+  if (!findAxisIndex(axisId, &index)) return nullptr;
+  const ClockDialect* active = getActiveDialect();
+  if (!active || !active->axisValues) return nullptr;
+  return active->axisValues[index];
+}
+
+const ClockDialect* findDialectByAxisChange(const char* axisId, const char* value) {
+  size_t changed = 0;
+  if (!findAxisIndex(axisId, &changed)) return nullptr;
+  if (!axisHasValue(activeVariant->axes[changed], value)) return nullptr;
+
+  const ClockDialect* active = getActiveDialect();
+  if (!active || !active->axisValues) return nullptr;
+
+  // Keep every other axis where it is; only the named one moves. This is what
+  // makes the two questions independent from the customer's point of view:
+  // answering one never silently re-answers the other.
+  for (size_t d = 0; d < activeVariant->dialectCount; ++d) {
+    const ClockDialect& candidate = activeVariant->dialects[d];
+    if (!candidate.axisValues) continue;
+    bool match = true;
+    for (size_t a = 0; a < activeVariant->axisCount; ++a) {
+      const char* want = (a == changed) ? value : active->axisValues[a];
+      if (strcmp(candidate.axisValues[a], want) != 0) {
+        match = false;
+        break;
+      }
+    }
+    if (match) return &candidate;
+  }
+  return nullptr;
 }
 
 const WordPosition* find_word(const char* name) {

@@ -82,6 +82,16 @@ TEST_F(GermanPhraseTest, SuedRules_AllSlotsPresentOnPlate) {
     expectAllSlotsExist(DE_RULES_SUED);
 }
 
+TEST_F(GermanPhraseTest, NordHalbRules_AllSlotsPresentOnPlate) {
+    ACTIVE_PHRASE_RULES = &DE_RULES_NORD_HALB;
+    expectAllSlotsExist(DE_RULES_NORD_HALB);
+}
+
+TEST_F(GermanPhraseTest, SuedZwanzigRules_AllSlotsPresentOnPlate) {
+    ACTIVE_PHRASE_RULES = &DE_RULES_SUED_ZWANZIG;
+    expectAllSlotsExist(DE_RULES_SUED_ZWANZIG);
+}
+
 TEST_F(GermanPhraseTest, PrefixAlwaysPresent) {
     for (int m = 0; m < 60; ++m) {
         auto keys = keysAt(9, m);
@@ -161,13 +171,80 @@ TEST_F(GermanPhraseTest, Sued_ThreeQuarter) {
 }
 
 TEST_F(GermanPhraseTest, Dialects_AgreeOnEveryOtherStep) {
+    const PhraseRules* all[] = { &DE_RULES_STANDARD, &DE_RULES_SUED,
+                                 &DE_RULES_NORD_HALB, &DE_RULES_SUED_ZWANZIG };
     for (int step = 0; step < 12; ++step) {
         if (step == 3 || step == 4 || step == 8 || step == 9) continue;  // :15 :20 :40 :45
         ACTIVE_PHRASE_RULES = &DE_RULES_STANDARD;
         auto standard = keysAt(15, step * 5);
-        ACTIVE_PHRASE_RULES = &DE_RULES_SUED;
-        EXPECT_EQ(standard, keysAt(15, step * 5)) << "dialects diverge at :" << (step * 5);
+        for (const PhraseRules* rules : all) {
+            ACTIVE_PHRASE_RULES = rules;
+            EXPECT_EQ(standard, keysAt(15, step * 5))
+                << rules->id << " diverges at :" << (step * 5);
+        }
     }
+}
+
+// --------------------------------------------------------------------------
+// The two axes are genuinely independent
+// --------------------------------------------------------------------------
+// Four tables built by hand invite drift: the whole point of splitting the
+// axes is that :15/:45 is decided by `quarters` alone and :20/:40 by
+// `twenties` alone. These assert exactly that, per axis value, so a typo in
+// one of the mixed tables cannot pass as a dialect quirk.
+
+TEST_F(GermanPhraseTest, QuartersAxis_DecidesQuarterStepsAlone) {
+    // quarters = "nach": both tables that carry it phrase :15/:45 the same way,
+    // whatever they do at :20/:40.
+    for (int minute : {15, 45}) {
+        ACTIVE_PHRASE_RULES = &DE_RULES_STANDARD;
+        auto nach = keysAt(15, minute);
+        ACTIVE_PHRASE_RULES = &DE_RULES_NORD_HALB;
+        EXPECT_EQ(nach, keysAt(15, minute)) << "quarters=nach differs at :" << minute;
+
+        ACTIVE_PHRASE_RULES = &DE_RULES_SUED;
+        auto viertel = keysAt(15, minute);
+        ACTIVE_PHRASE_RULES = &DE_RULES_SUED_ZWANZIG;
+        EXPECT_EQ(viertel, keysAt(15, minute)) << "quarters=viertel differs at :" << minute;
+
+        EXPECT_NE(nach, viertel) << "the quarters axis does nothing at :" << minute;
+    }
+}
+
+TEST_F(GermanPhraseTest, TwentiesAxis_DecidesTwentyStepsAlone) {
+    for (int minute : {20, 40}) {
+        ACTIVE_PHRASE_RULES = &DE_RULES_STANDARD;
+        auto zwanzig = keysAt(15, minute);
+        ACTIVE_PHRASE_RULES = &DE_RULES_SUED_ZWANZIG;
+        EXPECT_EQ(zwanzig, keysAt(15, minute)) << "twenties=zwanzig differs at :" << minute;
+
+        ACTIVE_PHRASE_RULES = &DE_RULES_SUED;
+        auto halb = keysAt(15, minute);
+        ACTIVE_PHRASE_RULES = &DE_RULES_NORD_HALB;
+        EXPECT_EQ(halb, keysAt(15, minute)) << "twenties=halb differs at :" << minute;
+
+        EXPECT_NE(zwanzig, halb) << "the twenties axis does nothing at :" << minute;
+    }
+}
+
+TEST_F(GermanPhraseTest, MixedDialect_NachPlusHalb) {
+    ACTIVE_PHRASE_RULES = &DE_RULES_NORD_HALB;
+    // "viertel nach drei" — the northern quarter …
+    EXPECT_EQ(std::vector<std::string>({"PREFIX_A", "PREFIX_B", "QUARTER", "PAST", "H_3"}),
+              keysAt(15, 15));
+    // … with the southern twenty: "zehn nach halb vier"
+    EXPECT_EQ(std::vector<std::string>({"PREFIX_A", "PREFIX_B", "MIN_10", "PAST", "HALF", "H_4"}),
+              keysAt(15, 40));
+}
+
+TEST_F(GermanPhraseTest, MixedDialect_ViertelPlusZwanzig) {
+    ACTIVE_PHRASE_RULES = &DE_RULES_SUED_ZWANZIG;
+    // "viertel vier" = 15:15
+    EXPECT_EQ(std::vector<std::string>({"PREFIX_A", "PREFIX_B", "QUARTER", "H_4"}),
+              keysAt(15, 15));
+    // "zwanzig vor vier"
+    EXPECT_EQ(std::vector<std::string>({"PREFIX_A", "PREFIX_B", "MIN_20", "TO", "H_4"}),
+              keysAt(15, 40));
 }
 
 // --------------------------------------------------------------------------

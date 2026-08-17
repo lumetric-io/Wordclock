@@ -90,6 +90,21 @@ const ClockDialect* getActiveDialect();
 // Only the phrase table changes, so this needs no reboot.
 bool setActiveDialect(const char* id);
 
+// Dialect axes of the active variant. Zero for a variant that offers its
+// dialects as one flat list (Dutch); German declares two.
+size_t getDialectAxisCount();
+const DialectAxis* getDialectAxis(size_t index);
+
+// The active dialect's value on `axisId`, or nullptr if the variant has no
+// such axis.
+const char* getActiveDialectAxisValue(const char* axisId);
+
+// Resolve one axis change into a dialect: takes the active dialect's tuple,
+// replaces `axisId` with `value`, and returns the dialect matching the result.
+// nullptr if the axis or value is unknown, or — which would be a data bug the
+// tests are meant to catch — no dialect covers the combination.
+const ClockDialect* findDialectByAxisChange(const char* axisId, const char* value);
+
 // Active LED counts per variant
 uint16_t getActiveLedCountGrid();
 uint16_t getActiveLedCountExtra();

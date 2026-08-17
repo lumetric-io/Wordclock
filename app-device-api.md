@@ -113,10 +113,10 @@ product, not of the app — never hardcode the list.
 
 | Endpoint | Method | Params | Response | Notes |
 |---|---|---|---|---|
-| `/api/language` | GET | — | `200` JSON (below) | `web_routes.h:915` |
-| `/api/language` | POST | `lang=<iso>` (query) | `200` JSON / `400 "Missing 'lang'"` / `400 "Unknown language: X"` | **Device reboots** when the code differs from the running one. `web_routes.h:932` |
-| `/api/dialect` | GET | — | `200` JSON (below) | Dialects of the **active** language only. `web_routes.h:957` |
-| `/api/dialect` | POST | `dialect=<id>` (query) | `200` JSON / `400 "Missing 'dialect'"` / `400 "Unknown dialect for active language: X"` | Applied live, no reboot. `web_routes.h:975` |
+| `/api/language` | GET | — | `200` JSON (below) | `web_routes.h:925` |
+| `/api/language` | POST | `lang=<iso>` (query) | `200` JSON / `400 "Missing 'lang'"` / `400 "Unknown language: X"` | **Device reboots** when the code differs from the running one. `web_routes.h:942` |
+| `/api/dialect` | GET | — | `200` JSON (below) | Dialects of the **active** language only. `web_routes.h:967` |
+| `/api/dialect` | POST | `dialect=<id>` **or** `axis=<id>&value=<v>` (query) | `200` JSON / `400 "Missing 'dialect' or 'axis'"` / `400 "Missing 'value' for axis X"` / `400 "No dialect for axis X=Y"` / `400 "Unknown dialect for active language: X"` | Applied live, no reboot. `web_routes.h:1002` |
 
 `GET /api/language`:
 
@@ -160,8 +160,30 @@ product — one confirmation.
 {
   "active": "de-nord",
   "available": [
-    { "id": "de-nord", "label": "Hochdeutsch", "sample": "viertel nach zehn · viertel vor elf" },
-    { "id": "de-sued", "label": "Süd-Ost",     "sample": "viertel elf · dreiviertel elf" }
+    { "id": "de-nord",         "label": "Hochdeutsch",        "sample": "viertel nach zehn · zwanzig vor elf" },
+    { "id": "de-sued",         "label": "Süd-Ost",            "sample": "viertel elf · zehn nach halb elf" },
+    { "id": "de-nord-halb",    "label": "Gemischt (nach)",    "sample": "viertel nach zehn · zehn nach halb elf" },
+    { "id": "de-sued-zwanzig", "label": "Gemischt (viertel)", "sample": "viertel elf · zwanzig vor elf" }
+  ],
+  "axes": [
+    {
+      "id": "quarters",
+      "label": "Quarter hours",
+      "active": "nach",
+      "options": [
+        { "value": "nach",    "label": "viertel nach / viertel vor", "sample": "viertel nach zehn · viertel vor elf" },
+        { "value": "viertel", "label": "viertel / dreiviertel",      "sample": "viertel elf · dreiviertel elf" }
+      ]
+    },
+    {
+      "id": "twenties",
+      "label": "Twenty past and to",
+      "active": "zwanzig",
+      "options": [
+        { "value": "zwanzig", "label": "zwanzig nach / zwanzig vor", "sample": "zwanzig nach zehn · zwanzig vor elf" },
+        { "value": "halb",    "label": "über halb",                  "sample": "zehn vor halb elf · zehn nach halb elf" }
+      ]
+    }
   ]
 }
 ```
@@ -170,6 +192,34 @@ product — one confirmation.
 picks on, since "Hochdeutsch" vs "Süd-Ost" means little on its own. Dutch has
 exactly one dialect (`nl`), so the list is never empty and the app can use the
 same UI for both languages.
+
+**Axes.** `axes` is present only for a plate whose dialects decompose into
+independent questions. German does: how it says the quarter hours, and how it
+says :20 and :40, are two unrelated things about a dialect, so the four dialects
+are the cross-product of two two-way choices. Asking two questions instead of
+offering four sentences is what the dashboard does; asking them independently is
+also the only way a customer can express a reading that mixes the two, which
+half of them do.
+
+- `axes[].active` is the active dialect's value on that axis.
+- Every combination of option values maps to exactly one entry in `available`
+  — the firmware asserts this in its tests, so a client may treat the axis
+  answers as exhaustive and never has to handle "no such dialect".
+- Dutch reports **no** `axes` key. A client that ignores `axes` entirely still
+  works off `available` exactly as before, which is what keeps older apps and
+  Home Assistant functioning against this firmware.
+
+`POST /api/dialect?axis=twenties&value=halb` moves one axis and leaves the
+others where they are; the device resolves the resulting combination, so the
+mapping from answers to a dialect id stays with the data rather than in the app.
+It replies with the reading it settled on:
+
+```json
+{ "active": "de-nord-halb", "axes": { "quarters": "nach", "twenties": "halb" } }
+```
+
+Adopt those values rather than what you asked for — on an axis change the
+dialect id is the device's to decide.
 
 ⚠️ A language switch **clears the stored dialect** — a dialect belongs to one
 plate. Re-read `/api/dialect` after the device comes back up.

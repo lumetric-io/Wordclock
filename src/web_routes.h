@@ -977,6 +977,23 @@ void setupWebRoutes() {
       item["label"] = d->label;
       item["sample"] = d->sample;
     }
+    // Axes, when the variant has them. A client that ignores this key still
+    // works off `available` exactly as before — which is what keeps older
+    // dashboards (and Home Assistant) functioning against new firmware.
+    for (size_t i = 0; i < getDialectAxisCount(); ++i) {
+      const DialectAxis* axis = getDialectAxis(i);
+      if (!axis) continue;
+      JsonObject a = doc["axes"].add<JsonObject>();
+      a["id"] = axis->id;
+      a["label"] = axis->label;
+      a["active"] = getActiveDialectAxisValue(axis->id);
+      for (size_t o = 0; o < axis->optionCount; ++o) {
+        JsonObject opt = a["options"].add<JsonObject>();
+        opt["value"] = axis->options[o].value;
+        opt["label"] = axis->options[o].label;
+        opt["sample"] = axis->options[o].sample;
+      }
+    }
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);
@@ -984,9 +1001,27 @@ void setupWebRoutes() {
 
   server.on("/api/dialect", HTTP_POST, []() {
     if (!ensureUiAuth()) return;
-    const String id = server.hasArg("dialect") ? server.arg("dialect") : String();
+    // Two ways in. `?dialect=<id>` sets the whole reading at once and is what
+    // older clients send. `?axis=<id>&value=<v>` moves one axis and leaves the
+    // others alone — the device resolves the resulting tuple, so the mapping
+    // from answers to a dialect id lives with the data rather than in the UI.
+    String id = server.hasArg("dialect") ? server.arg("dialect") : String();
+    if (id.length() == 0 && server.hasArg("axis")) {
+      const String axis = server.arg("axis");
+      const String value = server.hasArg("value") ? server.arg("value") : String();
+      if (value.length() == 0) {
+        server.send(400, "text/plain", "Missing 'value' for axis " + axis);
+        return;
+      }
+      const ClockDialect* resolved = findDialectByAxisChange(axis.c_str(), value.c_str());
+      if (!resolved) {
+        server.send(400, "text/plain", "No dialect for axis " + axis + "=" + value);
+        return;
+      }
+      id = resolved->id;
+    }
     if (id.length() == 0) {
-      server.send(400, "text/plain", "Missing 'dialect'");
+      server.send(400, "text/plain", "Missing 'dialect' or 'axis'");
       return;
     }
     if (!LanguageSettings::setDialect(id.c_str())) {
@@ -995,6 +1030,11 @@ void setupWebRoutes() {
     }
     JsonDocument doc;
     doc["active"] = LanguageSettings::activeDialect();
+    for (size_t i = 0; i < getDialectAxisCount(); ++i) {
+      const DialectAxis* axis = getDialectAxis(i);
+      if (!axis) continue;
+      doc["axes"][axis->id] = getActiveDialectAxisValue(axis->id);
+    }
     String out;
     serializeJson(doc, out);
     server.send(200, "application/json", out);

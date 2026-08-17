@@ -114,9 +114,9 @@ TEST_F(LanguageTest, DutchHasOneDialect) {
     EXPECT_STREQ("nl", getActivePhraseRules()->id);
 }
 
-TEST_F(LanguageTest, GermanOffersBothDialects) {
+TEST_F(LanguageTest, GermanOffersEveryAxisCombination) {
     ASSERT_TRUE(setActiveLanguage("de"));
-    ASSERT_EQ(2u, getDialectCount());
+    ASSERT_EQ(4u, getDialectCount()) << "two axes of two options each";
 
     EXPECT_STREQ("de-nord", getActiveDialect()->id) << "index 0 is the fallback";
     EXPECT_STREQ("de", getActivePhraseRules()->id);
@@ -124,6 +124,108 @@ TEST_F(LanguageTest, GermanOffersBothDialects) {
     ASSERT_TRUE(setActiveDialect("de-sued"));
     EXPECT_STREQ("de-sued", getActiveDialect()->id);
     EXPECT_STREQ("de-sued", getActivePhraseRules()->id);
+}
+
+// --------------------------------------------------------------------------
+// Dialect axes
+// --------------------------------------------------------------------------
+// ClockDialect::axisValues is a bare array indexed by the variant's axis
+// order. That is compact and cheap, and it is only safe if the arrays stay in
+// step — which is what these assert. Without them a reordered axis list would
+// silently mislabel every dialect.
+
+TEST_F(LanguageTest, DutchDeclaresNoAxes) {
+    // A single-dialect variant has nothing to decompose; the dashboard falls
+    // back to the flat list for it.
+    EXPECT_EQ(0u, getDialectAxisCount());
+    EXPECT_EQ(nullptr, getDialectAxis(0));
+    EXPECT_EQ(nullptr, getActiveDialectAxisValue("quarters"));
+}
+
+TEST_F(LanguageTest, EveryDialectCarriesAValidValueForEveryAxis) {
+    ASSERT_TRUE(setActiveLanguage("de"));
+    const size_t axisCount = getDialectAxisCount();
+    ASSERT_EQ(2u, axisCount);
+
+    for (size_t d = 0; d < getDialectCount(); ++d) {
+        const ClockDialect* dialect = getDialect(d);
+        ASSERT_NE(nullptr, dialect->axisValues) << dialect->id << " has no axis values";
+        for (size_t a = 0; a < axisCount; ++a) {
+            const DialectAxis* axis = getDialectAxis(a);
+            const char* value = dialect->axisValues[a];
+            ASSERT_NE(nullptr, value) << dialect->id << " missing value for " << axis->id;
+            bool known = false;
+            for (size_t o = 0; o < axis->optionCount; ++o) {
+                if (std::string(axis->options[o].value) == value) known = true;
+            }
+            EXPECT_TRUE(known) << dialect->id << " has unknown " << axis->id << " value " << value;
+        }
+    }
+}
+
+TEST_F(LanguageTest, AxisCombinationsAreTotalAndUnique) {
+    // Total: every combination the UI can offer resolves to a dialect, so no
+    // pair of answers can leave the customer with nothing. Unique: no two
+    // dialects claim the same tuple, so resolving is deterministic.
+    ASSERT_TRUE(setActiveLanguage("de"));
+    std::set<std::string> tuples;
+    size_t expected = 1;
+    for (size_t a = 0; a < getDialectAxisCount(); ++a) {
+        expected *= getDialectAxis(a)->optionCount;
+    }
+    for (size_t d = 0; d < getDialectCount(); ++d) {
+        std::string tuple;
+        for (size_t a = 0; a < getDialectAxisCount(); ++a) {
+            tuple += std::string(getDialect(d)->axisValues[a]) + "|";
+        }
+        tuples.insert(tuple);
+    }
+    EXPECT_EQ(expected, tuples.size()) << "axis combinations are not covered exactly once";
+    EXPECT_EQ(getDialectCount(), tuples.size()) << "two dialects share an axis tuple";
+}
+
+TEST_F(LanguageTest, ChangingOneAxisLeavesTheOtherAlone) {
+    ASSERT_TRUE(setActiveLanguage("de"));
+    ASSERT_TRUE(setActiveDialect("de-nord"));
+    ASSERT_STREQ("nach", getActiveDialectAxisValue("quarters"));
+    ASSERT_STREQ("zwanzig", getActiveDialectAxisValue("twenties"));
+
+    // Move only `twenties`. This is the combination that had no table before
+    // the axes were split.
+    const ClockDialect* resolved = findDialectByAxisChange("twenties", "halb");
+    ASSERT_NE(nullptr, resolved);
+    EXPECT_STREQ("de-nord-halb", resolved->id);
+    ASSERT_TRUE(setActiveDialect(resolved->id));
+    EXPECT_STREQ("nach", getActiveDialectAxisValue("quarters")) << "quarters moved too";
+    EXPECT_STREQ("halb", getActiveDialectAxisValue("twenties"));
+
+    // And back the other way, from the mixed dialect.
+    resolved = findDialectByAxisChange("quarters", "viertel");
+    ASSERT_NE(nullptr, resolved);
+    EXPECT_STREQ("de-sued", resolved->id);
+}
+
+TEST_F(LanguageTest, UnknownAxisOrValueResolvesToNothing) {
+    ASSERT_TRUE(setActiveLanguage("de"));
+    EXPECT_EQ(nullptr, findDialectByAxisChange("nonsense", "halb"));
+    EXPECT_EQ(nullptr, findDialectByAxisChange("twenties", "nonsense"));
+    EXPECT_EQ(nullptr, findDialectByAxisChange("twenties", nullptr));
+    EXPECT_EQ(nullptr, findDialectByAxisChange(nullptr, "halb"));
+}
+
+TEST_F(LanguageTest, AxisSamplesDifferWithinAnAxis) {
+    // Same reasoning as the per-dialect samples: the sentence is what the
+    // customer picks on, so two identical ones make the question unanswerable.
+    ASSERT_TRUE(setActiveLanguage("de"));
+    for (size_t a = 0; a < getDialectAxisCount(); ++a) {
+        const DialectAxis* axis = getDialectAxis(a);
+        std::set<std::string> samples;
+        for (size_t o = 0; o < axis->optionCount; ++o) {
+            ASSERT_NE(nullptr, axis->options[o].sample);
+            samples.insert(axis->options[o].sample);
+        }
+        EXPECT_EQ(axis->optionCount, samples.size()) << axis->id << " repeats a sample";
+    }
 }
 
 TEST_F(LanguageTest, DialectSamplesDifferWithinAVariant) {

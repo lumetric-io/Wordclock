@@ -61,11 +61,49 @@ struct PhraseRules {
 // `sample` is the sentence shown next to the choice in the setup UI — it has
 // to differ visibly between a variant's dialects, otherwise there is nothing
 // for the customer to pick on.
+// ---------------------------------------------------------------------------
+// Dialect axes
+// ---------------------------------------------------------------------------
+// German turned out to vary along two *independent* questions, not one:
+//
+//   quarters   viertel nach zehn / viertel vor elf   vs  viertel elf / dreiviertel elf
+//   twenties   zwanzig nach zehn / zwanzig vor elf   vs  zehn vor halb elf / zehn nach halb elf
+//
+// The two isoglosses do not coincide, so a customer who says "viertel nach
+// zehn" may well say "zehn nach halb elf". Offering only the two matched pairs
+// forces that customer to accept a clock that is wrong four times an hour.
+//
+// A variant therefore declares its axes, and each dialect states where it sits
+// on every one of them. Every combination still resolves to a complete, static
+// PhraseRules table — the engine never composes rules at runtime, so a dialect
+// remains a thing a test can verify exhaustively, and NVS still stores exactly
+// one id. Axes are a presentation and lookup layer over the same data.
+//
+// A variant with no axes (Dutch) keeps the flat single-list behaviour.
+struct DialectAxisOption {
+  const char* value;   // stable within the axis; used by the HTTP API
+  const char* label;   // UI label
+  const char* sample;  // example phrase, this axis only
+};
+
+struct DialectAxis {
+  const char* id;        // "quarters", "twenties"
+  const char* label;     // UI label for the group
+  const DialectAxisOption* options;
+  size_t optionCount;
+};
+
 struct ClockDialect {
   const char* id;      // NVS-stable: "nl", "de-nord", "de-sued"
   const char* label;   // UI label
   const char* sample;  // example phrase that distinguishes this dialect
   const PhraseRules* rules;
+  // One entry per axis the variant declares, in the variant's axis order.
+  // nullptr when the variant declares no axes. The parallel-array shape is
+  // only safe because axes and dialects are defined side by side in one
+  // variant file — and test_phrase_rules asserts the mapping is total (every
+  // combination has a dialect) and unique (no two dialects share a tuple).
+  const char* const* axisValues;
 };
 
 // Shared by every Dutch variant. German tables live in their own variant file,

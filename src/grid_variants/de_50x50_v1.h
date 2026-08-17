@@ -16,11 +16,17 @@ extern const size_t WORDS_DE_50x50_V1_COUNT;
 extern const uint16_t EXTRA_MINUTES_DE_50x50_V1[];
 extern const size_t EXTRA_MINUTES_DE_50x50_V1_COUNT;
 
-// Two regional dialects share this one letter grid. Both are offered to the
-// customer at setup; DIALECTS_DE_50x50_V1[0] is what a device falls back to
-// when no choice is stored.
-extern const PhraseRules DE_RULES_STANDARD;  // Nord / "Hochdeutsch"
-extern const PhraseRules DE_RULES_SUED;      // Süd-Ost: viertel/dreiviertel
+// Four readings share this one letter grid: two independent axes (quarters,
+// twenties) with two options each. All four are offered to the customer;
+// DIALECTS_DE_50x50_V1[0] is what a device falls back to when no choice is
+// stored.
+extern const PhraseRules DE_RULES_STANDARD;      // nach + zwanzig  ("Hochdeutsch")
+extern const PhraseRules DE_RULES_SUED;          // viertel + halb  ("Süd-Ost")
+extern const PhraseRules DE_RULES_NORD_HALB;     // nach + halb
+extern const PhraseRules DE_RULES_SUED_ZWANZIG;  // viertel + zwanzig
 
 extern const ClockDialect DIALECTS_DE_50x50_V1[];
 extern const size_t DIALECTS_DE_50x50_V1_COUNT;
+
+extern const DialectAxis DIALECT_AXES_DE_50x50_V1[];
+extern const size_t DIALECT_AXES_DE_50x50_V1_COUNT;
