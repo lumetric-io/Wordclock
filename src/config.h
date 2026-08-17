@@ -126,6 +126,11 @@
 #define WIFI_CONNECT_RETRY_DELAY_MS 500
 #define MDNS_HOSTNAME "wordclock"
 #define MDNS_START_DELAY_MS 1000
+// How long to wait before retrying a failed mDNS registration. Registration
+// runs from the loop (runtime_services.cpp, and bootstrap_main.cpp for the
+// factory firmware), so without a gap a failure would be retried — and
+// logged — on every tick.
+#define MDNS_RETRY_INTERVAL_MS 10000
 #define TIME_SYNC_TIMEOUT_MS 15000
 
 #define OTA_UPDATE_COMPLETE_DELAY_MS 1000

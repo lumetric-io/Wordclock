@@ -4,6 +4,7 @@
 
 #include <time.h>
 
+#include <ESPmDNS.h>
 #include <WebServer.h>
 
 #if OTA_ENABLED
@@ -36,12 +37,52 @@ bool g_uiSyncHandled = false;
 bool g_serverInitialized = false;
 bool g_autoRegistrationHandled = false;
 bool g_heartbeatInitialized = false;
+bool g_mdnsRegistered = false;
+unsigned long g_mdnsNextAttemptMs = 0;
 
 bool g_lastWifiConnected = false;
 unsigned long g_lastSettingsFlushPortalMs = 0;
 unsigned long g_lastSettingsFlushMs = 0;
 unsigned long g_lastLoopMs = 0;
 time_t g_lastFirmwareCheck = 0;
+
+// Registers `wordclock.local`. This lives with the other online services
+// rather than in setup() on purpose: the responder binds to the STA interface,
+// so a boot that comes up without Wi-Fi has nothing to bind to. Registering
+// once at boot meant such a device served the dashboard on its IP while its
+// name stayed dead for the rest of its uptime — every other service recovered
+// on reconnect, the name did not, and the only fix a customer has is the plug.
+//
+// Only called with Wi-Fi up. Leaves g_mdnsRegistered false on failure so the
+// loop retries, throttled by MDNS_RETRY_INTERVAL_MS.
+void startMdns() {
+  // ArduinoOTA has already brought the mDNS stack up and registered
+  // _arduino._tcp by the time this first runs, so end() is right only when
+  // re-registering — on the first pass it would take OTA discovery with it.
+  static bool registeredBefore = false;
+  if (registeredBefore) {
+    MDNS.end();
+  }
+  if (!MDNS.begin(MDNS_HOSTNAME)) {
+    logError("❌ mDNS start failed");
+    g_mdnsNextAttemptMs = millis() + MDNS_RETRY_INTERVAL_MS;
+    return;
+  }
+  // The per-device firmware advertised no service at all while
+  // bootstrap_main.cpp did. Hostname lookups work either way; browsing
+  // _http._tcp does not, and there was never a reason for the two to differ.
+  MDNS.addService("http", "tcp", 80);
+  registeredBefore = true;
+  g_mdnsRegistered = true;
+  g_mdnsNextAttemptMs = 0;
+  logInfo("🌐 mDNS active at http://" MDNS_HOSTNAME ".local");
+}
+
+void ensureMdns() {
+  if (g_mdnsRegistered) return;
+  if (g_mdnsNextAttemptMs != 0 && millis() < g_mdnsNextAttemptMs) return;
+  startMdns();
+}
 
 void attemptAutoRegistration() {
   if (g_autoRegistrationHandled || !isWiFiConnected()) return;
@@ -75,6 +116,7 @@ void attemptAutoRegistration() {
 
 void runtimeInitOnSetup(bool wifiConnected, WebServer& server) {
   if (wifiConnected) {
+    ensureMdns();
     initWebServer(server);
     g_serverInitialized = true;
     initMqtt();
@@ -117,6 +159,12 @@ void runtimeHandleWifiTransitionLogs(bool wifiConnected) {
         triggerHeartbeat();
       }
     } else {
+      // The responder is bound to the STA interface and the address can differ
+      // when we come back, so re-register rather than assume it survived. This
+      // edge is the only place the drop is visible: runtimeEnsureOnlineServices
+      // returns early while offline and can't tell a first boot from a return.
+      g_mdnsRegistered = false;
+      g_mdnsNextAttemptMs = 0;
 #if WIFI_MANAGER_ENABLED
       logWarn("📶 WiFi not connected. Retrying; portal opens after timeout.");
 #else
@@ -142,6 +190,7 @@ bool runtimeHandleNoWifiLoop(unsigned long nowMs) {
 
 void runtimeEnsureOnlineServices(WebServer& server) {
   if (!isWiFiConnected()) return;
+  ensureMdns();
   if (!g_serverInitialized) {
     initWebServer(server);
     g_serverInitialized = true;
