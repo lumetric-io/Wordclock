@@ -198,6 +198,13 @@ bool sendHeartbeat() {
   req["dialect"] = LanguageSettings::activeDialect();
   req["langSrc"] = LanguageSettings::sourceName();
 
+  // Active log threshold. Matters for reading the fleet's log feed as much as
+  // for support: the firmware filters in log() before anything is stored, so
+  // a device left on the default ERROR level cannot produce a WARN at all.
+  // Without this field, "no warnings from that clock" and "that clock is
+  // incapable of warning" are indistinguishable in the data.
+  req["logLevel"] = logLevelName();
+
   // Extended system diagnostics
   req["minFreeHeap"] = (long)ESP.getMinFreeHeap();
   req["heapSize"] = (long)ESP.getHeapSize();

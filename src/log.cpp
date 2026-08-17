@@ -394,3 +394,17 @@ void logRewriteUnsynced() {
 }
 
 #endif // PIO_UNIT_TESTING
+
+// Outside the test/firmware split on purpose: LOG_LEVEL exists in both, and
+// the fleet needs the same spelling from both. The codes are the wire format
+// of the heartbeat's `logLevel` field and the value_code column of the
+// `log_level` LoV in the portal — changing one means changing all three.
+const char* logLevelName() {
+  switch (LOG_LEVEL) {
+    case LOG_LEVEL_DEBUG: return "debug";
+    case LOG_LEVEL_INFO:  return "info";
+    case LOG_LEVEL_WARN:  return "warn";
+    case LOG_LEVEL_ERROR: return "error";
+    default:              return "error";
+  }
+}

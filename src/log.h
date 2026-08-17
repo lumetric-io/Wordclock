@@ -25,6 +25,11 @@ void logln(String msg, int level = LOG_LEVEL_INFO);
 #define logError(msg) logln(msg, LOG_LEVEL_ERROR)
 
 void setLogLevel(LogLevel level);
+
+// Current threshold as a stable lowercase code: "debug" | "info" | "warn" |
+// "error". Reported on the heartbeat, so it must not follow the enum's
+// numbering — renumbering LogLevel would otherwise rewrite fleet history.
+const char* logLevelName();
 void setLogRetentionDays(uint32_t days);
 uint32_t getLogRetentionDays();
 void setLogDeleteOnBoot(bool enabled);
