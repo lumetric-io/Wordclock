@@ -26,34 +26,92 @@ coating" so customers don't expect an exact match.
 
 ## Multi-language — language & dialect picker in the dashboard
 
-Surfaced 2026-08-09, after the firmware side landed. The device can already do
-this; nothing here needs a firmware change.
+Surfaced 2026-08-09, after the firmware side landed. The picker itself needed no
+firmware change; splitting the German dialect into two questions did (below).
 
 **What exists.** `GET/POST /api/language` and `GET/POST /api/dialect`
 (`app-device-api.md` §1.3). A language is a physical front plate, so switching
 it reboots; a dialect is a second way of reading the same plate and applies
-live. German ships two dialects on one plate — `de-nord` ("viertel nach zehn")
-and `de-sued` ("viertel elf"). Dutch has exactly one, so the same UI serves
-both: the dialect section simply has a list of length 1 and collapses.
+live. German ships four dialects on one plate; Dutch has exactly one, so the
+same UI serves both: the dialect section simply has a list of length 1 and
+collapses.
 
-**Built 2026-08-09** — section `10 Language` at the top of the Display tab in
+**Built 2026-08-09** — section `10 Language`, last in the Display tab of
 `data/dashboard.html`, plus `dashboard.language.*` in `en.json`/`nl.json`. The
-notes below record why it is shaped the way it is. Still open after it:
+notes below record why it is shaped the way it is.
 
-- **Whether to offer German at all.** `nextgen-50x50` compiles the German plate
-  in so the multi-language path runs on real hardware — that is not the same as
-  selling German plates, and a Dutch customer who picks German gets an
-  unreadable wall until they switch back. The `OFFERED_LANGUAGES` constant in
-  the picker is the one-line control: `null` offers whatever the firmware
-  reports, `['nl']` holds German back. It ships as `null` today. **Decide before
-  this reaches a customer channel.** The active language is always offered even
-  when filtered out, so a device switched over by hand can always switch back.
-- **"Kiezen op beeld"** (design doc §6) — showing the actual letter grid per
-  language instead of a name — needs `/api/language` to return grid data. That
-  is a firmware change, out of scope for a `data/`-only ship.
+**Verified on real hardware 2026-08-12** — a `nextgen-50x50` running
+`26.08.12-dev.1` switched from Dutch to German through the picker and the whole
+chain followed: NVS write, reboot, grid variant swap to `DE_50x50_V1`, and a
+heartbeat reporting `lang=de dialect=de-nord langSrc=user` — up from
+`nl/nl/migrated`, which is exactly the transition the display gate's release
+criterion is built on. First time the multi-language path has run outside a
+test.
 
-- **Where**: the Display tab of `data/dashboard.html`, next to the animation
-  setting. *Not* `admin.html` — that page is behind `ensureAdminAuth()` (real
+One false alarm on the way, worth knowing before it wastes an hour again: the
+picker appeared to be missing entirely. It was not. `curl` showed the device
+serving the new `dashboard.html` while the browser rendered a cached copy; a
+hard refresh fixed it. The `ui` version in the heartbeat cannot rule this out
+either — `getUiVersion()` falls back to the compiled `UI_VERSION` whenever
+`/.fs_image_version` is absent, which is the case after any USB `uploadfs`,
+so new-app-with-stale-files still reports the new UI version. See the cache
+headers section below; that is the real fix.
+
+**Built 2026-08-14 — the German dialect is two questions, not one.** The plate
+varies along two axes that speakers mix freely: the quarter hours (`viertel nach
+zehn` vs `viertel elf`) and :20/:40 (`zwanzig vor elf` vs `zehn nach halb elf`).
+Offering them as one four-way list asks the customer to find their own speech in
+a sentence pair, and only two of the four combinations even had a rule table
+before this. Now:
+
+- Two new `PhraseRules` tables complete the cross-product: `de-nord-halb` and
+  `de-sued-zwanzig`. Each dialect stays one **complete** table — the engine
+  composes nothing at runtime, so `test_phrase_rules` keeps asserting exactly
+  what renders, and a table asking for a word the plate lacks still fails.
+- A variant may declare `DialectAxis[]`; each dialect carries `axisValues`, one
+  per axis. The mapping is asserted **total and unique** in `test_language`,
+  which is what makes the parallel array safe.
+- `GET /api/dialect` grew an `axes` array; `POST` accepts `axis=&value=` beside
+  the existing `dialect=`. Dialect ids, NVS, the field migration, the heartbeat
+  and Home Assistant are all unchanged — a client that ignores `axes` behaves
+  exactly as before. The dashboard renders one radio group per axis and falls
+  back to the flat list when a device reports none.
+
+Open: whether all four readings are attested and whether "Gemischt (nach)" /
+"Gemischt (viertel)" are the right labels. Folded into the native-DE review
+already pending for the website; the axis machinery does not depend on the
+answer, only the four labels do.
+
+**Decided 2026-08-09 — every language stays switchable.** `OFFERED_LANGUAGES`
+is `null`, so the picker offers whatever the firmware reports, German included
+on `nextgen-50x50`. The reasoning: the customer picks at setup, but when that
+goes wrong — wrong pick, wrong plate shipped, someone else did the setup — they
+have to be able to fix it themselves instead of opening a support ticket. That
+outweighs hiding German from a Dutch owner who has no reason to choose it. The
+section is placed last in the tab rather than first for the same reason:
+reachable, not prominent. Set `OFFERED_LANGUAGES` to a list if a language ever
+does need holding back; the active language is always offered even when
+filtered out, so a device switched over by hand can never get stuck.
+
+Still open after it:
+
+- **"Kiezen op beeld"** (design doc §6) — instead of picking from the *names*
+  "Nederlands / Deutsch", show a thumbnail of each front plate's actual letter
+  grid, so the customer matches what they see on the wall rather than trusting
+  a label. It is the difference between "which language is this?" and "which of
+  these two pictures is your clock?", and it is the version that survives a
+  customer who doesn't know the word "dialect". Needs `/api/language` to return
+  the letter grid per language — a firmware change, so out of scope for a
+  `data/`-only ship.
+- **German dashboard** (`data/i18n/de.json` + `DE` in the pill). Deferred
+  2026-08-09: a German customer can run the dashboard in English for now. The
+  clock's language and the dashboard's language are separate settings and
+  always were.
+
+How it is shaped, and why:
+
+- **Where**: the Display tab of `data/dashboard.html`, last section in the tab.
+  *Not* `admin.html` — that page is behind `ensureAdminAuth()` (real
   HTTP Basic), so a customer would need the admin password to change their own
   clock's dialect, and it's the page holding factory reset and bootstrap
   re-install. Dialect belongs with brightness, colour and night mode. Put it in
@@ -64,21 +122,136 @@ notes below record why it is shaped the way it is. Still open after it:
   single-language case can't rot.
 - **Pick on the sample sentence**, not the label: "ES IST VIERTEL NACH DREI" vs
   "ES IST VIERTEL VIER" tells a customer something; "Hochdeutsch" vs "Süd-Ost"
-  does not.
+  does not. Same rule per axis option — each carries its own sample, covering
+  only what that axis decides, so the two questions stay separable.
+- **Ask one question per independent decision.** The device decomposes its own
+  dialects; the UI never hardcodes which axes exist or resolves a combination
+  itself — it posts one axis and adopts the reading the device settles on.
 - **Preview live.** A dialect change needs no reboot, so the physical clock can
   follow the radio button while the customer is choosing. They look at the
   wall, not the screen.
-- **Language change reboots** — warn, then poll `/api/firmware/identity` until
-  the device is back, and confirm afterwards ("your clock now shows German —
-  does that look right?") with a way back.
+- **Language change reboots** — warn, then wait the device out and confirm
+  afterwards ("your clock now shows German — does that look right?") with a way
+  back. As built it polls `/api/device/info` and accepts either signal the
+  firmware updater uses: the device went unreachable, or `uptime_ms` ran
+  backwards. One alone can be missed.
 - Ships as an `fs.bin` OTA (it's `data/`-only), not an app-only update.
-- Still open elsewhere: `data/i18n/de.json` + a `DE` entry in the language
-  pill, in the Sie-form used by the website's `de.json`. UI language stays
-  separate from clock language.
 
 Independent of the display gate (that's a later, telemetry-gated phase); this
 picker can ship as soon as it's built. Full design: `multi-language-design.md`
 §6 and §12 (untracked — `.gitignore` whitelists only a few `*.md`).
+
+## `wordclock.local` never comes back after a Wi-Fi-less boot
+
+Found 2026-08-17, on a 50x50 that had just been flashed. Symptom: the clock kept
+showing the time, `Wordclock_AP` was being broadcast, and the dashboard was
+unreachable. A reboot fixed it.
+
+The chain, all of it existing behaviour:
+
+1. The Wi-Fi connect at boot failed. Common right after a flash — the access
+   point still holds the previous association and the radio comes up cold. On
+   that path `wm.autoConnect()` returns false and the config portal opens
+   **immediately** (`network.cpp:131`), not after the 300 s fallback.
+2. The display is independent of Wi-Fi, so the clock kept telling the time. That
+   is what makes this look like a UI bug rather than a network one.
+3. `runtimeInitOnSetup()` saw no Wi-Fi and left `g_serverInitialized = false` —
+   no web server at all yet.
+4. `MDNS.begin()` ran regardless, at `main.cpp:73`, with no STA interface.
+5. Wi-Fi came back on one of the 60 s retries. `runtimeEnsureOnlineServices()`
+   then started the web server, MQTT, the heartbeat and registration, and the
+   loop stopped the portal — **but nothing re-registers mDNS**. It is called
+   exactly once, in `setup()`, and never again.
+
+So the device was on the LAN and serving the dashboard on its IP the whole time,
+while `wordclock.local` stayed dead for the rest of that uptime. Every recovering
+service recovers except the name you reach it by. The reboot worked because that
+boot's connect succeeded, so mDNS registered against a live interface.
+
+This is worse on a customer than it was here: they have no IP to fall back on,
+the clock looks healthy on the wall, and the only advice that works is "pull the
+plug". It also fires on any Wi-Fi outage long enough to bounce the device.
+
+**Fixed 2026-08-17.** mDNS now recovers the way every other online service
+already did — `startMdns()` / `ensureMdns()` in `runtime_services.cpp`:
+
+- The `MDNS.begin(MDNS_HOSTNAME)` call moved out of `setup()` into
+  `runtimeInitOnSetup()` and `runtimeEnsureOnlineServices()`, behind
+  `g_mdnsRegistered`, next to `g_serverInitialized`. It registers on the first
+  boot *with* a connection, and after any reconnect that follows a boot without
+  one. Both call sites only ever run with Wi-Fi up.
+- The disconnect edge in `runtimeHandleWifiTransitionLogs()` clears the flag.
+  That edge is the only place a drop is visible at all —
+  `runtimeEnsureOnlineServices()` returns early while offline and cannot tell a
+  first boot from a return. The responder is bound to the STA interface and the
+  address can change, so re-registering beats assuming it survived.
+- `MDNS.end()` before a re-`begin()`, but **not on the first pass**: ArduinoOTA
+  has already brought the mDNS stack up and registered `_arduino._tcp` by then,
+  and tearing it down would take OTA discovery with it.
+- Failure leaves the flag false so the loop retries, throttled by
+  `MDNS_RETRY_INTERVAL_MS` (10 s). Registration runs from the loop now, so
+  without a gap a failure would be retried — and logged — every tick.
+- Added `MDNS.addService("http", "tcp", 80)`. `bootstrap_main.cpp` did this and
+  the per-device firmware did not — an inconsistency with no reason behind it.
+  Hostname lookups work without the service record; browsing `_http._tcp` does
+  not.
+
+To verify without waiting for a bad boot: connect the clock, force a
+disconnect/re-associate (drop the AP, or `WiFi.disconnect()`), and check that
+`wordclock.local` resolves again afterwards. The serial log prints
+`🌐 mDNS active` on each successful registration, so a reconnect should produce a
+second line where it previously produced none.
+
+**`nextgen-bootstrap` fixed the same day, separately.** It has its own
+`build_src_filter` and compiles neither `main.cpp` nor `runtime_services.cpp`,
+so it could not call `ensureMdns()` — the logic is duplicated in
+`bootstrap_main.cpp` (`startMdns()` / `serviceMdns()`), sharing only
+`MDNS_HOSTNAME` and `MDNS_RETRY_INTERVAL_MS` from `config.h`. Two differences
+from the per-device version, both because bootstrap's shape is different:
+
+- Its boot cannot reach mDNS without a link at all: `connectWifi()` blocks until
+  the factory creds or the portal succeed, and restarts otherwise. So the
+  Wi-Fi-less-boot path above does not exist there. What did was the rest of it —
+  a `begin()` that failed was never retried, and a link that dropped mid-session
+  left the responder dead for the remaining uptime.
+- There is no reconnect machinery to hang a disconnect edge on, so `serviceMdns()`
+  polls `WiFi.status()` from `loop()` itself, throttled to 1 s (the loop spins
+  every 2 ms, and provisioning downloads run on their own task). `MDNS.end()` is
+  still first-pass-guarded, though only for tidiness — bootstrap runs no
+  ArduinoOTA, so there is no `_arduino._tcp` to protect.
+
+This matters more in the factory than on a wall: the operator never sees the
+DHCP lease, so `http://wordclock.local/` is the *only* route to the product
+picker. A dead responder there means a power-cycle before every retry.
+
+## Static assets are served with no cache headers
+
+Found 2026-08-12, while the language picker appeared to be missing on a
+freshly-updated 50x50. It was not missing: the device was serving the new
+`dashboard.html` (confirmed with `curl`) while the browser rendered a cached
+copy. A hard refresh fixed it.
+
+`serveFile()` (`src/web_routes.h:97`) sends no `Cache-Control`, no `ETag` and no
+`Last-Modified`. With no validators at all a browser is free to cache
+heuristically and reuse without asking, so **any** `fs.bin` OTA can leave a
+customer looking at the previous UI with no indication anything is stale. This
+one cost a debugging session; on a customer it costs a support ticket, and the
+symptom points at the feature rather than at the cache.
+
+Fix, in `serveFile()` so every static route inherits it:
+
+- `Cache-Control: no-cache` — revalidate every time. Note this is *not*
+  `no-store`; the copy stays usable, the browser just has to ask.
+- `ETag: "<ui version>-<file size>"`, and answer `If-None-Match` with `304`.
+  The UI version already changes on every `fs.bin` install, so the tag turns
+  over exactly when the files do.
+
+Without the ETag half, `no-cache` means re-downloading 92 KB of
+`dashboard.html` on every load; with it, an unchanged page costs one round trip
+and no body. Compute the version string once at boot rather than calling
+`getUiVersion()` per request — it opens a file on LittleFS.
+
+Effort: S. Worth doing before the next `fs.bin` release, not after.
 
 ## Security hardening — full-repo review findings
 
