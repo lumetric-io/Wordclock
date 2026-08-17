@@ -904,7 +904,7 @@ input[type="file"]::file-selector-button {
 .logo-color-grid {
   display: grid;
   /* Auto-fill so the grid adapts to the container width on phones
-     instead of forcing a fixed column count from JS (see dashboard-v2's
+     instead of forcing a fixed column count from JS (see dashboard.html's
      syncLogoGrid — column count is now CSS-driven). 48px minmax gives
      a comfortable tap target on iOS (Apple HIG guideline is 44px). */
   grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));

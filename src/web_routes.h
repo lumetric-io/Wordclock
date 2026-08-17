@@ -291,54 +291,28 @@ void setupWebRoutes() {
   });
 
   // ── Page aliases ────────────────────────────────────────────────
-  // The editorial redesign is the default and lives under the plain names;
-  // there has never been a *-v2.html file in data/. The -v2 URLs only ever
-  // served the plain file under a second name, which is why they looked
-  // identical. They are now 301s: a bookmark still resolves, but the browser
-  // rewrites it to the canonical URL, so the alias retires itself and these
-  // five routes can be deleted outright later without 404ing anyone.
+  // The `-v2` URLs are gone (2026-08-17). They never had files of their own —
+  // the editorial redesign always shipped under the plain names — and their
+  // last form was a 301 to the canonical URL, so any bookmark that still
+  // pointed at one has had its browser rewrite it. They now 404 like any other
+  // unknown path.
   // The -legacy pages are different: real files, the old Tailwind build,
   // reachable by URL only as a fallback.
-  auto redirectPermanent = [](const char* target) {
-    server.sendHeader("Location", target);
-    server.send(301, "text/plain", "");
-  };
-
-  server.on("/dashboard-v2.html", HTTP_GET, [redirectPermanent]() {
-    if (!ensureUiAuth()) return;
-    redirectPermanent("/dashboard.html");
-  });
   server.on("/dashboard-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     serveFile("/dashboard-legacy.html", "text/html");
-  });
-  server.on("/admin-v2.html", HTTP_GET, [redirectPermanent]() {
-    if (!ensureAdminAuth()) return;
-    redirectPermanent("/admin.html");
   });
   server.on("/admin-legacy.html", HTTP_GET, []() {
     if (!ensureAdminAuth()) return;
     serveFile("/admin-legacy.html", "text/html");
   });
-  server.on("/mqtt-v2.html", HTTP_GET, [redirectPermanent]() {
-    if (!ensureUiAuth()) return;
-    redirectPermanent("/mqtt.html");
-  });
   server.on("/mqtt-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     serveFile("/mqtt-legacy.html", "text/html");
   });
-  server.on("/logs-v2.html", HTTP_GET, [redirectPermanent]() {
-    if (!ensureUiAuth()) return;
-    redirectPermanent("/logs.html");
-  });
   server.on("/logs-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
     serveFile("/logs-legacy.html", "text/html");
-  });
-  server.on("/update-v2.html", HTTP_GET, [redirectPermanent]() {
-    if (!ensureUiAuth()) return;
-    redirectPermanent("/update.html");
   });
   server.on("/update-legacy.html", HTTP_GET, []() {
     if (!ensureUiAuth()) return;
@@ -363,7 +337,7 @@ void setupWebRoutes() {
   });
 
   // RAL Classic colour picker: shared JS module + 205-entry palette.
-  // Lazy-loaded only when the user opens the RAL dialog in the v2 UI.
+  // Lazy-loaded only when the user opens the RAL dialog in the brand UI.
   server.on("/ral-picker.js", HTTP_GET, []() {
     serveFile("/ral-picker.js", "application/javascript");
   });
