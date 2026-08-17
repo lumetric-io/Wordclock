@@ -22,6 +22,23 @@
 // Retry interval after failure (5 minutes)
 #define HEARTBEAT_RETRY_INTERVAL_MS (5 * 60 * 1000UL)
 
+// sendHeartbeat() runs synchronously inside loop(), so every millisecond it
+// spends waiting is a millisecond the display does not animate. A successful
+// beacon already costs ~1 s; the old single 15 s timeout meant one dropped
+// response froze the clock for fifteen seconds — visible on a wall.
+//
+// Split in two, because the two waits are not the same risk:
+//   - connect covers DNS + TCP + the TLS handshake, which is the slow part on
+//     an ESP32 and the part that legitimately needs room on a weak link.
+//   - read is the wait for the response to a request already sent. The portal
+//     answers this endpoint in well under a second, so anything still absent
+//     after 5 s is not coming. Capping it costs nothing and is what keeps a
+//     radio dip from stalling the animation.
+// Observed 2026-08-17: a beacon at RSSI -91 dBm was written server-side and
+// still timed out client-side. See ROADMAP.md.
+#define HEARTBEAT_CONNECT_TIMEOUT_MS 10000
+#define HEARTBEAT_READ_TIMEOUT_MS 5000
+
 // State
 static unsigned long s_lastHeartbeatMs = 0;
 static unsigned long s_lastFailureMs = 0;
@@ -173,7 +190,8 @@ bool sendHeartbeat() {
   
   http.addHeader("Content-Type", "application/json");
   http.addHeader(DEVICE_API_HEADER, deviceToken);
-  http.setTimeout(15000);  // 15 second timeout
+  http.setConnectTimeout(HEARTBEAT_CONNECT_TIMEOUT_MS);
+  http.setTimeout(HEARTBEAT_READ_TIMEOUT_MS);
   
   // Build payload
   JsonDocument req;

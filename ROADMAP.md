@@ -255,6 +255,9 @@ Effort: S. Worth doing before the next `fs.bin` release, not after.
 
 ## A heartbeat that lands is reported as failed, and freezes the display for 15 s
 
+**Timeout half fixed 2026-08-17 (not yet built or flashed). The duplicate row
+is deliberately left alone — see the end.**
+
 Found 2026-08-17 on the 50x50 dev clock (`f316287d`), right after flashing
 `26.08.17-dev.3`:
 
@@ -294,17 +297,31 @@ Two consequences, in order of how much they matter:
    before this. With the server's 100-rows-per-device live ring, dips shorten
    the retained history.
 
-Fix for (1) is small and worth doing: **drop the timeout from 15 s to ~5 s**. A
-response that has not arrived in 5 s is not arriving; the trade is 10 seconds of
-frozen display for an identical outcome. Anything better means getting the HTTPS
-call off the render loop, which is a much larger change.
+**Fix applied for (1)**: the single 15 s `setTimeout()` is now two bounds,
+`HEARTBEAT_CONNECT_TIMEOUT_MS 10000` and `HEARTBEAT_READ_TIMEOUT_MS 5000`. The
+two waits are not the same risk. Connect covers DNS + TCP + the TLS handshake —
+the slow part on an ESP32, and the part that genuinely needs room on a weak
+link, so it keeps a generous bound. Read is the wait for a response to a request
+already sent, and the portal answers in well under a second, so 5 s is already
+far past hope. Collapsing both to 5 s would have traded one bug for another:
+handshakes that used to succeed slowly would start failing.
+
+Worst case is now 10 s rather than 15, and the common case — the dip observed
+here, where the request got through — is 5 s. Anything better means getting the
+HTTPS call off the render loop, which is a much larger change and not scheduled.
+
+`src/ota_updater.cpp` keeps its six 15 s timeouts on purpose: an OTA is a
+deliberate, foreground action where a stalled display is expected, and its
+transfers really can take that long.
 
 (2) is not worth fixing properly — an idempotency key on the heartbeat is out of
 proportion to a duplicate row now and then. Worth knowing when reading fleet
 data: heartbeat gaps well under 60 min are the retry path, not a reconfigured
 device.
 
-Effort: S for the timeout. Diagnosis only so far, nothing changed.
+Not yet compiled: no native test covers `heartbeat.cpp` (it needs the Wi-Fi
+stack), so the next `pio run` is what proves `setConnectTimeout()` builds
+against espressif32@6.4.0.
 
 ## Security hardening — full-repo review findings
 
