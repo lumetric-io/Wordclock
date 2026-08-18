@@ -42,10 +42,13 @@ if [ -z "$etag" ]; then
 fi
 
 echo "==> Conditional GET (If-None-Match)"
-cond="$(curl -s -D - -o /tmp/.wc_body_$$ -m 10 -H "If-None-Match: ${etag}" "$URL" 2>/dev/null)"
+# Ask curl for the byte count rather than measuring a temp file: curl opens its
+# -o target lazily, on the first body byte, so a bodyless 304 leaves no file at
+# all and `wc -c` reports an error instead of the zero we are hoping for.
+cond="$(curl -s -D - -o /dev/null -w '\nWC_SIZE:%{size_download}' -m 10 -H "If-None-Match: ${etag}" "$URL" 2>/dev/null)"
 cstatus="$(printf '%s' "$cond" | head -1 | tr -d '\r')"
-bodysize="$(wc -c < /tmp/.wc_body_$$ | tr -d ' ')"
-rm -f /tmp/.wc_body_$$
+bodysize="$(printf '%s' "$cond" | sed -n 's/^WC_SIZE:\([0-9]*\)$/\1/p' | tail -1)"
+bodysize="${bodysize:-unknown}"
 echo "    ${cstatus}  (body: ${bodysize} bytes)"
 case "$cstatus" in
   *304*) ok "304 Not Modified" ;;
