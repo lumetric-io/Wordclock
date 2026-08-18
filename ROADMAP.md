@@ -238,7 +238,7 @@ customer looking at the previous UI with no indication anything is stale. This
 one cost a debugging session; on a customer it costs a support ticket, and the
 symptom points at the feature rather than at the cache.
 
-Fix, in `serveFile()` so every static route inherits it:
+**Fixed 2026-08-18**, in `serveFile()` so every static route inherits it:
 
 - `Cache-Control: no-cache` — revalidate every time. Note this is *not*
   `no-store`; the copy stays usable, the browser just has to ask.
@@ -248,10 +248,37 @@ Fix, in `serveFile()` so every static route inherits it:
 
 Without the ETag half, `no-cache` means re-downloading 92 KB of
 `dashboard.html` on every load; with it, an unchanged page costs one round trip
-and no body. Compute the version string once at boot rather than calling
-`getUiVersion()` per request — it opens a file on LittleFS.
+and no body. The version string is read once via `cachedUiVersion()` rather
+than per request — `getUiVersion()` opens a file on LittleFS, and the value is
+a boot constant anyway since installing an `fs.bin` reboots the device.
 
-Effort: S. Worth doing before the next `fs.bin` release, not after.
+Two things that are easy to get wrong here, both handled:
+
+- **`collectHeaders` is not optional.** `WebServer` discards every request
+  header it was not told to keep, so without adding `If-None-Match` beside the
+  existing `Accept-Encoding` the conditional branch would never fire and every
+  revalidation would still cost a full body — the slow half of the fix with
+  none of the fast half.
+- **The 404 path gets no validators.** There is nothing to revalidate against,
+  and tagging a miss would let a browser hold on to it.
+
+The gzip branch tags the `.gz` file's own size, so the two encodings can't
+collide on one ETag. It is dead code today (`acceptGzip` is hardcoded false)
+but the fallback-to-`.gz`-when-plain-is-missing path is live.
+
+Not covered by any native test — nothing mocks `WebServer`, so `pio test -e
+native` proves only that the rest still builds. Verify on device with
+`./tools/check-cache-headers.sh <host-or-ip>`: it checks the `200`+`ETag`+
+`no-cache` response, the `304`-with-no-body on `If-None-Match`, that a *stale*
+tag still gets a full `200`, and that a `404` carries no validators.
+
+**The first load after installing this will still look stale.** A browser that
+cached a page before this shipped holds a copy stored with no validators, so it
+may reuse it without asking and never see the new headers. One last hard
+refresh clears it; every response after that carries validators, so future
+`fs.bin` releases revalidate properly. The fix prevents future staleness, it
+cannot cure copies already sitting in a cache — verify with the script, not a
+browser.
 
 ## A heartbeat that lands is reported as failed, and freezes the display for 15 s
 
