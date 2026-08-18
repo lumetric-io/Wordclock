@@ -1,9 +1,19 @@
 import json
 import os
+import sys
 
 from SCons.Script import Import
 
 Import("env")
+
+
+def _fail(message):
+    # Abort the build rather than fall through to a permissive default. A
+    # product that silently loses a grid variant still links and still boots —
+    # it just can't speak a language it was supposed to ship, which nothing
+    # downstream catches. Failing here is the only place it is cheap to notice.
+    print(f"grid_filter: ERROR: {message}", file=sys.stderr)
+    sys.exit(1)
 
 
 def _load_product_config(env):
@@ -13,13 +23,14 @@ def _load_product_config(env):
         return None
     product_json = os.path.join(project_dir, "products", pio_env, "product.json")
     if not os.path.isfile(product_json):
+        # No product.json at all is the native test env, which deliberately
+        # compiles every variant. Only a *present but broken* file is an error.
         return None
     try:
         with open(product_json, "r", encoding="utf-8") as handle:
             return json.load(handle)
     except Exception as exc:
-        print("grid_filter: failed to read", product_json, "->", exc)
-        return None
+        _fail(f"failed to read {product_json} -> {exc}")
 
 
 GRID_MAP = {
@@ -42,20 +53,27 @@ if config:
         # platformio.env.ini, so it never reaches this branch.
         src_filter = ["+<*>", "-<grid_variants/*>", "-<bootstrap_*.cpp>"]
         defines = []
+
+        # Validate every entry before touching the build, so a typo can never
+        # half-apply: the failure mode being guarded against is a product that
+        # builds and boots but is quietly missing one of its languages.
+        unknown = [g for g in grids if g not in GRID_MAP]
+        if unknown:
+            _fail(
+                f"unknown grid(s) {unknown} in products/{env.get('PIOENV')}/product.json; "
+                f"known grids are {sorted(GRID_MAP)}"
+            )
+
         for grid in grids:
-            mapping = GRID_MAP.get(grid)
-            if not mapping:
-                print("grid_filter: unknown grid", grid)
-                continue
-            macro, src = mapping
+            macro, src = GRID_MAP[grid]
             defines.append((macro, 1))
             src_filter.append(f"+<{src}>")
-        if defines:
-            env.Replace(SRC_FILTER=src_filter)
-            env.Append(CPPDEFINES=defines)
-            print(f"grid_filter: enabled grids: {grids}")
-            print(f"grid_filter: defines: {[d[0] for d in defines]}")
-            print(f"grid_filter: src_filter: {src_filter}")
+
+        env.Replace(SRC_FILTER=src_filter)
+        env.Append(CPPDEFINES=defines)
+        print(f"grid_filter: enabled grids: {grids}")
+        print(f"grid_filter: defines: {[d[0] for d in defines]}")
+        print(f"grid_filter: src_filter: {src_filter}")
     else:
         print("grid_filter: no grids defined in product.json, all grids enabled")
 else:
