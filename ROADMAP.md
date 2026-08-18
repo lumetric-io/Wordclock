@@ -267,9 +267,18 @@ collide on one ETag. It is dead code today (`acceptGzip` is hardcoded false)
 but the fallback-to-`.gz`-when-plain-is-missing path is live.
 
 Not covered by any native test — nothing mocks `WebServer`, so `pio test -e
-native` proves only that the rest still builds. Verify on device with two
-`curl`s: the first should return `200` with an `ETag:` header, and
-`curl -H 'If-None-Match: "<that tag>"'` should return `304` with no body.
+native` proves only that the rest still builds. Verify on device with
+`./tools/check-cache-headers.sh <host-or-ip>`: it checks the `200`+`ETag`+
+`no-cache` response, the `304`-with-no-body on `If-None-Match`, that a *stale*
+tag still gets a full `200`, and that a `404` carries no validators.
+
+**The first load after installing this will still look stale.** A browser that
+cached a page before this shipped holds a copy stored with no validators, so it
+may reuse it without asking and never see the new headers. One last hard
+refresh clears it; every response after that carries validators, so future
+`fs.bin` releases revalidate properly. The fix prevents future staleness, it
+cannot cure copies already sitting in a cache — verify with the script, not a
+browser.
 
 ## A heartbeat that lands is reported as failed, and freezes the display for 15 s
 
