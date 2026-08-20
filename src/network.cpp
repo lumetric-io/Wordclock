@@ -13,6 +13,7 @@
 #include "led_events.h"
 #include "log.h"
 #include "led_controller.h"
+#include "photo_session.h"
 #include "secrets.h"
 #include "system_utils.h"
 
@@ -58,7 +59,12 @@ static bool connectWithStoredCredentials() {
 }
 
 static void startWiFiManagerPortal() {
-#if WIFI_MANAGER_ENABLED
+#if PHOTO_SESSION_WIFI
+  // No portal on the shoot floor: it would raise an AP, light the portal LED
+  // event, and put a "configure me" animation in somebody's photograph. The
+  // studio SSID is compiled in, so there is nothing to configure anyway.
+  return;
+#elif WIFI_MANAGER_ENABLED
   if (g_wifiManagerStarted) return;
   ledEventStart(LedEvent::WifiManagerPortal);
   auto& wm = getManager();
@@ -69,7 +75,52 @@ static void startWiFiManagerPortal() {
 #endif
 }
 
+#if PHOTO_SESSION_WIFI
+bool connectPhotoWifi() {
+  // Caught at compile time rather than as a device that boots and quietly
+  // never joins anything — the failure would otherwise surface as twenty
+  // clocks sitting dark on a table with the photographer already there.
+  static_assert(sizeof(PHOTO_WIFI_SSID) > 1,
+                "PHOTO_WIFI_SSID is empty — set the studio Wi-Fi in include/secrets.h.");
+
+  if (WiFi.status() == WL_CONNECTED) return true;
+
+  // persistent(false) before the first begin(): ESP-IDF otherwise writes the
+  // SSID/password into nvs.net80211, and the studio network would then survive
+  // into whatever firmware is flashed next. Same reasoning as bootstrap_main.
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+  logInfo(String("[photo] Connecting to hardcoded SSID: ") + PHOTO_WIFI_SSID);
+  WiFi.begin(PHOTO_WIFI_SSID, PHOTO_WIFI_PASSWORD);
+
+  const unsigned long deadline = millis() + PHOTO_WIFI_CONNECT_TIMEOUT_MS;
+  while (WiFi.status() != WL_CONNECTED && millis() < deadline) {
+    delay(250);
+  }
+  return WiFi.status() == WL_CONNECTED;
+}
+#endif
+
 void initNetwork() {
+#if PHOTO_SESSION_WIFI
+  // Single path, no fallbacks: connect or keep retrying from processNetwork().
+  // Deliberately never reaches autoConnect() or the BLE provisioning branch —
+  // both end in a portal, and a portal is the thing this build exists to avoid.
+  //
+  // "Credentials at boot" is true by construction here; it is what keeps
+  // isInitialSetupMode() false, so the clock renders the time from the first
+  // second even if the studio AP is not up yet.
+  g_wifiHadCredentialsAtBoot = true;
+  g_wifiConnected = connectPhotoWifi();
+  if (g_wifiConnected) {
+    logInfo("✅ [photo] WiFi connected: " + String(WiFi.SSID()));
+    logInfo("📡 IP address: " + WiFi.localIP().toString());
+  } else {
+    logWarn("⚠️ [photo] Studio WiFi not reachable yet — retrying in background.");
+  }
+  return;
+#else
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
 #if WIFI_MANAGER_ENABLED
@@ -152,6 +203,7 @@ void initNetwork() {
     logWarn("⚠️ WiFi not connected. WiFiManager portal disabled.");
   }
 #endif
+#endif  // PHOTO_SESSION_WIFI
 }
 
 void processNetwork() {
@@ -230,6 +282,18 @@ void processNetwork() {
       WiFi.disconnect(false); // stop active scan; credentials are preserved
       reconnectWindowStartMs = 0;
     }
+#if PHOTO_SESSION_WIFI
+    // Faster and more insistent than the shipping cadence: a clock that drops
+    // off mid-shoot should be back before anyone reaches for it, and there is
+    // no portal to fall back to. Explicit SSID/password rather than argless
+    // begin() — with persistent(false) there is nothing in flash to reuse.
+    if (lastReconnectAttemptMs == 0 || now - lastReconnectAttemptMs >= PHOTO_WIFI_RETRY_INTERVAL_MS) {
+      logInfo("🔄 [photo] Reconnecting to studio WiFi...");
+      WiFi.begin(PHOTO_WIFI_SSID, PHOTO_WIFI_PASSWORD);
+      lastReconnectAttemptMs = now;
+      reconnectWindowStartMs = now;
+    }
+#else
     if (lastReconnectAttemptMs == 0 || now - lastReconnectAttemptMs >= WIFI_RECONNECT_INTERVAL_MS) {
       logInfo("🔄 Attempting WiFi reconnect...");
 #if WIFI_MANAGER_ENABLED
@@ -245,8 +309,9 @@ void processNetwork() {
       lastReconnectAttemptMs = now;
       reconnectWindowStartMs = now;
     }
+#endif  // PHOTO_SESSION_WIFI
 
-#if WIFI_MANAGER_ENABLED
+#if WIFI_MANAGER_ENABLED && !PHOTO_SESSION_WIFI
     // After the fallback period open the config portal so the user can intervene,
     // while reconnect attempts continue in the background.
     if (!g_wifiManagerStarted && now - disconnectedSinceMs >= WIFI_PORTAL_FALLBACK_MS) {

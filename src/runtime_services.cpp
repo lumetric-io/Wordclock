@@ -24,6 +24,7 @@
 #include "network_init.h"
 #include "night_mode.h"
 #include "ota_updater.h"
+#include "photo_session.h"
 #include "startup_sequence_init.h"
 #include "time_sync.h"
 #include "webserver_init.h"
@@ -84,9 +85,27 @@ void ensureMdns() {
   startMdns();
 }
 
+// Single predicate for "may this build reach the OTA server". The photo build
+// must never update itself: the whole point is that every clock in the shoot
+// runs the same known firmware, and an unattended 02:00 check could rewrite
+// half the set overnight.
+bool firmwareAutoUpdateAllowed() {
+#if PHOTO_SESSION_WIFI
+  return false;
+#else
+  return displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
+#endif
+}
+
 void attemptAutoRegistration() {
+#if PHOTO_SESSION_WIFI
+  // Photo clocks stay out of the fleet entirely — no device row, no token, no
+  // telemetry from twenty units that will be reflashed the same week.
+  g_autoRegistrationHandled = true;
+  return;
+#else
   if (g_autoRegistrationHandled || !isWiFiConnected()) return;
-  
+
   // Skip if already registered (credentials exist)
   String existingId = get_device_id();
   String existingToken = get_device_token();
@@ -110,6 +129,7 @@ void attemptAutoRegistration() {
     }
   }
   g_autoRegistrationHandled = true;
+#endif
 }
 
 } // namespace
@@ -126,7 +146,7 @@ void runtimeInitOnSetup(bool wifiConnected, WebServer& server) {
 #endif
     g_uiSyncHandled = true;
 #if OTA_ENABLED
-    bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
+    bool autoAllowed = firmwareAutoUpdateAllowed();
     if (autoAllowed) {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
       checkForFirmwareUpdate();
@@ -141,7 +161,7 @@ void runtimeInitOnSetup(bool wifiConnected, WebServer& server) {
   } else {
     logInfo("⚠️ No WiFi. Waiting for connection or config portal.");
 #if OTA_ENABLED
-    bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
+    bool autoAllowed = firmwareAutoUpdateAllowed();
     g_autoUpdateHandled = !autoAllowed;
 #else
     g_autoUpdateHandled = true;
@@ -207,7 +227,7 @@ void runtimeEnsureOnlineServices(WebServer& server) {
   }
   if (!g_autoUpdateHandled) {
 #if OTA_ENABLED
-    bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
+    bool autoAllowed = firmwareAutoUpdateAllowed();
     if (autoAllowed) {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
       checkForFirmwareUpdate();
@@ -220,10 +240,14 @@ void runtimeEnsureOnlineServices(WebServer& server) {
   if (!g_autoRegistrationHandled) {
     attemptAutoRegistration();
   }
+#if !PHOTO_SESSION_WIFI
+  // Left uninitialised on the photo build, which also keeps the reconnect-edge
+  // triggerHeartbeat() in runtimeHandleWifiTransitionLogs() silent.
   if (!g_heartbeatInitialized) {
     initHeartbeat();
     g_heartbeatInitialized = true;
   }
+#endif
 }
 
 void runtimeHandleOnlineServices(WebServer& server, unsigned long nowMs) {
@@ -235,7 +259,11 @@ void runtimeHandleOnlineServices(WebServer& server, unsigned long nowMs) {
   ArduinoOTA.handle();
 #endif
   mqttEventLoop();
+#if !PHOTO_SESSION_WIFI
   processHeartbeat(nowMs);
+#else
+  (void)nowMs;
+#endif
 }
 
 void runtimeHandlePeriodicSettings(unsigned long nowMs, unsigned long intervalMs) {
@@ -265,7 +293,7 @@ void runtimeHandleWordclockLoop(unsigned long nowMs) {
     if (getLocalTime(&timeinfo)) {
       time_t nowEpoch = time(nullptr);
       if (timeinfo.tm_hour == 2 && timeinfo.tm_min == 0 && nowEpoch - g_lastFirmwareCheck > 3600) {
-        bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
+        bool autoAllowed = firmwareAutoUpdateAllowed();
         if (autoAllowed) {
           logInfo("🛠️ Daily firmware check started...");
           checkForFirmwareUpdate();

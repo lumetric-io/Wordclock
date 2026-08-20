@@ -1,8 +1,8 @@
 #pragma once
 
 #define PRODUCT_ID "nextgen-30x30"
-#define FIRMWARE_VERSION "nextgen-30x30-26.08.19"
-#define UI_VERSION "ui-nextgen-30x30-26.08.19"
+#define FIRMWARE_VERSION "nextgen-30x30-26.08.19-photo.1"
+#define UI_VERSION "ui-nextgen-30x30-26.08.19-photo.1"
 #define PRODUCT_VARIANT_NEXTGEN 1
 #define DATA_PIN 4
 #define SUPPORT_OTA_V2 1
