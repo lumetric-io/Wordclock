@@ -30,19 +30,31 @@
 #include "display_settings.h"
 #include "log.h"
 
-// Midnight UTC on the shoot date; the time-of-day is taken from the shared
-// sell-mode constants so night mode and the logs can never disagree with the
-// face. No timezone is configured (configTzTime is never called), so the
-// C library stays on UTC and there is no DST edge to think about.
-#define PHOTO_CLOCK_EPOCH_DAY 1787184000UL  // 2026-08-20 00:00:00 UTC
-#ifndef PHOTO_CLOCK_EPOCH
-#define PHOTO_CLOCK_EPOCH \
-  (PHOTO_CLOCK_EPOCH_DAY + SELL_MODE_HOUR * 3600UL + SELL_MODE_MINUTE * 60UL)
-#endif
+// The shoot date. The time-of-day comes from the shared sell-mode constants so
+// night mode and the logs can never disagree with the face.
+//
+// This is a *local* wall-clock time, converted with mktime() rather than
+// written as a fixed epoch. The timezone is live even on this build:
+// initLogSettings() calls setenv("TZ", TZ_INFO) + tzset() in log.cpp, quite
+// independently of initTimeSync(). Pinning a UTC epoch therefore put the face
+// two hours ahead of the intended time all summer (CEST = UTC+2). tm_isdst=-1
+// lets the TZ rules pick the offset, so this stays right across the October
+// changeover too.
+#define PHOTO_CLOCK_YEAR 2026
+#define PHOTO_CLOCK_MONTH 8
+#define PHOTO_CLOCK_DAY 20
 
 inline void photoPinSystemClock() {
+  struct tm local = {};
+  local.tm_year = PHOTO_CLOCK_YEAR - 1900;
+  local.tm_mon = PHOTO_CLOCK_MONTH - 1;
+  local.tm_mday = PHOTO_CLOCK_DAY;
+  local.tm_hour = SELL_MODE_HOUR;
+  local.tm_min = SELL_MODE_MINUTE;
+  local.tm_sec = 0;
+  local.tm_isdst = -1;  // let the TZ rules decide
   struct timeval tv;
-  tv.tv_sec = static_cast<time_t>(PHOTO_CLOCK_EPOCH);
+  tv.tv_sec = mktime(&local);
   tv.tv_usec = 0;
   settimeofday(&tv, nullptr);
 }

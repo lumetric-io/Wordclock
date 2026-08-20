@@ -66,7 +66,7 @@ Two small things in `src/photo_sell_time.h` are needed to make the toggle
 actually render with no clock:
 
 - **A plausible system time is set once at boot** (`settimeofday`, 2026-08-20
-  08:43 UTC). `ClockDisplay` only reaches the sell-mode override after
+  08:43 local). `ClockDisplay` only reaches the sell-mode override after
   `updateTimeCache()` succeeds, and `getLocalTime()` rejects anything before
   2016 — without this the clock sits on the no-time indicator forever and the
   toggle appears to do nothing.
@@ -80,10 +80,17 @@ later returned to stable firmware must not keep showing the sell time to its
 owner. Toggling it in the admin portal uses the normal persisting setter, so if
 you turn it on by hand, turn it off before handing the clock over.
 
-The face shows **08:43**. That comes from `SELL_MODE_HOUR`/`SELL_MODE_MINUTE`
-in `src/display_settings.h` (shared with `main`), and `PHOTO_CLOCK_EPOCH` is
-derived from the same two constants, so the pinned clock and the rendered face
-cannot drift apart.
+The face shows **08:43** ("tien over half negen" plus three minute LEDs). That
+comes from `SELL_MODE_HOUR`/`SELL_MODE_MINUTE` in `src/display_settings.h`
+(shared with `main`); `photoPinSystemClock()` builds its `struct tm` from the
+same two constants, so the pinned clock and the rendered face cannot drift
+apart.
+
+Note the pinned time is a **local** wall-clock time, converted with `mktime()`.
+The timezone is live on this build too — `initLogSettings()` calls
+`setenv("TZ", TZ_INFO)` + `tzset()` in `log.cpp`, independently of
+`initTimeSync()`. An earlier version pinned a fixed UTC epoch and so put the
+face two hours ahead all summer.
 
 ## OTA
 
