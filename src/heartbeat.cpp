@@ -226,6 +226,13 @@ bool sendHeartbeat() {
   // Extended system diagnostics
   req["minFreeHeap"] = (long)ESP.getMinFreeHeap();
   req["heapSize"] = (long)ESP.getHeapSize();
+  // Largest block the allocator could still hand out in one piece. freeHeap
+  // says how much is left, this says whether any of it is usable: 160 kB free
+  // in 20 kB fragments fails a TLS handshake exactly as hard as having none,
+  // and that is the shape an OTA failure takes on a clock that has been up for
+  // months. minFreeHeap cannot substitute — it is a since-boot watermark and
+  // therefore monotone, so it describes one moment weeks ago, not now.
+  req["maxAllocHeap"] = (long)ESP.getMaxAllocHeap();
   req["cpuFreqMhz"] = ESP.getCpuFreqMHz();
   req["chipTemp"] = temperatureRead();
   // resetReason: esp_reset_reason_t as int. 0=UNKNOWN, 1=POWERON, 2=EXT, 3=SW, 4=PANIC,
