@@ -88,6 +88,13 @@ bool connectPhotoWifi() {
   // persistent(false) before the first begin(): ESP-IDF otherwise writes the
   // SSID/password into nvs.net80211, and the studio network would then survive
   // into whatever firmware is flashed next. Same reasoning as bootstrap_main.
+  //
+  // Order-sensitive. Arduino applies WIFI_STORAGE_RAM inside wifiLowLevelInit(),
+  // which runs once and is latched — so this has to land before anything else
+  // touches the radio, or storage stays FLASH and the write happens anyway. It
+  // does today only because initBleProvisioning() compiles to a stub on all
+  // four photo products (BLE_PROVISIONING_ENABLED 0), leaving this the first
+  // WiFi call in setup(). Enabling BLE on a photo build would break it.
   WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
