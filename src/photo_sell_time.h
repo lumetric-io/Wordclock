@@ -30,12 +30,14 @@
 #include "display_settings.h"
 #include "log.h"
 
-// 2026-08-20 11:49:00 UTC. The time-of-day deliberately matches the sell-mode
-// override in clock_display.cpp so night mode and the logs agree with the
+// Midnight UTC on the shoot date; the time-of-day is taken from the shared
+// sell-mode constants so night mode and the logs can never disagree with the
 // face. No timezone is configured (configTzTime is never called), so the
 // C library stays on UTC and there is no DST edge to think about.
+#define PHOTO_CLOCK_EPOCH_DAY 1787184000UL  // 2026-08-20 00:00:00 UTC
 #ifndef PHOTO_CLOCK_EPOCH
-#define PHOTO_CLOCK_EPOCH 1787226540UL
+#define PHOTO_CLOCK_EPOCH \
+  (PHOTO_CLOCK_EPOCH_DAY + SELL_MODE_HOUR * 3600UL + SELL_MODE_MINUTE * 60UL)
 #endif
 
 inline void photoPinSystemClock() {
