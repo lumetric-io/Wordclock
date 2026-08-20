@@ -10,7 +10,7 @@ enum class WordAnimationMode : uint8_t { Classic = 0 };
 // /setSellMode endpoint (web_routes.h) both hardcoded it and drifted apart
 // from the UI label. Change it here; the UI strings in data/i18n/*.json are
 // the one copy that can't read it.
-static const int SELL_MODE_HOUR = 10;
+static const int SELL_MODE_HOUR = 8;
 static const int SELL_MODE_MINUTE = 48;
 
 class DisplaySettings {
