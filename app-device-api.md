@@ -395,6 +395,8 @@ Power, network, and reset operations. The factory/password endpoints use
 |---|---|---|---|---|
 | `/restart` | GET | — | `200` HTML (auto-refresh), then reboots | Restarts the device. May clear logs first if `delete_on_boot`. `web_routes.h:1077` |
 | `/resetwifi` | GET | — | `200` HTML, then clears Wi-Fi & restarts | Drops Wi-Fi creds; device returns to its AP/portal. `web_routes.h:1104` |
+| `/api/wifi` | GET | — | `200` JSON `{ssid, connected}` | `ssid` is the network configured for the **next** boot (`""` when none). Never returns a password. Reports `""` while the device is on the compiled-in factory network, which is RAM-only and not stored. |
+| `/api/wifi` | POST | JSON or form: `ssid`, `password` | `200` JSON `{ssid, applies:"next_boot"}` / `400` / `500` | **Admin auth.** Stores station credentials without joining: the current connection is left up so the reply survives, and the new network is used from the next boot. `ssid` 1–32 chars; `password` empty (open network) or 8–63 chars. |
 | `/factorytoken` | GET | — | `200` token (text), valid 60 s | **Public.** Issues a short-lived token for a tokened factory reset. `web_routes.h:369` |
 | `/factoryreset` | POST | `token=...` (optional) | `200` HTML / `403 "Forbidden"` | **Admin auth OR** a valid `/factorytoken`. Wipes prefs + Wi-Fi, reboots. `web_routes.h:376` |
 | `/setUIPassword` | POST | form: `new`, `confirm` | `200 "OK"` / `400` / `500` | **Admin auth.** Min 6 chars; `new` must equal `confirm`. `web_routes.h:413` |
