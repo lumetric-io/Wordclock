@@ -83,6 +83,12 @@ public:
     markDirty();
   }
 
+  // Set sell mode for this boot only, leaving NVS alone. Used by the photo
+  // build to default it on without stamping sell_on=true into the device — a
+  // clock later returned to stable firmware would otherwise keep showing the
+  // sell time to its owner.
+  void setSellModeVolatile(bool on) { sellMode_ = on; }
+
   void setAnimateWords(bool on) {
     if (animateWords_ == on) return;
     animateWords_ = on;

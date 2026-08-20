@@ -24,6 +24,7 @@
 #include "network_init.h"
 #include "night_mode.h"
 #include "ota_updater.h"
+#include "photo_sell_time.h"
 #include "photo_session.h"
 #include "startup_sequence_init.h"
 #include "time_sync.h"
@@ -292,6 +293,12 @@ bool runtimeHandleStartupSequence(StartupSequence& startupSequence) {
 void runtimeHandleWordclockLoop(unsigned long nowMs) {
   if (nowMs - g_lastLoopMs >= 50) {
     g_lastLoopMs = nowMs;
+#if PHOTO_SESSION_WIFI
+    // Hold the system clock still. Sell mode pins the hour and minute the face
+    // shows, but night mode reads the cached time underneath it and would
+    // blank the display a few hours into a shoot. See photo_sell_time.h.
+    photoTickSellTime(nowMs);
+#endif
     runWordclockLoop();
 
 #if OTA_ENABLED

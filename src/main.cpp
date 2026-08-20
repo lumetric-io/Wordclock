@@ -3,6 +3,7 @@
 #include "startup_sequence_init.h"
 #include "wordclock_main.h"
 #include "time_sync.h"
+#include "photo_sell_time.h"
 #include "wordclock_system_init.h"
 #include "runtime_services.h"
 
@@ -94,8 +95,13 @@ void setup() {
   bool wifiConnected = isWiFiConnected();
   runtimeInitOnSetup(wifiConnected, server);
 
+#if PHOTO_SESSION_WIFI
+  // No NTP on the photo build — the face is driven by sell mode instead.
+  photoInitSellTime();
+#else
   // Synchroniseer tijd via NTP
   initTimeSync(TZ_INFO, NTP_SERVER1, NTP_SERVER2);
+#endif
   initDisplay();
   initWordclockSystem(uiAuth);
   initStartupSequence(startupSequence);

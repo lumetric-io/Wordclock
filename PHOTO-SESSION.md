@@ -21,6 +21,7 @@ Branched from `main` at `a7c258c` (2026-08-20).
 | Heartbeat | hourly | **compiled out** (never initialised) |
 | OTA — automatic (boot + 02:00) | on | **compiled out** |
 | OTA — manual (admin UI) | on | **unchanged, works both directions** |
+| Time | NTP | **no NTP**; sell mode forced on at boot |
 | Version | `<product>-<date>` | `<product>-<date>-photo.1` |
 
 The switch is `PHOTO_SESSION_WIFI`, set to `1` in `[env:base]` of
@@ -52,6 +53,35 @@ in-memory config *is* the studio network, and the argless `WiFi.begin()` that
 WiFiManager and the reconnect loop use to mean "this clock's own network" would
 keep retrying the studio SSID. Reinitialising the driver mid-boot to undo that
 is fiddly and untestable off-hardware; rebooting is neither.
+
+## Sell time
+
+`initTimeSync()` is not called. The face is driven by the **sell mode** that
+already exists on `main` — the "Verkoopmodus" toggle in the admin portal,
+`DisplaySettings::isSellMode()`, and the override in
+`ClockDisplay::prepareDisplayTime()`. None of that is modified; brightness,
+colour, animation and every other setting behave exactly as on `main`.
+
+Two small things in `src/photo_sell_time.h` are needed to make the toggle
+actually render with no clock:
+
+- **A plausible system time is set once at boot** (`settimeofday`, 2026-08-20
+  11:49 UTC). `ClockDisplay` only reaches the sell-mode override after
+  `updateTimeCache()` succeeds, and `getLocalTime()` rejects anything before
+  2016 — without this the clock sits on the no-time indicator forever and the
+  toggle appears to do nothing.
+- **That time is re-pinned once a second.** Sell mode overrides hour and
+  minute, but night mode reads the cached time *underneath* the override, so a
+  free-running clock walks into the night window and blanks the display a few
+  hours into a shoot.
+
+It is forced on via `setSellModeVolatile()`, which does not write NVS — a clock
+later returned to stable firmware must not keep showing the sell time to its
+owner. Toggling it in the admin portal uses the normal persisting setter, so if
+you turn it on by hand, turn it off before handing the clock over.
+
+Note the admin label reads "show 10:47" while `prepareDisplayTime()` forces
+**11:49**. That mismatch is inherited from `main` and is left alone here.
 
 ## OTA
 
