@@ -85,10 +85,16 @@ void ensureMdns() {
   startMdns();
 }
 
-// Single predicate for "may this build reach the OTA server". The photo build
-// must never update itself: the whole point is that every clock in the shoot
-// runs the same known firmware, and an unattended 02:00 check could rewrite
-// half the set overnight.
+// Single predicate for "may this build update itself *unattended*". Only the
+// automatic checks consult it — the boot check and the 02:00 daily one. The
+// admin UI's "check for updates" calls checkForFirmwareUpdate() straight from
+// web_routes.h and is deliberately untouched, so a photo clock can still be
+// installed from and returned to any channel by hand.
+//
+// Off for the whole photo build, including fallback boots. These are already
+// provisioned clocks, so their stored channel is usually "stable" — leaving the
+// automatic path on would mean the 02:00 check quietly reinstalls stable and
+// wipes the photo firmware off half the set the night before the shoot.
 bool firmwareAutoUpdateAllowed() {
 #if PHOTO_SESSION_WIFI
   return false;

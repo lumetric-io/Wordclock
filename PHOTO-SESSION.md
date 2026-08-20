@@ -1,7 +1,8 @@
 # Photo-session firmware — `photo/session-wifi`
 
 **This branch is not a feature branch. Never merge it to `main`, never
-cherry-pick out of it, never tag it, never publish it to OTA.**
+cherry-pick out of it, never tag it. Publish it to the `develop` OTA channel
+only — never `stable`, never `early`.**
 
 It exists for one product photo shoot. Every clock must join the studio Wi-Fi
 seconds after power-on, with no config portal, no captive AP, and nothing on
@@ -13,12 +14,13 @@ Branched from `main` at `a7c258c` (2026-08-20).
 
 | Behaviour | `main` | This branch |
 |---|---|---|
-| Wi-Fi | WiFiManager `autoConnect`, portal after 300 s | hardcoded SSID from `include/secrets.h`, ~20 s at boot then retry every 15 s |
-| Config portal | opens on failure | **never opens** (`startWiFiManagerPortal()` is a no-op) |
-| Credentials in flash | written to `nvs.net80211` | `WiFi.persistent(false)` — never written |
+| Wi-Fi at power-on | WiFiManager `autoConnect` | studio SSID from `include/secrets.h`, ~20 s, **then reboots into the `main` behaviour if absent** |
+| Config portal | opens after 300 s offline | suppressed *only* while on the studio network |
+| Credentials in flash | written to `nvs.net80211` | `WiFi.persistent(false)` on the studio path — never written |
 | Fleet registration | on first connect | **compiled out** |
 | Heartbeat | hourly | **compiled out** (never initialised) |
-| OTA check | at boot + daily 02:00 | **compiled out** |
+| OTA — automatic (boot + 02:00) | on | **compiled out** |
+| OTA — manual (admin UI) | on | **unchanged, works both directions** |
 | Version | `<product>-<date>` | `<product>-<date>-photo.1` |
 
 The switch is `PHOTO_SESSION_WIFI`, set to `1` in `[env:base]` of
@@ -27,6 +29,53 @@ escapes into `main` compiles to shipping behaviour.
 
 Touched files: `platformio.ini`, `src/photo_session.h` (new), `src/network.cpp`,
 `src/runtime_services.cpp`, four `products/*/product_config.h`, `.gitignore`.
+
+## What happens when the studio network isn't there
+
+Power-on → ~20 s attempt on the studio SSID → not found → **the clock sets a
+mark in RTC RAM and reboots**. The second boot skips the hardcoded path
+entirely and runs the ordinary `main` Wi-Fi behaviour: stored credentials
+first, config portal after the usual timeout. From there the dashboard, the LAN
+and manual OTA all work normally.
+
+Cost is one reboot and ~25 s whenever a photo clock is powered on away from the
+studio. At the studio it never happens.
+
+The mark is in RTC RAM, not NVS, on purpose: a soft reset keeps it (so the
+fallback boot doesn't loop), a power cycle loses it (so unplugging a clock at
+the studio makes it try the studio network again). Nobody has to remember to
+clear anything.
+
+Why reboot instead of just falling through in the same boot: once
+`WiFi.begin(ssid, pass)` has run with storage forced to RAM, the driver's
+in-memory config *is* the studio network, and the argless `WiFi.begin()` that
+WiFiManager and the reconnect loop use to mean "this clock's own network" would
+keep retrying the studio SSID. Reinitialising the driver mid-boot to undo that
+is fiddly and untestable off-hardware; rebooting is neither.
+
+## OTA
+
+Automatic updates are off — boot check and the 02:00 daily check are compiled
+out. That is not a restriction on you, it is protection: these are provisioned
+clocks whose stored channel is usually `stable`, so leaving the automatic path
+on would mean the 02:00 check quietly reinstalls stable and strips the photo
+firmware off half the set the night before the shoot.
+
+The admin UI's **"check for updates"** is untouched and is how you drive
+everything:
+
+**Installing the photo build** — per clock: dashboard → channel `develop`;
+publish this build to `nextgen-<product>/channels/develop.json`; click check
+for updates.
+
+**Going back to stable** — per clock: dashboard → channel `stable` → click
+check for updates. The install goes through even though it is numerically a
+downgrade: `parseVersionCore()` stops at the first non-digit, so a
+product-prefixed version parses to nothing and `isVersionNewer()` returns true
+for *any* differing string. Direction is not enforced for nextgen products.
+
+A clock left on `develop` afterwards will not auto-update — `main` already
+excludes the develop channel from automatic checks.
 
 ## Products
 
@@ -76,7 +125,8 @@ then flash `nextgen-bootstrap` and provision it normally. Full erase rather
 than an OTA on top: an OTA would keep the NVS partition, and a customer clock
 should not start life carrying a studio setup.
 
-Do not point a photo clock at the OTA server to "update it back" — the version
-comparison for nextgen products treats any differing string as newer, so what
-actually happens is unpredictable, and the fleet would gain a device row for a
-clock that was deliberately kept out of it.
+The alternative — channel `stable` + manual check for updates, as described
+under **OTA** above — leaves the photo clock's NVS in place: its settings, its
+`develop` channel history and its fleet identity all survive. That is fine for
+a clock of your own going back on the shelf. `erase_flash` is for units going
+to a customer.
