@@ -23,7 +23,14 @@ Branched from `main` at `a7c258c` (2026-08-20).
 | OTA — automatic (boot + 02:00) | on | **compiled out** |
 | OTA — manual (admin UI) | on | **unchanged, works both directions** |
 | Time | NTP | **no NTP**; sell mode forced on at boot |
-| Version | `<product>-<date>` | `<product>-<date>-photo.1` |
+| Version | `<product>-<date>` | ordinary `-dev.N`, **not marked** |
+
+The version string does **not** identify a photo build. An early revision used a
+`-photo.1` suffix; `tools/release.sh` rewrites `FIRMWARE_VERSION` from the
+channel on every bump, so the marker only survived until the next release and
+was dropped rather than fought. Identify a running photo build from its boot
+log instead — `[photo] Connecting to hardcoded SSID`, `[photo] NTP skipped`,
+and no `🟢 MQTT started` line.
 
 The switch is `PHOTO_SESSION_WIFI`, set to `1` in `[env:base]` of
 `platformio.ini`. It defaults to `0` in `src/photo_session.h`, so any file that
@@ -166,8 +173,9 @@ which are `main` builds, not these.
 ## After the shoot — converting a clock back
 
 Photo firmware writes no Wi-Fi credentials to NVS, but it does leave its own
-settings (brightness, colour, language) and a `-photo.1` version string. To
-return a unit to sellable state:
+settings behind — brightness, colour, language, the `develop` update channel —
+and nothing in the version string says the unit was ever a photo clock. To
+return one to sellable state:
 
 ```bash
 esptool.py --chip esp32s3 erase_flash
