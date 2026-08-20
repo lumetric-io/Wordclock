@@ -66,7 +66,7 @@ Two small things in `src/photo_sell_time.h` are needed to make the toggle
 actually render with no clock:
 
 - **A plausible system time is set once at boot** (`settimeofday`, 2026-08-20
-  08:48 UTC). `ClockDisplay` only reaches the sell-mode override after
+  08:43 UTC). `ClockDisplay` only reaches the sell-mode override after
   `updateTimeCache()` succeeds, and `getLocalTime()` rejects anything before
   2016 — without this the clock sits on the no-time indicator forever and the
   toggle appears to do nothing.
@@ -80,7 +80,7 @@ later returned to stable firmware must not keep showing the sell time to its
 owner. Toggling it in the admin portal uses the normal persisting setter, so if
 you turn it on by hand, turn it off before handing the clock over.
 
-The face shows **08:48**. That comes from `SELL_MODE_HOUR`/`SELL_MODE_MINUTE`
+The face shows **08:43**. That comes from `SELL_MODE_HOUR`/`SELL_MODE_MINUTE`
 in `src/display_settings.h` (shared with `main`), and `PHOTO_CLOCK_EPOCH` is
 derived from the same two constants, so the pinned clock and the rendered face
 cannot drift apart.
