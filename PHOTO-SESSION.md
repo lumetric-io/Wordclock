@@ -19,6 +19,7 @@ Branched from `main` at `a7c258c` (2026-08-20).
 | Credentials in flash | written to `nvs.net80211` | `WiFi.persistent(false)` on the studio path — never written |
 | Fleet registration | on first connect | **compiled out** |
 | Heartbeat | hourly | **compiled out** (never initialised) |
+| MQTT / Home Assistant | connects, publishes discovery | **compiled out** (never initialised) |
 | OTA — automatic (boot + 02:00) | on | **compiled out** |
 | OTA — manual (admin UI) | on | **unchanged, works both directions** |
 | Time | NTP | **no NTP**; sell mode forced on at boot |
@@ -30,6 +31,18 @@ escapes into `main` compiles to shipping behaviour.
 
 Touched files: `platformio.ini`, `src/photo_session.h` (new), `src/network.cpp`,
 `src/runtime_services.cpp`, four `products/*/product_config.h`, `.gitignore`.
+
+## Home Assistant
+
+A photo clock never speaks MQTT: `initMqtt()` and `mqttEventLoop()` are gated
+out in `runtime_services.cpp`, so the client is never constructed. It would
+otherwise publish 25 retained discovery entities into the owner's Home
+Assistant and leave them there long after the unit was erased and re-sold.
+
+No call site needed its own guard — `mqtt_publish_state()`,
+`mqtt_publish_update_status()` and `publishBirth()` all return early on
+`!mqtt.connected()`, which an uninitialised client never is. The `🟢 MQTT
+started` line missing from the boot log is how you confirm it on a device.
 
 ## What happens when the studio network isn't there
 

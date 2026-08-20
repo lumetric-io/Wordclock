@@ -146,8 +146,16 @@ void runtimeInitOnSetup(bool wifiConnected, WebServer& server) {
     ensureMdns();
     initWebServer(server);
     g_serverInitialized = true;
+#if !PHOTO_SESSION_WIFI
+    // Never initialised on the photo build: a shoot clock must not appear in
+    // the owner's Home Assistant, and its 25 discovery entities would linger
+    // as retained topics long after the unit was wiped. Every publish path
+    // (mqtt_publish_state, mqtt_publish_update_status, publishBirth) returns
+    // early on !mqtt.connected(), so leaving the client uninitialised is
+    // enough — no call site needs its own guard.
     initMqtt();
     g_mqttInitialized = true;
+#endif
 #if SUPPORT_OTA_V2 == 0
     syncFilesFromManifest();
 #endif
@@ -222,10 +230,12 @@ void runtimeEnsureOnlineServices(WebServer& server) {
     initWebServer(server);
     g_serverInitialized = true;
   }
+#if !PHOTO_SESSION_WIFI
   if (!g_mqttInitialized) {
     initMqtt();
     g_mqttInitialized = true;
   }
+#endif
   if (!g_uiSyncHandled) {
 #if SUPPORT_OTA_V2 == 0
     syncFilesFromManifest();
@@ -265,8 +275,8 @@ void runtimeHandleOnlineServices(WebServer& server, unsigned long nowMs) {
 #if OTA_ENABLED
   ArduinoOTA.handle();
 #endif
-  mqttEventLoop();
 #if !PHOTO_SESSION_WIFI
+  mqttEventLoop();
   processHeartbeat(nowMs);
 #else
   (void)nowMs;
