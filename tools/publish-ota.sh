@@ -10,6 +10,35 @@ FW_VERSION=""
 FS_VERSION=""
 ASSUME_YES=false
 FS_ONLY=false
+FORCE_FS_VERSION=false
+FS_UNCHANGED=""
+
+# Reads one string field out of a JSON file, walking nested keys.
+# Prints an empty line on anything unexpected (missing file, missing key,
+# non-string value), because every caller treats "unknown" as "do nothing".
+read_json_field() {
+  local file="$1"
+  shift
+  python3 - "$file" "$@" <<'PY'
+import json, sys
+path = sys.argv[1]
+keys = sys.argv[2:]
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        doc = json.load(f)
+    for key in keys:
+        if not isinstance(doc, dict):
+            print("")
+            sys.exit(0)
+        doc = doc.get(key)
+        if doc is None:
+            print("")
+            sys.exit(0)
+    print(doc if isinstance(doc, str) else "")
+except Exception:
+    print("")
+PY
+}
 
 read_version_from_config() {
   local file="$1"
@@ -60,6 +89,10 @@ while [[ $# -gt 0 ]]; do
       FW_VERSION=""
       shift
       ;;
+    --force-fs-version)
+      FORCE_FS_VERSION=true
+      shift
+      ;;
     --yes)
       ASSUME_YES=true
       shift
@@ -68,7 +101,12 @@ while [[ $# -gt 0 ]]; do
       echo "Usage:"
       echo "  ./publish-ota.sh [--product <product>] [--channel <channel>]"
       echo "                   [--fw-version <version>] [--fs-version <version>]"
-      echo "                   [--yes]"
+      echo "                   [--force-fs-version] [--yes]"
+      echo
+      echo "  --force-fs-version  Publish under the given FS version even when the"
+      echo "                      image is byte-identical to the published one."
+      echo "                      Without it, an unchanged image keeps its old"
+      echo "                      version so devices skip the filesystem write."
       exit 0
       ;;
     *)
@@ -202,12 +240,72 @@ CHANNEL_SUFFIX="$(channel_suffix_for "$CHANNEL")"
 FW_VERSION="$(apply_channel_suffix "$FW_VERSION" "$CHANNEL_SUFFIX")"
 FS_VERSION="$(apply_channel_suffix "$FS_VERSION" "$CHANNEL_SUFFIX")"
 
+FS_TYPE="littlefs"
+if [[ -f "$BUILD_DIR/littlefs.bin" ]]; then
+  FS_SRC="$BUILD_DIR/littlefs.bin"
+else
+  echo "❌ No LittleFS image found"
+  exit 1
+fi
+FS_SIZE=$(stat -c%s "$FS_SRC")
+FS_HASH=$(sha256sum "$FS_SRC" | awk '{print $1}')
+
+# Keep the published FS version when the image did not actually change.
+#
+# A filesystem update rewrites the whole 3 MB LittleFS partition, which takes
+# every log file with it. The device already guards against that: it skips the
+# write when the manifest's fs version equals what /.fs_image_version records
+# (src/ota_updater.cpp). That guard has never fired in practice, because
+# release.sh bumps UI_VERSION in lockstep with FIRMWARE_VERSION — so a release
+# touching only src/ still hands the fleet a "new" filesystem and wipes its
+# logs for a byte-identical image.
+#
+# Rather than ask everyone to remember not to bump it, make the pipeline
+# decide from the bytes: if the freshly built image hashes the same as the one
+# this channel currently points at, publish it under the old version. Devices
+# already on it skip the write, devices on an older one still download (from
+# the new URL, same bytes) and land on the same version string.
+#
+# Per channel on purpose: stable and develop carry different images, and a
+# device on stable must be compared against what stable last shipped.
+#
+# If mklittlefs ever builds non-reproducibly the hashes simply differ and we
+# fall through to the new version, which is what the script did before.
+if [[ "$FORCE_FS_VERSION" != true ]]; then
+  PUBLISHED_FS_MANIFEST=""
+  PUBLISHED_FS_URL=""
+  if [[ -f "$CHANNEL_DIR/$CHANNEL.json" ]]; then
+    PUBLISHED_FS_URL="$(read_json_field "$CHANNEL_DIR/$CHANNEL.json" target fs_manifest_url)"
+  fi
+  if [[ -n "$PUBLISHED_FS_URL" && "$PUBLISHED_FS_URL" == "$OTA_BASE_URL"/* ]]; then
+    PUBLISHED_FS_MANIFEST="$OTA_ROOT/${PUBLISHED_FS_URL#"$OTA_BASE_URL"/}"
+  fi
+  if [[ -z "$PUBLISHED_FS_MANIFEST" ]]; then
+    PUBLISHED_FS_MANIFEST="$OTA_ROOT/$PRODUCT/artifacts/current/fs.json"
+  fi
+
+  if [[ -f "$PUBLISHED_FS_MANIFEST" ]]; then
+    PUBLISHED_FS_HASH="$(read_json_field "$PUBLISHED_FS_MANIFEST" sha256)"
+    PUBLISHED_FS_VERSION="$(read_json_field "$PUBLISHED_FS_MANIFEST" version)"
+    if [[ -n "$PUBLISHED_FS_HASH" && -n "$PUBLISHED_FS_VERSION" && "$PUBLISHED_FS_HASH" == "$FS_HASH" ]]; then
+      if [[ "$PUBLISHED_FS_VERSION" != "$FS_VERSION" ]]; then
+        echo "→ Filesystem image is byte-identical to $CHANNEL"
+        echo "  Keeping FS version $PUBLISHED_FS_VERSION (not publishing $FS_VERSION)"
+        echo "  Devices will skip the filesystem write and keep their logs."
+        echo "  Override with --force-fs-version."
+        FS_VERSION="$PUBLISHED_FS_VERSION"
+      fi
+      FS_UNCHANGED=true
+    fi
+  fi
+fi
+
 echo
 echo "Publishing to:"
 echo "  Product : $PRODUCT"
 echo "  Channel : $CHANNEL"
 echo "  FW ver  : ${FW_VERSION:-<unchanged>}"
-echo "  FS ver  : $FS_VERSION"
+echo "  FS ver  : $FS_VERSION${FS_UNCHANGED:+ (unchanged image)}"
 echo "  Artifacts dir: $ARTIFACT_DIR"
 echo
 
@@ -275,20 +373,11 @@ fi
 # -------------------------
 echo "→ Copying filesystem image"
 
-FS_TYPE="littlefs"
-if [[ -f "$BUILD_DIR/littlefs.bin" ]]; then
-  FS_SRC="$BUILD_DIR/littlefs.bin"
-else
-  echo "❌ No LittleFS image found"
-  exit 1
-fi
-
+# FS_SRC / FS_SIZE / FS_HASH were resolved before the confirmation prompt, so
+# the operator got to see the version that is really going out.
 sudo cp "$FS_SRC" "$ARTIFACT_DIR/fs.bin"
 sudo chown root:www-data "$ARTIFACT_DIR/fs.bin"
 sudo chmod 644 "$ARTIFACT_DIR/fs.bin"
-
-FS_SIZE=$(stat -c%s "$ARTIFACT_DIR/fs.bin")
-FS_HASH=$(sha256sum "$ARTIFACT_DIR/fs.bin" | awk '{print $1}')
 
 sudo tee "$ARTIFACT_DIR/fs.json" > /dev/null <<EOF
 {
