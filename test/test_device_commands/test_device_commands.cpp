@@ -11,6 +11,13 @@ void log(String, int) {}
 void logln(String, int) {}
 void setLogLevel(LogLevel level) { LOG_LEVEL = level; }
 
+// Same again for delete-on-boot. The real pair lives behind the non-test half
+// of log.cpp because it touches Preferences; this is that pair minus the NVS
+// write, so "did the flag actually move" stays a real question here.
+bool LOG_DELETE_ON_BOOT = true;
+void setLogDeleteOnBoot(bool enabled) { LOG_DELETE_ON_BOOT = enabled; }
+bool getLogDeleteOnBoot() { return LOG_DELETE_ON_BOOT; }
+
 // The real command handler, compiled natively. Its two hardware dependencies
 // (the wall clock and ESP.restart()) are substituted inside the .cpp under
 // PIO_UNIT_TESTING, so what runs here is the same parsing and the same
@@ -24,6 +31,7 @@ protected:
     void SetUp() override {
         deviceCommandsTestReset();
         LOG_LEVEL = LOG_LEVEL_ERROR;
+        LOG_DELETE_ON_BOOT = true;
     }
     void TearDown() override { deviceCommandsTestReset(); }
 
@@ -134,6 +142,50 @@ TEST_F(DeviceCommandsTest, UnknownLevelLeavesTheThresholdAlone) {
     deviceCommandsHandleResponse(
         "{\"commands\":[{\"id\":2,\"kind\":\"set_log_level\",\"args\":{}}]}");
     EXPECT_EQ(LOG_LEVEL, LOG_LEVEL_INFO);
+}
+
+// -------------------------------------------- set_log_delete_on_boot
+
+TEST_F(DeviceCommandsTest, SetLogDeleteOnBootTurnsItOff) {
+    deviceCommandsHandleResponse(
+        "{\"commands\":[{\"id\":51,\"kind\":\"set_log_delete_on_boot\","
+        "\"args\":{\"enabled\":false}}]}");
+    EXPECT_FALSE(getLogDeleteOnBoot());
+}
+
+// And back on again. The point of the command is that off is recoverable from
+// a distance, so the on direction is not an afterthought.
+TEST_F(DeviceCommandsTest, SetLogDeleteOnBootTurnsItBackOn) {
+    LOG_DELETE_ON_BOOT = false;
+    deviceCommandsHandleResponse(
+        "{\"commands\":[{\"id\":52,\"kind\":\"set_log_delete_on_boot\","
+        "\"args\":{\"enabled\":true}}]}");
+    EXPECT_TRUE(getLogDeleteOnBoot());
+}
+
+TEST_F(DeviceCommandsTest, SetLogDeleteOnBootIsIdempotent) {
+    const char* body = "{\"commands\":[{\"id\":51,\"kind\":\"set_log_delete_on_boot\","
+                       "\"args\":{\"enabled\":false}}]}";
+    for (int i = 0; i < 20; i++) deviceCommandsHandleResponse(body);
+    EXPECT_FALSE(getLogDeleteOnBoot());
+}
+
+// A missing or non-boolean `enabled` must not be read as false. Guessing here
+// would silently disable log rotation on a mini over a typo in the portal.
+TEST_F(DeviceCommandsTest, SetLogDeleteOnBootNeedsARealBoolean) {
+    const char* bad[] = {"{}",
+                         "{\"enabled\":\"false\"}",
+                         "{\"enabled\":0}",
+                         "{\"enabled\":null}",
+                         "{\"value\":false}"};
+    for (const char* args : bad) {
+        LOG_DELETE_ON_BOOT = true;
+        String body = String("{\"commands\":[{\"id\":51,"
+                             "\"kind\":\"set_log_delete_on_boot\",\"args\":")
+                      + args + "}]}";
+        deviceCommandsHandleResponse(body);
+        EXPECT_TRUE(getLogDeleteOnBoot()) << args;
+    }
 }
 
 // ----------------------------------------------------------------- reboot
@@ -271,6 +323,24 @@ TEST_F(DeviceCommandsTest, BothKindsInOneResponse) {
     EXPECT_TRUE(deviceCommandsTestRebootArmed());
 
     deviceCommandsTestSetLocalTime(true, 4, 0);
+    deviceCommandsTick(UP);
+    EXPECT_EQ(deviceCommandsTestRestartCount(), 1);
+}
+
+// The whole reason the three kinds exist together: turn the clock up to debug,
+// stop it eating its own logs, restart it, and read what the boot did. Applied
+// in array order within one beat, so the logs are already spared before the
+// reboot is even armed, let alone fired.
+TEST_F(DeviceCommandsTest, DiagnoseABootProblemInOneBeat) {
+    deviceCommandsHandleResponse(
+        "{\"ok\":true,\"commands\":["
+        "{\"id\":41,\"kind\":\"set_log_level\",\"args\":{\"level\":\"debug\"}},"
+        "{\"id\":51,\"kind\":\"set_log_delete_on_boot\",\"args\":{\"enabled\":false}},"
+        "{\"id\":42,\"kind\":\"reboot\",\"args\":{\"at\":\"now\"}}]}");
+
+    EXPECT_EQ(LOG_LEVEL, LOG_LEVEL_DEBUG);
+    EXPECT_FALSE(getLogDeleteOnBoot());
+
     deviceCommandsTick(UP);
     EXPECT_EQ(deviceCommandsTestRestartCount(), 1);
 }

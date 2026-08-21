@@ -224,6 +224,14 @@ bool sendHeartbeat() {
   // incapable of warning" are indistinguishable in the data.
   req["logLevel"] = logLevelName();
 
+  // Whether this clock throws its logs away on the next boot. Reported for the
+  // same reason as logLevel, and it is also what closes the
+  // set_log_delete_on_boot command: there is no ack anywhere in this protocol,
+  // so a setting the beat does not carry is one the portal can never see take.
+  // Independently useful after the fact — it makes "the log I asked for is
+  // gone" an answerable question rather than a mystery.
+  req["logDeleteOnBoot"] = getLogDeleteOnBoot();
+
   // Extended system diagnostics
   req["minFreeHeap"] = (long)ESP.getMinFreeHeap();
   req["heapSize"] = (long)ESP.getHeapSize();

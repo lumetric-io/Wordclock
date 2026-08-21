@@ -15,8 +15,9 @@
 //                     "args": { "level": "error" } } ] }
 //
 // Nothing is acknowledged. The portal decides a command is done by looking at
-// what the next beat reports anyway (`logLevel` for set_log_level, `uptime`
-// for reboot), which is why every command must be idempotent: a pending one is
+// what the next beat reports anyway (`logLevel` for set_log_level,
+// `logDeleteOnBoot` for set_log_delete_on_boot, `uptime` for reboot), which is
+// why every command must be idempotent: a pending one is
 // handed over again on every single beat until the portal sees it took, or it
 // expires. Applying the same command twenty times must be indistinguishable
 // from applying it once.
@@ -24,7 +25,8 @@
 // The whitelist in the .cpp is the blast radius. Nothing the customer can see
 // (brightness, colour, language, dialect, night mode) is commandable, and that
 // is a policy line rather than a technical one: those settings belong to the
-// person who bought the clock.
+// person who bought the clock. What is commandable is diagnostic only: the log
+// threshold, whether logs survive a boot, and a restart.
 //
 // Design: lumetric/docs/clock-commands.md.
 

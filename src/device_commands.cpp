@@ -105,6 +105,36 @@ static void applySetLogLevel(JsonObjectConst args, int id) {
   logWarn(String("Log level set to ") + level + " by fleet command #" + id);
 }
 
+// The counterpart to set_log_level, and only worth having alongside it. Turning
+// a distant clock up to `debug` buys nothing if the fault shows during boot:
+// delete-on-boot defaults to on, so the log describing the boot is wiped by the
+// boot after it. This is the switch that makes remote diagnosis of a boot
+// problem possible at all.
+//
+// Commandable in both directions on purpose. Off is not a safe resting state —
+// the mini's 1.25 MB partition fills — so whoever turns it off must be able to
+// turn it back on without a house call. The firmware is not defenceless if they
+// forget: logEnableFileSink() wipes /logs unconditionally below 64 kB free, and
+// LOG_RETENTION_DAYS still prunes at every file open.
+static void applySetLogDeleteOnBoot(JsonObjectConst args, int id) {
+  JsonVariantConst enabled = args["enabled"];
+  if (!enabled.is<bool>()) {
+    logWarn("Fleet command set_log_delete_on_boot without a boolean, ignored");
+    return;
+  }
+
+  const bool target = enabled.as<bool>();
+
+  // Same reason as set_log_level: the command is handed over at least once more
+  // after it has taken, because the portal only learns it took from a later
+  // beat. Returning early keeps that from writing NVS every hour for no change.
+  if (getLogDeleteOnBoot() == target) return;
+
+  setLogDeleteOnBoot(target);
+  logWarn(String("Log delete-on-boot set to ") + (target ? "on" : "off") +
+          " by fleet command #" + id);
+}
+
 static void applyReboot(JsonObjectConst args, int id) {
   const char* at = args["at"];
   if (!at) at = "now";
@@ -174,6 +204,8 @@ void deviceCommandsHandleResponse(const String& body) {
     // because that would mean two failure channels to read instead of one.
     if (strcmp(kind, "set_log_level") == 0) {
       applySetLogLevel(args, id);
+    } else if (strcmp(kind, "set_log_delete_on_boot") == 0) {
+      applySetLogDeleteOnBoot(args, id);
     } else if (strcmp(kind, "reboot") == 0) {
       applyReboot(args, id);
     } else {
