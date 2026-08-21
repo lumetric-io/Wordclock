@@ -22,9 +22,23 @@ static bool readLocalTime(struct tm* out) {
 
 static void restartNow() { s_testRestartCount++; }
 
+// The OTA channel reaches this module through two functions rather than
+// through display_settings.h, and that indirection is the whole reason this
+// file still compiles natively: that header is header-only and opens
+// Preferences, so including it here would drag NVS into the test binary.
+static String s_testChannel = "stable";
+static String currentUpdateChannel() { return s_testChannel; }
+static void applyUpdateChannel(const String& channel) { s_testChannel = channel; }
+
 #else
 
+#include "display_settings.h"
 #include "system_utils.h"
+
+static String currentUpdateChannel() { return displaySettings.getUpdateChannel(); }
+static void applyUpdateChannel(const String& channel) {
+  displaySettings.setUpdateChannel(channel);
+}
 
 // Timeout 0: never block the render loop waiting for NTP. A clock whose time
 // is not yet synced simply does not reboot, which is the intended behaviour
@@ -41,7 +55,14 @@ static void restartNow() { safeRestart(); }
 // be able to make a clock allocate its way into a reboot. The real portal
 // hands over at most 4 commands and its bodies are a few hundred bytes.
 static const size_t MAX_RESPONSE_BYTES = 4096;
-static const int MAX_COMMANDS = 4;
+
+// Raised from 4 to 6 when the whitelist grew to five kinds. The table holds at
+// most one pending command per kind, so five is now a reachable state, and a
+// cap at four would silently defer one of them to the next beat an hour later.
+// Six leaves room for one more kind without this becoming a two-repo change
+// again. The portal's LIMIT mirrors it; both exist so a runaway issuer cannot
+// make a clock parse an unbounded body.
+static const int MAX_COMMANDS = 6;
 
 // A reboot is refused below this uptime. This is what stops a clock whose RTC
 // is stuck reading 04:00 from rebooting itself in a loop: each boot has to
@@ -135,6 +156,73 @@ static void applySetLogDeleteOnBoot(JsonObjectConst args, int id) {
           " by fleet command #" + id);
 }
 
+// The third leg of the same triangle: how much is logged (set_log_level),
+// whether it survives a boot (set_log_delete_on_boot), and how long it is
+// kept. The three are not interchangeable. Retention pruning runs only when
+// the log file is opened, which is at boot and at midnight, so a clock with
+// delete-on-boot off but retention at the default 1 day still loses yesterday
+// at the first midnight. That is enough to read one boot and not enough to
+// catch anything intermittent.
+//
+// Range is 1 to 10, and out of range is REFUSED rather than clamped. The
+// setter clamps, which would be the friendly thing to do everywhere else and
+// is exactly wrong here: a portal asking for 30 and a device reporting 10
+// means the completion test can never match, so the command would be re-sent
+// until it expired and then be reported as stuck having worked perfectly.
+static void applySetLogRetentionDays(JsonObjectConst args, int id) {
+  JsonVariantConst days = args["days"];
+  if (!days.is<int>()) {
+    logWarn("Fleet command set_log_retention_days without a number, ignored");
+    return;
+  }
+
+  const int target = days.as<int>();
+  if (target < 1 || target > 10) {
+    logWarn(String("Fleet command set_log_retention_days out of range: ") + target);
+    return;
+  }
+
+  if ((int)getLogRetentionDays() == target) return;
+
+  setLogRetentionDays((uint32_t)target);
+  logWarn(String("Log retention set to ") + target + " days by fleet command #" + id);
+}
+
+// The one command here that costs no heartbeat field at all: the beat has
+// reported `channel` since long before P4.10, so the completion test was
+// already in the data.
+//
+// It sits just inside the policy line rather than comfortably inside it. The
+// customer cannot see the channel from the clock face, but it does decide
+// which firmware they receive, so this is for moving one unit to `early` for a
+// release test and moving it back, not for steering the fleet. Anything that
+// changes what a customer's clock looks like stays out.
+//
+// Validated here even though the portal validates too, and for a sharper
+// reason than the usual belt and braces: setUpdateChannel() silently falls
+// back to "stable" on an unknown value, so passing a typo straight through
+// would quietly move a clock to a channel nobody asked for, and the command
+// asking for it could never close.
+static void applySetUpdateChannel(JsonObjectConst args, int id) {
+  const char* channel = args["channel"];
+  if (!channel) {
+    logWarn("Fleet command set_update_channel without a channel, ignored");
+    return;
+  }
+
+  if (strcmp(channel, "stable") != 0 &&
+      strcmp(channel, "early") != 0 &&
+      strcmp(channel, "develop") != 0) {
+    logWarn(String("Fleet command set_update_channel with unknown channel: ") + channel);
+    return;
+  }
+
+  if (currentUpdateChannel() == channel) return;
+
+  applyUpdateChannel(String(channel));
+  logWarn(String("Update channel set to ") + channel + " by fleet command #" + id);
+}
+
 static void applyReboot(JsonObjectConst args, int id) {
   const char* at = args["at"];
   if (!at) at = "now";
@@ -206,6 +294,10 @@ void deviceCommandsHandleResponse(const String& body) {
       applySetLogLevel(args, id);
     } else if (strcmp(kind, "set_log_delete_on_boot") == 0) {
       applySetLogDeleteOnBoot(args, id);
+    } else if (strcmp(kind, "set_log_retention_days") == 0) {
+      applySetLogRetentionDays(args, id);
+    } else if (strcmp(kind, "set_update_channel") == 0) {
+      applySetUpdateChannel(args, id);
     } else if (strcmp(kind, "reboot") == 0) {
       applyReboot(args, id);
     } else {
@@ -247,6 +339,7 @@ void deviceCommandsTestReset() {
   s_testTimeValid = false;
   s_testTime = {};
   s_testRestartCount = 0;
+  s_testChannel = "stable";
 }
 
 void deviceCommandsTestSetLocalTime(bool valid, int hour, int minute) {
@@ -259,5 +352,7 @@ void deviceCommandsTestSetLocalTime(bool valid, int hour, int minute) {
 int deviceCommandsTestRestartCount() { return s_testRestartCount; }
 
 bool deviceCommandsTestRebootArmed() { return s_rebootArmed; }
+
+String deviceCommandsTestUpdateChannel() { return s_testChannel; }
 
 #endif

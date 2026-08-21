@@ -18,6 +18,19 @@ bool LOG_DELETE_ON_BOOT = true;
 void setLogDeleteOnBoot(bool enabled) { LOG_DELETE_ON_BOOT = enabled; }
 bool getLogDeleteOnBoot() { return LOG_DELETE_ON_BOOT; }
 
+// Retention, with the real setter's clamp deliberately reproduced. The handler
+// is supposed to refuse an out-of-range value rather than let it be clamped, so
+// a stub that stored 30 verbatim would let a broken handler pass: it is the
+// clamp that makes "asked for 30, reports 10" possible, and that mismatch is
+// exactly what would keep a command from ever closing.
+uint32_t LOG_RETENTION_DAYS = 1;
+void setLogRetentionDays(uint32_t days) {
+    if (days < 1) days = 1;
+    if (days > 10) days = 10;
+    LOG_RETENTION_DAYS = days;
+}
+uint32_t getLogRetentionDays() { return LOG_RETENTION_DAYS; }
+
 // The real command handler, compiled natively. Its two hardware dependencies
 // (the wall clock and ESP.restart()) are substituted inside the .cpp under
 // PIO_UNIT_TESTING, so what runs here is the same parsing and the same
@@ -32,6 +45,7 @@ protected:
         deviceCommandsTestReset();
         LOG_LEVEL = LOG_LEVEL_ERROR;
         LOG_DELETE_ON_BOOT = true;
+        LOG_RETENTION_DAYS = 1;
     }
     void TearDown() override { deviceCommandsTestReset(); }
 
@@ -84,17 +98,37 @@ TEST_F(DeviceCommandsTest, UnknownKindIsIgnored) {
     EXPECT_FALSE(deviceCommandsTestRebootArmed());
 }
 
-TEST_F(DeviceCommandsTest, AtMostFourCommandsAreApplied) {
-    // Five commands, the fifth of which would arm a reboot. The portal hands
-    // over at most four, so the fifth must never be reached.
+TEST_F(DeviceCommandsTest, AtMostSixCommandsAreApplied) {
+    // Seven commands, the seventh of which would arm a reboot. The portal hands
+    // over at most six, so the seventh must never be reached.
     deviceCommandsHandleResponse(
         "{\"commands\":["
         "{\"id\":1,\"kind\":\"nop_a\",\"args\":{}},"
         "{\"id\":2,\"kind\":\"nop_b\",\"args\":{}},"
         "{\"id\":3,\"kind\":\"nop_c\",\"args\":{}},"
         "{\"id\":4,\"kind\":\"nop_d\",\"args\":{}},"
-        "{\"id\":5,\"kind\":\"reboot\",\"args\":{\"at\":\"now\"}}]}");
+        "{\"id\":5,\"kind\":\"nop_e\",\"args\":{}},"
+        "{\"id\":6,\"kind\":\"nop_f\",\"args\":{}},"
+        "{\"id\":7,\"kind\":\"reboot\",\"args\":{\"at\":\"now\"}}]}");
     EXPECT_FALSE(deviceCommandsTestRebootArmed());
+}
+
+// The cap has to clear the whitelist, or a clock with one pending command of
+// every kind would silently defer one of them to the next beat an hour later.
+TEST_F(DeviceCommandsTest, OneOfEveryKindFitsInOneBeat) {
+    deviceCommandsHandleResponse(
+        "{\"commands\":["
+        "{\"id\":1,\"kind\":\"set_log_level\",\"args\":{\"level\":\"debug\"}},"
+        "{\"id\":2,\"kind\":\"set_log_delete_on_boot\",\"args\":{\"enabled\":false}},"
+        "{\"id\":3,\"kind\":\"set_log_retention_days\",\"args\":{\"days\":7}},"
+        "{\"id\":4,\"kind\":\"set_update_channel\",\"args\":{\"channel\":\"early\"}},"
+        "{\"id\":5,\"kind\":\"reboot\",\"args\":{\"at\":\"04:00\"}}]}");
+
+    EXPECT_EQ(LOG_LEVEL, LOG_LEVEL_DEBUG);
+    EXPECT_FALSE(getLogDeleteOnBoot());
+    EXPECT_EQ(getLogRetentionDays(), 7u);
+    EXPECT_EQ(deviceCommandsTestUpdateChannel(), String("early"));
+    EXPECT_TRUE(deviceCommandsTestRebootArmed());
 }
 
 // --------------------------------------------------------- set_log_level
@@ -185,6 +219,104 @@ TEST_F(DeviceCommandsTest, SetLogDeleteOnBootNeedsARealBoolean) {
                       + args + "}]}";
         deviceCommandsHandleResponse(body);
         EXPECT_TRUE(getLogDeleteOnBoot()) << args;
+    }
+}
+
+// ------------------------------------------- set_log_retention_days
+
+TEST_F(DeviceCommandsTest, SetLogRetentionDaysApplies) {
+    deviceCommandsHandleResponse(
+        "{\"commands\":[{\"id\":61,\"kind\":\"set_log_retention_days\","
+        "\"args\":{\"days\":7}}]}");
+    EXPECT_EQ(getLogRetentionDays(), 7u);
+}
+
+TEST_F(DeviceCommandsTest, EveryDayInRangeIsAccepted) {
+    for (uint32_t d = 1; d <= 10; d++) {
+        LOG_RETENTION_DAYS = 99;
+        String body = String("{\"commands\":[{\"id\":61,"
+                             "\"kind\":\"set_log_retention_days\",\"args\":{\"days\":")
+                      + (int)d + "}}]}";
+        deviceCommandsHandleResponse(body);
+        EXPECT_EQ(getLogRetentionDays(), d) << d;
+    }
+}
+
+TEST_F(DeviceCommandsTest, SetLogRetentionDaysIsIdempotent) {
+    const char* body = "{\"commands\":[{\"id\":61,\"kind\":\"set_log_retention_days\","
+                       "\"args\":{\"days\":5}}]}";
+    for (int i = 0; i < 20; i++) deviceCommandsHandleResponse(body);
+    EXPECT_EQ(getLogRetentionDays(), 5u);
+}
+
+// The one that would be easy to get wrong by being helpful. setLogRetentionDays()
+// clamps to 1..10, so passing 30 straight through would store 10, the beat would
+// report 10, the portal would keep looking for 30, and the command would be
+// re-sent until it expired and then be reported stuck. Refusing leaves the
+// device where it was, which is the state the portal can actually reason about.
+TEST_F(DeviceCommandsTest, OutOfRangeRetentionIsRefusedNotClamped) {
+    const char* bad[] = {"{\"days\":0}",
+                         "{\"days\":-1}",
+                         "{\"days\":11}",
+                         "{\"days\":30}",
+                         "{\"days\":\"7\"}",
+                         "{\"days\":null}",
+                         "{}",
+                         "{\"value\":7}"};
+    for (const char* args : bad) {
+        LOG_RETENTION_DAYS = 3;
+        String body = String("{\"commands\":[{\"id\":61,"
+                             "\"kind\":\"set_log_retention_days\",\"args\":")
+                      + args + "}]}";
+        deviceCommandsHandleResponse(body);
+        EXPECT_EQ(getLogRetentionDays(), 3u) << args;
+    }
+}
+
+// ------------------------------------------------ set_update_channel
+
+TEST_F(DeviceCommandsTest, SetUpdateChannelApplies) {
+    deviceCommandsHandleResponse(
+        "{\"commands\":[{\"id\":71,\"kind\":\"set_update_channel\","
+        "\"args\":{\"channel\":\"early\"}}]}");
+    EXPECT_EQ(deviceCommandsTestUpdateChannel(), String("early"));
+}
+
+TEST_F(DeviceCommandsTest, EveryChannelNameIsUnderstood) {
+    const char* channels[] = {"stable", "early", "develop"};
+    for (const char* c : channels) {
+        String body = String("{\"commands\":[{\"id\":71,"
+                             "\"kind\":\"set_update_channel\",\"args\":{\"channel\":\"")
+                      + c + "\"}}]}";
+        deviceCommandsHandleResponse(body);
+        EXPECT_EQ(deviceCommandsTestUpdateChannel(), String(c)) << c;
+    }
+}
+
+TEST_F(DeviceCommandsTest, SetUpdateChannelIsIdempotent) {
+    const char* body = "{\"commands\":[{\"id\":71,\"kind\":\"set_update_channel\","
+                       "\"args\":{\"channel\":\"develop\"}}]}";
+    for (int i = 0; i < 20; i++) deviceCommandsHandleResponse(body);
+    EXPECT_EQ(deviceCommandsTestUpdateChannel(), String("develop"));
+}
+
+// setUpdateChannel() falls back to "stable" on anything it does not recognise,
+// so an unvalidated typo would move a clock to a channel nobody asked for and
+// the command asking for it could never close. Refuse instead.
+TEST_F(DeviceCommandsTest, UnknownChannelLeavesTheClockWhereItWas) {
+    const char* bad[] = {"{\"channel\":\"beta\"}",
+                         "{\"channel\":\"Stable\"}",
+                         "{\"channel\":\"\"}",
+                         "{\"channel\":null}",
+                         "{}",
+                         "{\"value\":\"early\"}"};
+    for (const char* args : bad) {
+        deviceCommandsTestReset();
+        String body = String("{\"commands\":[{\"id\":71,"
+                             "\"kind\":\"set_update_channel\",\"args\":")
+                      + args + "}]}";
+        deviceCommandsHandleResponse(body);
+        EXPECT_EQ(deviceCommandsTestUpdateChannel(), String("stable")) << args;
     }
 }
 
@@ -327,7 +459,7 @@ TEST_F(DeviceCommandsTest, BothKindsInOneResponse) {
     EXPECT_EQ(deviceCommandsTestRestartCount(), 1);
 }
 
-// The whole reason the three kinds exist together: turn the clock up to debug,
+// The whole reason those three kinds exist together: turn the clock up to debug,
 // stop it eating its own logs, restart it, and read what the boot did. Applied
 // in array order within one beat, so the logs are already spared before the
 // reboot is even armed, let alone fired.

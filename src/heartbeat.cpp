@@ -232,6 +232,13 @@ bool sendHeartbeat() {
   // gone" an answerable question rather than a mystery.
   req["logDeleteOnBoot"] = getLogDeleteOnBoot();
 
+  // And how many days of them are kept. The third of the three log settings,
+  // and the one that decides whether an intermittent fault is still on disk by
+  // the time anyone goes looking: pruning runs when the log file is opened, so
+  // at the default of one day a clock loses yesterday at the first midnight
+  // even with delete-on-boot off. Closes set_log_retention_days.
+  req["logRetentionDays"] = (long)getLogRetentionDays();
+
   // Extended system diagnostics
   req["minFreeHeap"] = (long)ESP.getMinFreeHeap();
   req["heapSize"] = (long)ESP.getHeapSize();
