@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "config.h"
+#include "device_commands.h"
 #include "device_identity.h"
 #include "device_registration.h"
 #include "display_settings.h"
@@ -268,6 +269,12 @@ bool sendHeartbeat() {
     return false;
   }
   
+  // The response body used to be read and thrown away. It still says
+  // {"ok": true} on almost every beat, but the portal may now attach a
+  // `commands` array to it (P4.10) — the downlink rides the connection the
+  // clock already made. Nothing here can fail the beat: the beat is done.
+  deviceCommandsHandleResponse(body);
+
   logInfo("💓 Heartbeat sent successfully");
   return true;
 }
