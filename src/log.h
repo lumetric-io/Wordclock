@@ -41,3 +41,11 @@ void logCloseFile();
 void logFlushFile();
 String logLatestFilePath();
 void logRewriteUnsynced();
+
+// File sink health, reported on the heartbeat. See src/log_sink_health.h for
+// why a sink failure is now recoverable and counted rather than final: the old
+// behaviour cost a clock its log file until the next reboot and showed up
+// nowhere at all.
+bool logSinkHealthy();
+uint32_t logSinkFailureCount();
+uint32_t logBytesOnDisk();

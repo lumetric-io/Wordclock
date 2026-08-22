@@ -239,6 +239,34 @@ bool sendHeartbeat() {
   // even with delete-on-boot off. Closes set_log_retention_days.
   req["logRetentionDays"] = (long)getLogRetentionDays();
 
+  // Whether any of the above is actually producing a file.
+  //
+  // The three settings say what this clock intends to do with its logs. None
+  // of them says whether it is doing it, and until 2026-08-22 nothing did: a
+  // clock whose file sink had died reported `logLevel=debug`,
+  // `logDeleteOnBoot=false`, `logRetentionDays=3` and a healthy beat every
+  // hour while writing nothing to /logs for eight hours. All three log
+  // commands would have closed green against it. The RAM ring buffer at /log
+  // kept answering, so even a support session would have looked fine until
+  // somebody asked for a file.
+  //
+  // Three fields because they answer three different questions:
+  //   logSinkOk        is it writing right now
+  //   logSinkFailures  did it ever stop since boot (a sink that recovered at
+  //                    03:00 is indistinguishable from a healthy one without
+  //                    this, and the hour it lost is gone either way)
+  //   logBytes         is anything landing on disk at all. The only one that
+  //                    catches the worst variant, where writes report success
+  //                    and the bytes still are not there. Stalled bytes on a
+  //                    clock that is up and at debug level is the signature.
+  //
+  // logBytes is a size, not a health verdict: it legitimately DROPS at a boot
+  // with delete-on-boot on and at a midnight prune. Nothing should alert on it
+  // falling, only on it standing still.
+  req["logSinkOk"] = logSinkHealthy();
+  req["logSinkFailures"] = (long)logSinkFailureCount();
+  req["logBytes"] = (long)logBytesOnDisk();
+
   // Extended system diagnostics
   req["minFreeHeap"] = (long)ESP.getMinFreeHeap();
   req["heapSize"] = (long)ESP.getHeapSize();
