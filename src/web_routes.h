@@ -520,11 +520,13 @@ void setupWebRoutes() {
     if (server.hasArg("id")) {
       uint8_t id = static_cast<uint8_t>(server.arg("id").toInt());
       size_t count = 0;
-      getGridVariantInfos(count);
-      if (id < count) {
-        GridVariant variant = gridVariantFromId(id);
-        displaySettings.setGridVariant(variant);
-        updated = true;
+      const GridVariantInfo* infos = getGridVariantInfos(count);
+      for (size_t i = 0; i < count; ++i) {
+        if (gridVariantToId(infos[i].variant) == id) {
+          displaySettings.setGridVariant(infos[i].variant);
+          updated = true;
+          break;
+        }
       }
     } else if (server.hasArg("key")) {
       String key = server.arg("key");
@@ -843,11 +845,13 @@ void setupWebRoutes() {
     if (server.hasArg("id")) {
       uint8_t id = static_cast<uint8_t>(server.arg("id").toInt());
       size_t count = 0;
-      getGridVariantInfos(count);
-      if (id < count) {
-        GridVariant variant = gridVariantFromId(id);
-        displaySettings.setGridVariant(variant);
-        updated = true;
+      const GridVariantInfo* infos = getGridVariantInfos(count);
+      for (size_t i = 0; i < count; ++i) {
+        if (gridVariantToId(infos[i].variant) == id) {
+          displaySettings.setGridVariant(infos[i].variant);
+          updated = true;
+          break;
+        }
       }
     } else if (server.hasArg("key")) {
       String key = server.arg("key");
