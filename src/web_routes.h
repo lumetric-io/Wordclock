@@ -73,6 +73,46 @@ static void otaUpdateTask(void* params) {
 }
 #endif
 
+// The UI version only changes when an fs.bin is installed, and that reboots
+// the device, so this is a boot-constant. getUiVersion() opens a file on
+// LittleFS and serveFile() runs on every static request, so read it once.
+static const String& cachedUiVersion() {
+  static const String v = getUiVersion();
+  return v;
+}
+
+// Attach cache validators to a static response, and answer a conditional
+// request outright when the client already holds this exact version.
+//
+// Static assets used to ship with no Cache-Control, no ETag and no
+// Last-Modified. With no validators at all a browser is free to cache
+// heuristically and reuse without ever asking, so any fs.bin OTA could leave a
+// customer looking at the previous UI with nothing to indicate it was stale —
+// that is how the language picker appeared to be missing on 2026-08-12 when
+// the device was demonstrably serving the new file.
+//
+// `no-cache` (not `no-store`) keeps the cached copy usable but forces a
+// revalidation every time. On its own that would mean re-downloading ~92 KB of
+// dashboard.html on every load, so the ETag is the other half of the fix: an
+// unchanged page then costs one round trip and no body. Version + size is
+// enough of a tag because the UI version turns over exactly when the files do.
+//
+// Returns true when it has already sent a 304, in which case the caller must
+// not stream a body.
+static bool applyStaticCacheHeaders(size_t size) {
+  String etag = "\"" + cachedUiVersion() + "-" + String((uint32_t)size) + "\"";
+  server.sendHeader("Cache-Control", "no-cache");
+  server.sendHeader("ETag", etag);
+  // Exact match only. Browsers echo back the strong tag we sent verbatim; a
+  // weakened or multi-tag If-None-Match simply misses and costs a full body,
+  // which is the pre-existing behaviour rather than a regression.
+  if (server.header("If-None-Match") == etag) {
+    server.send(304, "text/plain", "");
+    return true;
+  }
+  return false;
+}
+
 // Serve file, preferring a .gz variant if client accepts gzip
 static void serveFile(const char* path, const char* mime) {
   // Gzip temporarily disabled; always serve plain files
@@ -81,6 +121,9 @@ static void serveFile(const char* path, const char* mime) {
   if (acceptGzip) {
     File gz = FS_IMPL.open(gzPath, "r");
     if (gz) {
+      // The gzipped and plain forms differ in size, so they get distinct
+      // ETags on their own — no Vary juggling needed here.
+      if (applyStaticCacheHeaders(gz.size())) { gz.close(); return; }
       server.sendHeader("Content-Encoding", "gzip");
       server.streamFile(gz, mime);
       gz.close();
@@ -91,14 +134,17 @@ static void serveFile(const char* path, const char* mime) {
   if (!f) {
     File gz = FS_IMPL.open(gzPath, "r");
     if (gz) {
+      if (applyStaticCacheHeaders(gz.size())) { gz.close(); return; }
       server.sendHeader("Content-Encoding", "gzip");
       server.streamFile(gz, mime);
       gz.close();
       return;
     }
+    // No validators on a 404 — there is nothing to revalidate against.
     server.send(404, "text/plain", String(path) + " not found");
     return;
   }
+  if (applyStaticCacheHeaders(f.size())) { f.close(); return; }
   server.streamFile(f, mime);
   f.close();
 }
@@ -280,9 +326,11 @@ static String generateFactoryToken(unsigned long ttl_ms = 60000) {
 
 // Function to register all routes
 void setupWebRoutes() {
-  // Capture Accept-Encoding so we can serve gzip if available
-  static const char* headerKeys[] = { "Accept-Encoding" };
-  server.collectHeaders(headerKeys, 1);
+  // WebServer discards every request header that is not named here, so
+  // If-None-Match must be collected or applyStaticCacheHeaders() would never
+  // see a conditional request and every revalidation would cost a full body.
+  static const char* headerKeys[] = { "Accept-Encoding", "If-None-Match" };
+  server.collectHeaders(headerKeys, sizeof(headerKeys) / sizeof(headerKeys[0]));
 
   // Helper defined at file scope: serveFile()
   // Main pages
