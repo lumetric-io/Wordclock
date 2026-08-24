@@ -11,7 +11,6 @@
 // - Loop: verwerkt webrequests, OTA, MQTT en kloklogica
 
 #include <Arduino.h>
-#include <ESPmDNS.h>
 #include "fs_compat.h"
 #include <WiFiClient.h>
 #include <WiFiServer.h>
@@ -69,12 +68,11 @@ void setup() {
   });
 #endif
 
-  // Start mDNS voor lokale netwerknaam
-  if (MDNS.begin(MDNS_HOSTNAME)) {
-    logInfo("🌐 mDNS active at http://" MDNS_HOSTNAME ".local");
-  } else {
-    logError("❌ mDNS start failed");
-  }
+  // mDNS is registered by runtimeInitOnSetup() below, together with the web
+  // server and the other services that need a live STA interface — and
+  // re-registered from the loop after a reconnect. It used to be started here,
+  // which meant a boot without WiFi left the clock nameless until someone
+  // power-cycled it. See runtime_services.cpp:startMdns().
 
   // Load persisted display settings (e.g. auto-update preference) before running dependent flows
   displaySettings.begin();
