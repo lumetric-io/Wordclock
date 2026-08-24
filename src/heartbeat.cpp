@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "config.h"
+#include "device_commands.h"
 #include "device_identity.h"
 #include "device_registration.h"
 #include "display_settings.h"
@@ -206,6 +207,18 @@ bool sendHeartbeat() {
   // Without this field, "no warnings from that clock" and "that clock is
   // incapable of warning" are indistinguishable in the data.
   req["logLevel"] = logLevelName();
+
+  // Whether this clock throws its logs away on the next boot. Reported for the
+  // same reason as logLevel, and it is also what closes the
+  // set_log_delete_on_boot command: there is no ack anywhere in this protocol,
+  // so a setting the beat does not carry is one the portal can never see take.
+  req["logDeleteOnBoot"] = getLogDeleteOnBoot();
+
+  // And how many days of them are kept. The third of the three log settings,
+  // and the one that decides whether an intermittent fault is still on disk by
+  // the time anyone goes looking. Closes set_log_retention_days.
+  req["logRetentionDays"] = (long)getLogRetentionDays();
+
   req["uptime"] = (long)(millis() / 1000);
   req["freeHeap"] = (long)ESP.getFreeHeap();
   req["rssi"] = WiFi.RSSI();
@@ -258,7 +271,13 @@ bool sendHeartbeat() {
     logWarn("💓 Heartbeat failed: HTTP " + String(code) + " - " + body);
     return false;
   }
-  
+
+  // The response body used to be read and thrown away. It still says
+  // {"ok": true} on almost every beat, but the portal may now attach a
+  // `commands` array to it (P4.10) - the downlink rides the connection the
+  // clock already made. Nothing here can fail the beat: the beat is done.
+  deviceCommandsHandleResponse(body);
+
   logInfo("💓 Heartbeat sent successfully");
   return true;
 }

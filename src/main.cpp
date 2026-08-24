@@ -5,6 +5,7 @@
 #include "time_sync.h"
 #include "wordclock_system_init.h"
 #include "runtime_services.h"
+#include "device_commands.h"
 
 // Wordclock hoofdprogramma
 // - Setup: initialiseert hardware, netwerk, OTA, filesystem en start services
@@ -107,6 +108,13 @@ void loop() {
   runtimeHandleWifiTransitionLogs(wifiConnected);
 
   unsigned long nowMs = millis();
+
+  // Above the no-Wi-Fi branch on purpose. A reboot accepted from the portal at
+  // 22:00 must still fire at 04:00 even if the network dropped in between, so
+  // this cannot live in runtimeHandleOnlineServices() - that returns early
+  // when Wi-Fi is down.
+  deviceCommandsTick(nowMs);
+
   if (runtimeHandleNoWifiLoop(nowMs)) {
     // Skip the wordclock render loop during initial setup so the AP and
     // portal stay responsive. Adafruit_NeoPixel::show() disables interrupts
