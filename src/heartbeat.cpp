@@ -219,6 +219,16 @@ bool sendHeartbeat() {
   // the time anyone goes looking. Closes set_log_retention_days.
   req["logRetentionDays"] = (long)getLogRetentionDays();
 
+  // File-sink health. Without these a clock whose log sink silently died still
+  // reports healthy in every other field, which is exactly what once let a dead
+  // sink go eight hours unseen. logSinkOk is now-state, logSinkFailures counts
+  // incidents since boot (so a "dropped out and recovered" is not invisible in
+  // an hourly boolean), and logBytes catches the worst case where writes report
+  // success but nothing lands on disk. Portal receiving half is sql/019.
+  req["logSinkOk"] = logSinkHealthy();
+  req["logSinkFailures"] = (long)logSinkFailureCount();
+  req["logBytes"] = (long)logBytesOnDisk();
+
   req["uptime"] = (long)(millis() / 1000);
   req["freeHeap"] = (long)ESP.getFreeHeap();
   req["rssi"] = WiFi.RSSI();
