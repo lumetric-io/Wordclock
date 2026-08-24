@@ -18,6 +18,7 @@
 # left untouched here.
 #
 # Usage:
+#   tools/release.sh                        # no flags on a terminal: interactive picker
 #   tools/release.sh --list
 #   tools/release.sh --product wordclock-legacy-nl-v4
 #   tools/release.sh --prefix wordclock-legacy
@@ -69,7 +70,7 @@ Legacy Wordclock Build Script
 Selects one or more legacy products and builds firmware (and optionally the
 littlefs filesystem image) into dist/.
 
-Selection (choose one):
+Selection (choose one; with none, a terminal opens an interactive picker):
   -p, --product <name>    Build a single product (e.g. wordclock-legacy-nl-v4)
       --prefix <prefix>   Build every product whose name is <prefix> or starts
                           with "<prefix>-" (e.g. wordclock-legacy, wordclock-logo)
@@ -158,6 +159,64 @@ list_products() {
         is_excluded_from_all "$p" && tag="  [excluded from --all]"
         printf '  %-30s %-28s grids: %s%s\n' "$p" "${ver:-<none>}" "${grids:-<none>}" "$tag"
     done < <(discover_products)
+}
+
+# Interactive picker, shown only on a terminal when no selection flag was given.
+# Builds a numbered menu from the discovered products (so nothing here has to be
+# hand-maintained as products come and go), then prompts for channel and fs.
+# Sets MODE / ARG / CHANNEL / BUILD_FS as if the equivalent flags were passed.
+interactive_select() {
+    local -a menu=()
+    local p
+    while IFS= read -r p; do menu+=("$p"); done < <(discover_products)
+    if [[ ${#menu[@]} -eq 0 ]]; then
+        print_error "No buildable products found under $PRODUCTS_DIR"
+        exit 1
+    fi
+
+    print_header "Select a product to build"
+    local i ver grids tag
+    for i in "${!menu[@]}"; do
+        ver="$(product_version "${menu[$i]}")"
+        grids="$(product_grids "${menu[$i]}")"
+        tag=""
+        is_excluded_from_all "${menu[$i]}" && tag="  [not in 'all']"
+        printf '  %2d) %-30s %-26s grids: %s%s\n' "$((i + 1))" "${menu[$i]}" "${ver:-<none>}" "${grids:-<none>}" "$tag"
+    done
+    echo "   a) all legacy products (excludes ${EXCLUDE_FROM_ALL[*]})"
+    echo "   q) quit"
+    echo
+
+    local reply
+    read -rp "Product [1-${#menu[@]}, a, q]: " reply || true
+    case "$reply" in
+        ""|q|Q) print_info "Nothing selected."; exit 0 ;;
+        a|A)    MODE="all" ;;
+        *)
+            if [[ "$reply" =~ ^[0-9]+$ ]] && (( reply >= 1 && reply <= ${#menu[@]} )); then
+                MODE="product"; ARG="${menu[$((reply - 1))]}"
+            else
+                print_error "Invalid selection: $reply"
+                exit 1
+            fi
+            ;;
+    esac
+
+    local ch
+    read -rp "Channel [stable/early/develop] (default $CHANNEL): " ch || true
+    if [[ -n "$ch" ]]; then
+        case "$ch" in
+            stable|early|develop) CHANNEL="$ch" ;;
+            *) print_error "Invalid channel '$ch' (expected stable|early|develop)"; exit 1 ;;
+        esac
+    fi
+
+    if [[ "$BUILD_FS" != true && "$FS_ONLY" != true ]]; then
+        local fs
+        read -rp "Also build the littlefs filesystem image? [y/N]: " fs || true
+        [[ "$fs" == "y" || "$fs" == "Y" ]] && BUILD_FS=true
+    fi
+    echo
 }
 
 # Build one product. Honors BUILD_FS / FS_ONLY / DO_CLEAN / CHANNEL.
@@ -251,10 +310,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$MODE" ]]; then
-    print_error "Nothing to do: pass one of --product, --prefix, --all, or --list"
-    echo
-    usage
-    exit 1
+    if [[ -t 0 ]]; then
+        interactive_select
+    else
+        print_error "Nothing to do: pass one of --product, --prefix, --all, or --list"
+        echo
+        usage
+        exit 1
+    fi
 fi
 
 case "$CHANNEL" in
