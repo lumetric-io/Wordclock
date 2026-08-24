@@ -43,6 +43,9 @@ lib/
 # Eventuele logbestanden
 *.log
 
+# v2/Chronolett UI design-handover bundle (untracked reference; gitignored on nextgen too)
+handover/
+
 # Ignore all markdown docs
 *.md
 
