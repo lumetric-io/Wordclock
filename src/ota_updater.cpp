@@ -263,7 +263,6 @@ static String getEffectiveOtaProductId() {
 #elif defined(PRODUCT_VARIANT_LOGO)
   // Logo multi-grid product mapping (keys are uppercase)
   if (strcmp(gridKey, "NL_55x50_LOGO_V1") == 0) return "wordclock-logo-nl-55x50-v1";
-  if (strcmp(gridKey, "NL_100x100_LOGO_V1") == 0) return "wordclock-logo-nl-100x100-v1";
   logWarn(String("Unknown grid variant for OTA mapping: ") + gridKey);
 #endif
 

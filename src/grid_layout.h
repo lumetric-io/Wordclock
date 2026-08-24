@@ -18,7 +18,6 @@ enum class GridVariant : uint8_t {
   NL_55x50_LOGO_V1,
   NL_20x20_V1,
   NL_20x20_V0,
-  NL_100x100_LOGO_V1,
 };
 
 struct GridVariantInfo {
