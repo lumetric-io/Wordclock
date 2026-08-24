@@ -133,7 +133,7 @@ void earlyLedClear() {
 #ifndef PIO_UNIT_TESTING
   // Use a reasonable maximum LED count for initial clear
   // This will be properly reconfigured later by ensureStripLength()
-  static const uint16_t EARLY_CLEAR_LED_COUNT = 600;
+  static const uint16_t EARLY_CLEAR_LED_COUNT = 256;
 
 #if defined(PRODUCT_VARIANT_LOGO)
   clockStrip.updateType(NEO_GRBW + NEO_KHZ800);
