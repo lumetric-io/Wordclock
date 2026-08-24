@@ -50,6 +50,7 @@ lib/
 !README.md
 !CHANGELOG.md
 !CONTRIBUTING.md
+!LEGACY_PORT_OVERVIEW.md
 
 # Claude
 .claude/
