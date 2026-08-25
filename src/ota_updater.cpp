@@ -55,6 +55,13 @@ void syncUiFilesFromConfiguredVersion() {}
 
 static const char* FS_IMAGE_VERSION_FILE = "/.fs_image_version";
 
+// True while the littlefs partition is being rewritten raw by an fs update.
+// Any FS_IMPL.begin() in that window would mount a half-written image (the
+// superblocks land first, so a mid-write mount can succeed and then walk
+// garbage). getUiVersion() runs on the main loop while the update task
+// writes, hence volatile.
+static volatile bool g_fsMountBlocked = false;
+
 #if SUPPORT_OTA_V2 == 0
 static const char* FS_VERSION_FILE = "/.fs_version"; // UI sync marker
 static const char* UI_FILES[] = {
@@ -187,13 +194,13 @@ static void writeFsImageVersion(const String& v) {
 
 String getUiVersion() {
 #if SUPPORT_OTA_V2
-  if (FS_IMPL.begin(false)) {
+  if (!g_fsMountBlocked && FS_IMPL.begin(false)) {
     String v = readFsImageVersion();
     if (v.length()) return v;
   }
   return UI_VERSION;
 #else
-  if (FS_IMPL.begin(false)) {
+  if (!g_fsMountBlocked && FS_IMPL.begin(false)) {
     String v = readFsVersion();
     if (v.length()) return v;
   }
@@ -823,14 +830,33 @@ static void checkForFirmwareUpdateV2() {
           logInfo("✅ Filesystem already latest (" + fsVersion + ")");
         } else {
           logInfo("⬇️ Updating filesystem (" + fsVersion + ")...");
-          if (performFilesystemUpdate(fsUrl, fsSize, *client)) {
-            if (fsVersion.length()) {
-              writeFsImageVersion(fsVersion);
-            }
+          // The raw U_SPIFFS write replaces the littlefs partition underneath
+          // any live mount. Writing through that stale mount afterwards (the
+          // version marker, the log file sink) corrupted the fresh image and
+          // wedged littlefs on a field clock (2026-08-25). Quiesce first:
+          // silence the file sink, block remounts, unmount; then mount the
+          // new image fresh before anything touches it again.
+          logPauseFileSink();
+          g_fsMountBlocked = true;
+          FS_IMPL.end();
+          const bool fsWritten = performFilesystemUpdate(fsUrl, fsSize, *client);
+          const bool fsMounted = FS_IMPL.begin(false);
+          g_fsMountBlocked = false;
+          logResumeFileSink();
+          if (fsWritten) {
             fsUpdated = true;
-            logInfo("✅ Filesystem updated");
+            if (fsMounted) {
+              if (fsVersion.length()) {
+                writeFsImageVersion(fsVersion);
+              }
+              logInfo("✅ Filesystem updated");
+            } else {
+              // Marker stays unwritten on purpose: the next check retries the
+              // fs, and boot mounts format-on-fail as the last resort.
+              logError("❌ Filesystem written but remount failed");
+            }
           } else {
-            logError("❌ Filesystem update failed");
+            logError(String("❌ Filesystem update failed") + (fsMounted ? "" : " (remount failed too)"));
           }
         }
       }

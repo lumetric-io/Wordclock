@@ -1449,6 +1449,11 @@ void setupWebRoutes() {
       HTTPUpload& upload = server.upload();
       if (upload.status == UPLOAD_FILE_START) {
         logInfo("📂 Filesystem upload started: " + upload.filename);
+        // Same stale-mount hazard as the OTA fs path: the write below
+        // replaces the littlefs partition under the live mount. Quiesce
+        // before writing, remount fresh at END or ABORTED.
+        logPauseFileSink();
+        FS_IMPL.end();
         if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
           logError("❌ Update.begin(U_SPIFFS) failed");
           Update.printError(Serial);
@@ -1462,12 +1467,21 @@ void setupWebRoutes() {
           logDebug("✏️ Filesystem written: " + String(written) + " bytes");
         }
       } else if (upload.status == UPLOAD_FILE_END) {
-        logInfo("📥 Filesystem upload completed");
-        logDebug("Filesystem total " + String(Update.size()) + " bytes");
         if (!Update.end(true)) {
           logError("❌ Update.end(U_SPIFFS) failed");
           Update.printError(Serial);
         }
+        if (!FS_IMPL.begin(false)) {
+          logError("❌ Filesystem remount after upload failed");
+        }
+        logResumeFileSink();
+        logInfo("📥 Filesystem upload completed");
+        logDebug("Filesystem total " + String(Update.size()) + " bytes");
+      } else if (upload.status == UPLOAD_FILE_ABORTED) {
+        Update.abort();
+        FS_IMPL.begin(false);
+        logResumeFileSink();
+        logError("❌ Filesystem upload aborted");
       }
     }
   );
