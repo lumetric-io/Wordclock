@@ -1276,6 +1276,59 @@ void setupWebRoutes() {
     safeRestart();
   });
 
+  // Wi-Fi enrolment from the admin page: the operator can hand the clock a
+  // new network (a customer's router change, a repaired clock going back out)
+  // without ever opening the config portal.
+  //
+  // The GET is open like the rest of the UI, it returns a network name the
+  // operator is standing in front of, no secret. The POST writes credentials,
+  // so it takes admin auth, same as /setUIPassword. The stored password is
+  // never readable back through either.
+  server.on("/api/wifi", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    JsonDocument doc;
+    doc["ssid"] = getStoredWifiSsid();
+    doc["connected"] = isWiFiConnected();
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  server.on("/api/wifi", HTTP_POST, []() {
+    if (!ensureAdminAuth()) return;
+    String ssid, password;
+    if (server.hasArg("ssid")) {
+      ssid = server.arg("ssid");
+      if (server.hasArg("password")) password = server.arg("password");
+    } else if (server.hasArg("plain")) {
+      JsonDocument doc;
+      if (!deserializeJson(doc, server.arg("plain"))) {
+        if (doc["ssid"].is<const char*>()) ssid = String(doc["ssid"].as<const char*>());
+        if (doc["password"].is<const char*>()) password = String(doc["password"].as<const char*>());
+      }
+    }
+    if (ssid.isEmpty() || ssid.length() > 32) {
+      server.send(400, "text/plain", "ssid must be 1-32 characters");
+      return;
+    }
+    // Empty means an open network. Anything in between is not a WPA key and
+    // would be rejected by the driver with a less obvious error.
+    if (!password.isEmpty() && (password.length() < 8 || password.length() > 63)) {
+      server.send(400, "text/plain", "password must be empty (open network) or 8-63 characters");
+      return;
+    }
+    if (!storeWifiCredentials(ssid, password)) {
+      server.send(500, "text/plain", "Storing credentials failed");
+      return;
+    }
+    JsonDocument doc;
+    doc["ssid"] = ssid;
+    doc["applies"] = "next_boot";
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
   server.on("/resetwifi", []() {
     if (!ensureUiAuth()) return;
   logInfo("⚠️ WiFi reset requested via dashboard");

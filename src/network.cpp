@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <WiFi.h>
+#include <esp_wifi.h>
 #if WIFI_MANAGER_ENABLED
 #ifndef ESP32
 #define ESP32
@@ -63,6 +64,64 @@ static bool connectWithStoredCredentials() {
     delay(WIFI_CONNECT_RETRY_DELAY_MS);
   }
   return WiFi.status() == WL_CONNECTED;
+}
+
+// Enrolment from the admin page: the operator has the clock in front of them
+// and types the network it should actually live on, without ever opening the
+// config portal.
+//
+// Deliberately does not call WiFi.begin(ssid, pass). begin() associates
+// immediately, which tears down the connection carrying the request, so the
+// operator would never learn whether the save succeeded, and on a bad password
+// the clock would be stranded on neither network with nothing stored. Writing
+// the driver config with FLASH storage puts the credentials in nvs.net80211
+// now and leaves this session's association alone, so the promise the admin
+// page makes ("active after a restart") is the literal behaviour.
+//
+// The existing config is read back first so only the two fields we mean to
+// change are touched: zero-filling a wifi_config_t would also reset the scan
+// and sort methods, and a cleared pmf_cfg.capable is enough on its own to fail
+// the association against a WPA3-capable AP.
+bool storeWifiCredentials(const String& ssid, const String& password) {
+  if (ssid.isEmpty() || ssid.length() > 32) return false;
+  if (!password.isEmpty() && (password.length() < 8 || password.length() > 63)) return false;
+
+  wifi_config_t conf;
+  if (esp_wifi_get_config(WIFI_IF_STA, &conf) != ESP_OK) {
+    memset(&conf, 0, sizeof(conf));
+    conf.sta.pmf_cfg.capable = true;
+  }
+  memset(conf.sta.ssid, 0, sizeof(conf.sta.ssid));
+  memset(conf.sta.password, 0, sizeof(conf.sta.password));
+  memcpy(conf.sta.ssid, ssid.c_str(), ssid.length());
+  memcpy(conf.sta.password, password.c_str(), password.length());
+  // Both directions matter: an open network must not inherit a WPA2 floor from
+  // whatever was configured before, and a protected one must not be satisfied
+  // by an unencrypted AP answering to the same name.
+  conf.sta.threshold.authmode = password.isEmpty() ? WIFI_AUTH_OPEN : WIFI_AUTH_WPA_PSK;
+  // The operator typed a name, not a BSSID. A bssid_set left over from an
+  // earlier association would pin the clock to one access point.
+  conf.sta.bssid_set = false;
+
+  esp_wifi_set_storage(WIFI_STORAGE_FLASH);
+  const esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &conf);
+  if (err != ESP_OK) {
+    logError(String("❌ Storing WiFi credentials failed: ") + esp_err_to_name(err));
+    return false;
+  }
+  // Never the password, not even at debug level: /log is served unauthenticated
+  // and /log/download survives on the filesystem.
+  logInfo(String("💾 WiFi credentials stored for '") + ssid + "', active after restart.");
+  return true;
+}
+
+String getStoredWifiSsid() {
+  wifi_config_t conf;
+  if (esp_wifi_get_config(WIFI_IF_STA, &conf) != ESP_OK) return String();
+  char ssid[sizeof(conf.sta.ssid) + 1];
+  memcpy(ssid, conf.sta.ssid, sizeof(conf.sta.ssid));
+  ssid[sizeof(conf.sta.ssid)] = '\0';
+  return String(ssid);
 }
 
 static void startWiFiManagerPortal() {
