@@ -353,6 +353,34 @@ void setupWebRoutes() {
     server.send(204);
   });
 
+  // Shared stylesheet pair for the Chronolett UI (ported from nextgen).
+  server.on("/chronolett.css", HTTP_GET, []() {
+    serveFile("/chronolett.css", "text/css");
+  });
+  server.on("/chronolett-compact.css", HTTP_GET, []() {
+    serveFile("/chronolett-compact.css", "text/css");
+  });
+  // i18n: shared loader + per-language dictionaries (EN/NL).
+  // Lives in /i18n/ so future languages slot in next to the existing JSON.
+  server.on("/i18n/i18n.js", HTTP_GET, []() {
+    serveFile("/i18n/i18n.js", "application/javascript");
+  });
+  server.on("/i18n/en.json", HTTP_GET, []() {
+    serveFile("/i18n/en.json", "application/json");
+  });
+  server.on("/i18n/nl.json", HTTP_GET, []() {
+    serveFile("/i18n/nl.json", "application/json");
+  });
+
+  // RAL Classic colour picker: shared JS module + 205-entry palette.
+  // Lazy-loaded only when the user opens the RAL dialog in the brand UI.
+  server.on("/ral-picker.js", HTTP_GET, []() {
+    serveFile("/ral-picker.js", "application/javascript");
+  });
+  server.on("/ral-classic.json", HTTP_GET, []() {
+    serveFile("/ral-classic.json", "application/json");
+  });
+
   // Factory reset token endpoint (public): returns a short-lived token for reset
   server.on("/factorytoken", HTTP_GET, []() {
     // Issue new token valid for 60s

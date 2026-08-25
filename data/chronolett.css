@@ -1,0 +1,1066 @@
+/* Chronolett v2 — editorial brand stylesheet
+   Palette and type derived from /chronolett-website brand guide.
+   Single shared file to keep LittleFS footprint small. */
+
+:root {
+  --ink: #0E0E0E;
+  --bone: #F5F2ED;
+  --paper: #FFFFFF;
+  --copper: #B87333;
+  --copper-soft: rgba(184, 115, 51, 0.10);
+  --rust: #8B4513;
+  --graphite: #2F2F2F;
+  --graphite-60: rgba(47, 47, 47, 0.60);
+  --graphite-40: rgba(47, 47, 47, 0.40);
+  --line: rgba(14, 14, 14, 0.10);
+  --line-soft: rgba(14, 14, 14, 0.06);
+  --line-strong: rgba(14, 14, 14, 0.40);
+  --ok: #2F6F3E;
+  --err: #8B2F1F;
+  --warn: #8B6913;
+}
+
+@font-face { font-display: swap; }
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Layout ─────────────────────────────────────────── */
+.page {
+  padding-left: clamp(20px, 5vw, 56px);
+  padding-right: clamp(20px, 5vw, 56px);
+}
+
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+main {
+  padding-bottom: clamp(64px, 10vw, 120px);
+}
+
+/* ─── Topbar ─────────────────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+}
+
+.brand {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* The .by suffix on the brand mark doubles as the "current page"
+   indicator (each v2 page sets a different .by — Wordclock, Admin,
+   MQTT, Logs, Update). Site convention is to bold the current page;
+   making this copper + slightly heavier achieves the same without
+   needing per-link is-current bookkeeping in the topnav. */
+.brand .by {
+  font-weight: 400;
+  color: var(--copper);
+  letter-spacing: 0.01em;
+}
+
+.brand .copper-dot { color: var(--copper); }
+
+.topnav {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.topnav a {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--graphite-60);
+  text-decoration: none;
+  transition: color .2s;
+}
+
+.topnav a:hover,
+.topnav a.active {
+  color: var(--copper);
+}
+
+.toggle-classic {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--graphite-60);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  transition: color .2s, border-color .2s;
+  white-space: nowrap;
+}
+
+.toggle-classic:hover {
+  color: var(--copper);
+  border-color: var(--copper);
+}
+
+/* Language toggle — two pill-buttons (EN | NL) sharing one frame.
+   Designed to read as a single control rather than two separate links. */
+.lang-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.lang-toggle a {
+  padding: 6px 10px;
+  color: var(--graphite-60);
+  text-decoration: none;
+  transition: color .15s, background .15s;
+  cursor: pointer;
+}
+
+.lang-toggle a + a {
+  border-left: 1px solid var(--line);
+}
+
+.lang-toggle a:hover {
+  color: var(--copper);
+}
+
+.lang-toggle a.active {
+  /* Site uses ink (sober) for active language — copper would compete
+     with the brand accent on the same row and read as "warning". */
+  color: var(--paper);
+  background: var(--ink);
+}
+
+/* Narrow viewports: stack the topbar contents into two rows (brand on
+   top, nav + toggles below) so every link stays reachable. The earlier
+   rule hid all nav links on phones except "← Classic", which silently
+   broke navigation and language switching on mobile. */
+@media (max-width: 720px) {
+  .topbar-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .topnav {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 14px 18px;
+    flex-wrap: wrap;
+  }
+  /* Push the design-toggle to the right edge of its row, separating
+     "navigation" from "switch back to classic" visually. */
+  .topnav .toggle-classic {
+    margin-left: auto;
+  }
+}
+
+/* Focus ring — keyboard users get a visible copper outline on every
+   interactive element. Explicit instead of relying on the default
+   browser focus, which is invisible on dark/copper backgrounds. */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--copper);
+  outline-offset: 2px;
+}
+
+/* ─── Page hero ──────────────────────────────────────── */
+.hero {
+  padding: clamp(48px, 10vw, 96px) 0 clamp(32px, 6vw, 56px);
+  border-bottom: 1px solid var(--line);
+}
+
+.hero .kicker {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--copper);
+  margin: 0 0 20px;
+}
+
+.hero h1 {
+  /* min() cap matches the site pattern (styles.css:321) so the headline
+     never overflows on narrow phones — the inner clamp's vw term is
+     bounded by 16vw, giving a hard ceiling that respects the viewport. */
+  font-size: min(clamp(40px, 13vw, 120px), 16vw);
+  font-weight: 200;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+  margin: 0 0 16px;
+}
+
+.hero h1 .copper-dot { color: var(--copper); }
+
+.hero .lede {
+  font-size: clamp(16px, 2vw, 19px);
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--graphite);
+  max-width: 52ch;
+  margin: 0;
+}
+
+/* ─── Sections ───────────────────────────────────────── */
+section.chapter {
+  /* Bumped to match the site's section padding (--pad-section = 56→128px).
+     Phone viewports get 56px instead of the previous 40px — slight
+     vertical breathing room. Desktop grows substantially, which is the
+     point: editorial chapters should feel separated, not stacked. */
+  padding: clamp(56px, 9vw, 128px) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+section.chapter:last-of-type { border-bottom: none; }
+
+.section-head {
+  display: grid;
+  /* Rail width brought up to 200px to match the site's --rail token
+     (styles.css:49). 110px was about half the site's value and made
+     v2 read as a denser, more cramped variant of the brand. */
+  grid-template-columns: 200px 1fr;
+  gap: clamp(16px, 4vw, 40px);
+  align-items: baseline;
+  margin-bottom: clamp(20px, 3vw, 32px);
+}
+
+@media (max-width: 640px) {
+  /* On phones the rail collapses; we put num + title inline instead
+     of stacking them, so the chapter marker reads as a single unit
+     rather than two full-width spans. Mirrors styles.css:1047-1051. */
+  .section-head {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .section-head .section-num {
+    /* Render num + title in source order on the same line where they
+       fit; the title can wrap below if it's long. */
+    display: inline-block;
+    margin-right: 12px;
+  }
+  .section-head .section-title {
+    display: inline;
+  }
+}
+
+.section-num {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--graphite-60);
+}
+
+.section-title {
+  font-size: clamp(22px, 3.4vw, 32px);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.section-lede {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--graphite-60);
+  max-width: 60ch;
+}
+
+.section-body {
+  display: grid;
+  gap: 20px;
+}
+
+.section-aside {
+  display: grid;
+  /* Same rail bump as .section-head — keeps the body's left edge
+     aligned with the chapter title above it. */
+  grid-template-columns: 200px 1fr;
+  gap: clamp(16px, 4vw, 40px);
+}
+
+@media (max-width: 640px) {
+  .section-aside { grid-template-columns: 1fr; }
+}
+
+/* ─── Labels & meta ──────────────────────────────────── */
+.label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--graphite-60);
+  display: block;
+  margin: 0 0 8px;
+}
+
+.help {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--graphite-60);
+  margin: 6px 0 0;
+}
+
+.value-mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.muted { color: var(--graphite-60); }
+
+.copper { color: var(--copper); }
+
+.h-rule {
+  height: 1px;
+  background: var(--line);
+  border: 0;
+  margin: 0;
+}
+
+/* ─── Status indicator (copper dot, hairline frame) ──── */
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--graphite-40);
+  flex-shrink: 0;
+}
+
+.dot.on { background: var(--copper); box-shadow: 0 0 0 3px var(--copper-soft); }
+.dot.off { background: var(--graphite-40); }
+.dot.err { background: var(--rust); }
+
+.event-row {
+  margin-top: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--graphite);
+  display: none;
+}
+
+.event-row.active {
+  display: block;
+  background: var(--bone);
+  border-left: 2px solid var(--copper);
+}
+
+.event-row .event-label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--copper);
+  margin-right: 8px;
+}
+
+/* ─── Buttons ────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s, opacity .15s;
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  white-space: nowrap;
+}
+
+.btn:hover { background: var(--graphite); border-color: var(--graphite); }
+
+.btn.ghost {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.btn.ghost:hover { background: var(--ink); color: var(--paper); }
+
+.btn.line {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.btn.line:hover { border-color: var(--ink); }
+
+.btn.copper {
+  background: var(--copper);
+  border-color: var(--copper);
+  color: var(--paper);
+}
+
+.btn.copper:hover { background: var(--rust); border-color: var(--rust); }
+
+.btn.danger {
+  background: var(--paper);
+  color: var(--rust);
+  border-color: var(--rust);
+}
+
+.btn.danger:hover { background: var(--rust); color: var(--paper); }
+
+.btn.small {
+  padding: 8px 12px;
+  font-size: 10px;
+}
+
+.btn.block { width: 100%; }
+
+.btn:disabled,
+.btn.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn-row.three { grid-template-columns: repeat(3, 1fr); }
+
+@media (max-width: 480px) {
+  .btn-row.three { grid-template-columns: 1fr; }
+}
+
+/* ─── Form controls ──────────────────────────────────── */
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Stack at 600px instead of 480px — at the in-between widths (User /
+   Password on MQTT, Start / End time on nightmode) two narrow columns
+   crammed in 380-500px just truncated the placeholder text. */
+@media (max-width: 600px) {
+  .field-row { grid-template-columns: 1fr; }
+}
+
+.input,
+.select,
+input[type="text"].input,
+input[type="number"].input,
+input[type="time"].input,
+input[type="password"].input,
+select.select {
+  width: 100%;
+  padding: 11px 12px;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--paper);
+  /* Softened from --line-strong (40% ink) to --line (10% ink) so inputs
+     read as part of the editorial frame rather than utilitarian boxes.
+     Hover/focus still pop the border to copper, so they're discoverable. */
+  border: 1px solid var(--line);
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color .15s;
+}
+
+.input:hover,
+.select:hover {
+  border-color: var(--graphite-40);
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--copper);
+}
+
+.input.tight {
+  padding: 7px 9px;
+  font-size: 13px;
+}
+
+.input.short { width: 88px; }
+
+.select {
+  background-image: linear-gradient(45deg, transparent 50%, var(--graphite) 50%),
+    linear-gradient(135deg, var(--graphite) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+
+/* Checkbox + radio: native, accent copper */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--copper);
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Range slider (copper accent) */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+  margin: 0;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--line-strong);
+  border: 0;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 1px;
+  background: var(--line-strong);
+  border: 0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--copper);
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  margin-top: -8px;
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--copper);
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+input[type="range"]:disabled::-webkit-slider-thumb { background: var(--graphite-40); }
+input[type="range"]:disabled::-moz-range-thumb { background: var(--graphite-40); }
+
+/* Color input — frame it so the native swatch doesn't look orphaned */
+input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 56px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: var(--paper);
+  cursor: pointer;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 6px; }
+input[type="color"]::-webkit-color-swatch { border: 1px solid var(--line); border-radius: 0; }
+input[type="color"]::-moz-color-swatch { border: 1px solid var(--line); border-radius: 0; }
+
+input[type="color"].small {
+  width: 56px;
+  height: 40px;
+}
+
+/* File input — hairline frame around native */
+input[type="file"] {
+  width: 100%;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  color: var(--graphite);
+  border: 1px solid var(--line);
+  padding: 10px;
+  background: var(--bone);
+}
+
+input[type="file"]::file-selector-button {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  margin-right: 12px;
+  cursor: pointer;
+}
+
+/* ─── Slider with side controls ──────────────────────── */
+.slider-block {
+  display: grid;
+  gap: 10px;
+}
+
+.slider-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.slider-meta .step-btns {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* ─── Definition list (build info) ───────────────────── */
+.dl {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  border-top: 1px solid var(--ink);
+}
+
+.dl > div {
+  display: contents;
+}
+
+.dl dt,
+.dl dd {
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  margin: 0;
+}
+
+.dl dt {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--graphite-60);
+}
+
+.dl dd {
+  font-family: "Inter", sans-serif;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+@media (max-width: 480px) {
+  .dl { grid-template-columns: 1fr; }
+  .dl dt { padding-bottom: 0; border-bottom: none; }
+  .dl dd { padding-top: 4px; }
+}
+
+/* ─── List rows (logs) ───────────────────────────────── */
+.list-rows {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+
+.list-rows li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 4px;
+  background: var(--paper);
+  font-size: 13px;
+}
+
+.list-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list-rows .name { color: var(--ink); }
+.list-rows .meta { color: var(--graphite-60); font-size: 12px; }
+.list-rows a {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--copper);
+  text-decoration: none;
+}
+
+.list-rows a:hover { color: var(--rust); }
+
+/* ─── Log output box ─────────────────────────────────── */
+.log-output {
+  background: var(--bone);
+  border: 1px solid var(--line);
+  padding: 12px;
+  height: 220px;
+  overflow-y: auto;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--graphite);
+}
+/* Hide the box entirely when empty — avoids a 220px blank placeholder
+   on pages where JS hasn't yet populated it (log tail, fleet response). */
+.log-output:empty { display: none; }
+
+.log-line.lvl-ERROR { color: var(--rust); font-weight: 500; }
+.log-line.lvl-WARN { color: var(--warn); font-weight: 500; }
+.log-line.lvl-INFO { color: var(--graphite); }
+.log-line.lvl-DEBUG { color: var(--graphite-60); }
+
+/* ─── Status text colors ─────────────────────────────── */
+.text-ok { color: var(--ok); }
+.text-err { color: var(--rust); }
+.text-warn { color: var(--warn); }
+
+/* ─── Spinner ────────────────────────────────────────── */
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--line);
+  border-top-color: var(--copper);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.spinner.hidden { display: none; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Color swatch palette (replaces <input type="color">) ────────────
+   Native <input type="color"> renders differently in every browser
+   (Safari = system dialog, Chrome = popover, Firefox = swatch box, iOS
+   = its own thing) and drops out of the brand entirely. Replace with a
+   curated 12-swatch grid; native picker hangs behind a "Custom…" button
+   for the rare power-user who needs a precise hex. */
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+/* Collapse entirely when JS hasn't populated swatches yet. */
+.swatch-grid:empty { display: none; }
+
+.swatch {
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: transform .15s ease, border-color .15s ease;
+  /* Buttons inherit body background by default; we want only the inline
+     style (the swatch's own colour) to show. */
+  background-clip: padding-box;
+}
+
+.swatch:hover {
+  transform: scale(1.04);
+  border-color: var(--graphite-40);
+}
+
+.swatch.selected {
+  /* Copper inset ring + ink outer border reads as "selected" without
+     overlapping the swatch colour. The double frame is intentional. */
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--copper) inset, 0 0 0 1px var(--paper) inset;
+}
+
+.swatch:focus-visible {
+  outline: 2px solid var(--copper);
+  outline-offset: 3px;
+}
+
+.swatch-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* Hide the native color input visually but keep it focusable + clickable
+   from JS. Position absolute so it doesn't take layout space. */
+.swatch-custom-row input[type="color"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
+}
+
+/* Hex / RGB direct-entry row. Wraps onto a second line on narrow screens. */
+.swatch-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.swatch-input-row .input { width: 108px; }
+.swatch-input-row .rgb-field { width: 64px; }
+
+/* Brief red outline on invalid hex / RGB input. */
+.input.input-err {
+  border-color: var(--err);
+}
+
+/* ─── Logo grid (color pickers) ──────────────────────── */
+.logo-color-grid {
+  display: grid;
+  /* Auto-fill so the grid adapts to the container width on phones
+     instead of forcing a fixed column count from JS (see dashboard.html's
+     syncLogoGrid — column count is now CSS-driven). 48px minmax gives
+     a comfortable tap target on iOS (Apple HIG guideline is 44px). */
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.logo-color-grid input[type="color"] {
+  height: 36px;
+  border-radius: 0;
+}
+
+/* ─── Footer signature ───────────────────────────────── */
+.footer-sig {
+  padding: 24px 0 32px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--graphite-40);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.footer-sig .copper { color: var(--copper); }
+
+/* ─── RAL picker dialog ──────────────────────────────────
+   Lazy-loaded modal for the 205-code RAL Classic palette. Opens from the
+   "RAL…" button next to "Custom…" in the colour section. WS2812 LEDs have
+   a narrower gamut than industrial coatings, so a caveat sits above the
+   list. */
+.ral-modal {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 0;
+  width: min(560px, 92vw);
+  max-height: 80vh;
+  background: var(--paper);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Overlay backdrop — created dynamically by ral-picker.js and wraps .ral-modal */
+.ral-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 14, 14, 0.45);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+.ral-overlay.is-open { display: flex; }
+
+.ral-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ral-modal-head h3 {
+  margin: 0;
+  font-family: "Cormorant Garamond", "Cormorant", serif;
+  font-weight: 500;
+  font-size: 22px;
+}
+
+.ral-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ral-caveat {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--copper);
+}
+
+.ral-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ral-row {
+  display: grid;
+  grid-template-columns: 28px 72px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.ral-row:hover,
+.ral-row:focus-visible {
+  background: var(--copper-soft);
+  outline: none;
+}
+
+.ral-row__swatch {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line);
+}
+
+.ral-row__code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.ral-row__names {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ral-row__nl { font-size: 14px; }
+
+.ral-row__en {
+  font-size: 11px;
+  color: var(--graphite-60);
+}
+
+.ral-empty {
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--graphite-60);
+  font-size: 13px;
+}
+
+/* ─── Hidden helper ──────────────────────────────────── */
+.hidden { display: none !important; }
