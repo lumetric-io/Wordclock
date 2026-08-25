@@ -51,6 +51,19 @@
 #       --chip <chip>      manifest chip field (default: esp32)
 #       --repoint <fw>     point the channel at an already-published artifact <fw>;
 #                          no copy, no build. The rollback / promote path.
+#       --no-fs            firmware-only publish: the channel json carries an
+#                          empty fs_manifest_url, so clocks skip the filesystem
+#                          half entirely. Every field generation guards on this
+#                          (26.2.8 up). Use to ship a firmware fix to clocks
+#                          whose current firmware applies fs updates unsafely.
+#                          Composes with --repoint.
+#       --fs-from <fw>     pin the channel's fs_manifest_url to another already
+#                          published artifact's fs.json instead of this one's.
+#                          Clocks compare fs versions by equality, so pointing
+#                          at the fs the fleet already runs means "firmware
+#                          only, fs untouched" while keeping a valid fs
+#                          manifest in place. Mutually exclusive with --no-fs.
+#                          Composes with --repoint and with a normal publish.
 #       --create-product   allow publishing to a product dir that does not exist yet
 #       --dry-run          print everything that would be written; touch nothing
 #   -y, --yes              do not prompt for confirmation
@@ -70,11 +83,26 @@ BUILD_ENV=""
 BUILD_DIR=""
 CHIP="esp32"
 REPOINT_VERSION=""
+NO_FS=false
+FS_FROM_VERSION=""
 CREATE_PRODUCT=false
 DRY_RUN=false
 ASSUME_YES=false
 
 die() { echo "ERROR: $*" >&2; exit 1; }
+
+check_fs_from() {
+  # The --fs-from target must already be published; dry-run only warns so a
+  # plan can be validated before the artifact lands.
+  local f="$PRODUCT_DIR/artifacts/$FS_FROM_VERSION/fs.json"
+  if [[ -f "$f" ]]; then return 0; fi
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "WARNING: fs manifest not found: $f (would fail on a real run)"
+  else
+    die "fs manifest not found: $f
+     nothing published under that version. Check the name."
+  fi
+}
 
 read_define() {
   # read_define <file> <macro> -> the string literal, or empty
@@ -94,10 +122,12 @@ while [[ $# -gt 0 ]]; do
     --build-dir)         BUILD_DIR="$2"; shift 2 ;;
     --chip)              CHIP="$2"; shift 2 ;;
     --repoint)           REPOINT_VERSION="$2"; shift 2 ;;
+    --no-fs)             NO_FS=true; shift ;;
+    --fs-from)           FS_FROM_VERSION="$2"; shift 2 ;;
     --create-product)    CREATE_PRODUCT=true; shift ;;
     --dry-run)           DRY_RUN=true; shift ;;
     -y|--yes)            ASSUME_YES=true; shift ;;
-    -h|--help)           sed -n '2,60p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)           sed -n '2,71p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)                   die "unknown argument: $1 (try --help)" ;;
   esac
 done
@@ -108,6 +138,10 @@ case "$CHANNEL" in
   stable|early|develop) ;;
   *) die "invalid --channel '$CHANNEL' (stable|early|develop)" ;;
 esac
+
+if [[ "$NO_FS" == true && -n "$FS_FROM_VERSION" ]]; then
+  die "--no-fs and --fs-from are mutually exclusive"
+fi
 
 PRODUCT_DIR="$OTA_ROOT/$PRODUCT"
 CHANNEL_DIR="$PRODUCT_DIR/channels"
@@ -165,6 +199,11 @@ if [[ -n "$REPOINT_VERSION" ]]; then
   ART_DIR="$PRODUCT_DIR/artifacts/$REPOINT_VERSION"
   MURL="$OTA_BASE_URL/$PRODUCT/artifacts/$REPOINT_VERSION/manifest.json"
   FSURL="$OTA_BASE_URL/$PRODUCT/artifacts/$REPOINT_VERSION/fs.json"
+  if [[ "$NO_FS" == true ]]; then FSURL=""; fi
+  if [[ -n "$FS_FROM_VERSION" ]]; then
+    FSURL="$OTA_BASE_URL/$PRODUCT/artifacts/$FS_FROM_VERSION/fs.json"
+    check_fs_from
+  fi
 
   if [[ ! -f "$ART_DIR/manifest.json" ]]; then
     if [[ "$DRY_RUN" == true ]]; then
@@ -179,6 +218,8 @@ if [[ -n "$REPOINT_VERSION" ]]; then
   echo "  product : $PRODUCT"
   echo "  channel : $CHANNEL   ->   $REPOINT_VERSION"
   echo "  manifest: $MURL"
+  if [[ "$NO_FS" == true ]]; then echo "  fs half : SKIPPED (--no-fs)"; fi
+  if [[ -n "$FS_FROM_VERSION" ]]; then echo "  fs half : pinned to $FS_FROM_VERSION"; fi
   echo "  dry-run : $DRY_RUN"
   echo
   if [[ "$DRY_RUN" != true && "$ASSUME_YES" != true ]]; then
@@ -212,20 +253,30 @@ fi
 FW_SRC="$BUILD_DIR/firmware.bin"
 FS_SRC="$BUILD_DIR/littlefs.bin"
 [[ -f "$FW_SRC" ]] || die "firmware image not found: $FW_SRC (build it: tools/release.sh -p $BUILD_ENV)"
-[[ -f "$FS_SRC" ]] || die "littlefs image not found: $FS_SRC (build it: tools/release.sh -p $BUILD_ENV --fs)"
+if [[ "$NO_FS" != true && -z "$FS_FROM_VERSION" ]]; then
+  [[ -f "$FS_SRC" ]] || die "littlefs image not found: $FS_SRC (build it: tools/release.sh -p $BUILD_ENV --fs)"
+fi
 
 ART_DIR="$PRODUCT_DIR/artifacts/$FW_VERSION"
 FW_URL="$OTA_BASE_URL/$PRODUCT/artifacts/$FW_VERSION/firmware.bin"
 FS_URL="$OTA_BASE_URL/$PRODUCT/artifacts/$FW_VERSION/fs.bin"
 MURL="$OTA_BASE_URL/$PRODUCT/artifacts/$FW_VERSION/manifest.json"
 FSURL="$OTA_BASE_URL/$PRODUCT/artifacts/$FW_VERSION/fs.json"
+if [[ -n "$FS_FROM_VERSION" ]]; then
+  FSURL="$OTA_BASE_URL/$PRODUCT/artifacts/$FS_FROM_VERSION/fs.json"
+  check_fs_from
+fi
 
 # Sizes and hashes are computed from the source images, so --dry-run reports the
 # real numbers that would be published without touching /srv/ota.
 FW_SIZE="$(stat -c%s "$FW_SRC")"
 FW_HASH="$(sha256sum "$FW_SRC" | awk '{print $1}')"
-FS_SIZE="$(stat -c%s "$FS_SRC")"
-FS_HASH="$(sha256sum "$FS_SRC" | awk '{print $1}')"
+FS_SIZE=0
+FS_HASH=""
+if [[ "$NO_FS" != true && -z "$FS_FROM_VERSION" ]]; then
+  FS_SIZE="$(stat -c%s "$FS_SRC")"
+  FS_HASH="$(sha256sum "$FS_SRC" | awk '{print $1}')"
+fi
 
 echo "=== OTA publish (legacy) ==="
 echo "  product   : $PRODUCT"
@@ -235,7 +286,13 @@ echo "  fs version: $FS_VERSION"
 echo "  chip      : $CHIP"
 echo "  build dir : $BUILD_DIR"
 echo "  firmware  : $FW_SIZE bytes  sha256 $FW_HASH"
-echo "  filesystem: $FS_SIZE bytes  sha256 $FS_HASH"
+if [[ "$NO_FS" == true ]]; then
+  echo "  filesystem: SKIPPED (--no-fs, channel carries no fs_manifest_url)"
+elif [[ -n "$FS_FROM_VERSION" ]]; then
+  echo "  filesystem: pinned to $FS_FROM_VERSION (no fs image published)"
+else
+  echo "  filesystem: $FS_SIZE bytes  sha256 $FS_HASH"
+fi
 echo "  artifacts : $ART_DIR"
 echo "  dry-run   : $DRY_RUN"
 echo
@@ -272,13 +329,18 @@ EOF
 )"
 
 # fs.bin
-if [[ "$DRY_RUN" == true ]]; then
+if [[ "$NO_FS" == true ]]; then
+  FSURL=""
+elif [[ -n "$FS_FROM_VERSION" ]]; then
+  : # fs half pinned to another artifact; nothing to copy
+elif [[ "$DRY_RUN" == true ]]; then
   echo "---- would copy $FS_SRC -> $ART_DIR/fs.bin ----"
 else
   $SUDO cp "$FS_SRC" "$ART_DIR/fs.bin"
   $SUDO chown root:www-data "$ART_DIR/fs.bin"
   $SUDO chmod 644 "$ART_DIR/fs.bin"
 fi
+if [[ "$NO_FS" != true && -z "$FS_FROM_VERSION" ]]; then
 emit_json "$ART_DIR/fs.json" "$(cat <<EOF
 {
   "schema": 1,
@@ -292,6 +354,7 @@ emit_json "$ART_DIR/fs.json" "$(cat <<EOF
 }
 EOF
 )"
+fi
 
 # channel pointer (written last, so a clock never sees a target before its files)
 write_channel "$FW_VERSION" "$MURL" "$FSURL"
