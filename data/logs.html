@@ -3,71 +3,114 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wordclock Logs</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <title>Wordclock — Logs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/chronolett.css" />
+  <link rel="stylesheet" href="/chronolett-compact.css" />
+  <script src="/i18n/i18n.js" defer></script>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans">
-  <div class="max-w-2xl mx-auto p-4">
-    <header class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-3xl font-bold">📄 Logs</h1>
-        <p class="text-sm text-gray-600">Download archived log files</p>
+<body>
+  <header class="topbar">
+    <div class="page">
+      <div class="container topbar-inner">
+        <a href="/dashboard.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by" data-i18n="common.brand.logs">Logs</span></a>
+        <nav class="topnav">
+          <a href="/dashboard.html" data-i18n="common.nav.dashboard">Dashboard</a>
+          <span class="lang-toggle">
+            <a href="#" data-lang-toggle="en" data-i18n="common.lang.en">EN</a>
+            <a href="#" data-lang-toggle="nl" data-i18n="common.lang.nl">NL</a>
+          </span>
+        </nav>
       </div>
-      <div class="flex items-center gap-4">
-        <a href="/dashboard.html" class="text-sm text-blue-600 hover:underline">Back to dashboard</a>
-      </div>
-    </header>
+    </div>
+  </header>
 
-    <section class="bg-white p-4 rounded-2xl shadow">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xl font-semibold">Available log files</h2>
-        <button id="refreshLogs" class="text-sm text-blue-600 hover:underline">Refresh</button>
+  <main class="page">
+    <div class="container">
+
+      <section class="hero">
+        <p class="kicker" data-i18n="logs.kicker">Logs</p>
+        <h1><span data-i18n="logs.title">Archive</span><span class="copper-dot">.</span></h1>
+        <p class="lede" data-i18n="logs.lede">Download archived log files. Newest entries first.</p>
+      </section>
+
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">01</span>
+          <h2 class="section-title" data-i18n="logs.section.title">Available files</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="logs.section.label">Logs</span>
+          <div class="section-body">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+              <p class="help" style="margin:0" data-i18n="logs.click_to_download">Click a row to download.</p>
+              <button id="refreshLogs" class="btn line small" data-i18n="logs.refresh">Refresh</button>
+            </div>
+            <ul id="logList" class="list-rows"></ul>
+            <p id="logError" class="help text-err"></p>
+          </div>
+        </div>
+      </section>
+
+      <div class="footer-sig">
+        <span>Chronolett<span class="copper">.</span></span>
       </div>
-      <p class="text-xs text-gray-500 mb-4">Newest entries first. Click to download.</p>
-      <ul id="logList" class="space-y-2 text-sm text-gray-700"></ul>
-      <p id="logError" class="text-xs text-red-600 mt-2"></p>
-    </section>
-  </div>
+
+    </div>
+  </main>
 
   <script>
+    const T = (k, fb) => (window.chronolettI18n ? window.chronolettI18n.t(k, fb) : fb);
+
     const listEl = document.getElementById('logList');
     const errEl = document.getElementById('logError');
     const btn = document.getElementById('refreshLogs');
-
     async function loadLogs() {
       if (errEl) errEl.textContent = '';
-      if (listEl) listEl.innerHTML = '<li class="text-sm text-gray-500">Loading…</li>';
+      if (listEl) listEl.innerHTML = '<li><span class="meta">' + T('logs.loading', 'Loading…') + '</span></li>';
       try {
         const res = await fetch('/api/logs');
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const files = await res.json();
         if (!Array.isArray(files) || files.length === 0) {
-          if (listEl) listEl.innerHTML = '<li class="text-sm text-gray-500">No logs available.</li>';
+          if (listEl) listEl.innerHTML = '<li><span class="meta">' + T('logs.empty', 'No logs available.') + '</span></li>';
           return;
         }
         if (listEl) {
           listEl.innerHTML = '';
           files.forEach(file => {
             const li = document.createElement('li');
-            li.className = 'flex items-center justify-between bg-gray-50 rounded px-3 py-2';
-            const label = document.createElement('span');
-            label.textContent = file.name + (file.size ? ` (${file.size} bytes)` : '');
-            li.appendChild(label);
+            const name = document.createElement('span');
+            name.className = 'name';
+            name.textContent = file.name;
+            const meta = document.createElement('span');
+            meta.className = 'meta';
+            meta.textContent = file.size ? `${file.size} ${T('common.bytes', 'bytes')}` : '';
+            const wrap = document.createElement('span');
+            wrap.style.display = 'flex';
+            wrap.style.gap = '12px';
+            wrap.style.alignItems = 'baseline';
+            wrap.appendChild(name);
+            wrap.appendChild(meta);
             const link = document.createElement('a');
             link.href = '/log/download?date=' + encodeURIComponent(file.date);
-            link.className = 'text-blue-600 hover:underline';
-            link.textContent = 'Download';
+            link.textContent = T('logs.download', 'Download →');
+            li.appendChild(wrap);
             li.appendChild(link);
             listEl.appendChild(li);
           });
         }
       } catch (err) {
-        if (errEl) errEl.textContent = 'Failed to load logs (' + err.message + ')';
+        if (errEl) errEl.textContent = T('logs.load_failed', 'Failed to load logs') + ' (' + err.message + ')';
         if (listEl) listEl.innerHTML = '';
       }
     }
-
     if (btn) btn.addEventListener('click', loadLogs);
+    // Re-render the list when the user switches language so dynamic strings
+    // (Loading…, No logs available, Download →, "bytes") update too.
+    window.addEventListener('chronolett:lang', loadLogs);
     loadLogs();
   </script>
 </body>

@@ -353,6 +353,34 @@ void setupWebRoutes() {
     server.send(204);
   });
 
+  // Shared stylesheet pair for the Chronolett UI (ported from nextgen).
+  server.on("/chronolett.css", HTTP_GET, []() {
+    serveFile("/chronolett.css", "text/css");
+  });
+  server.on("/chronolett-compact.css", HTTP_GET, []() {
+    serveFile("/chronolett-compact.css", "text/css");
+  });
+  // i18n: shared loader + per-language dictionaries (EN/NL).
+  // Lives in /i18n/ so future languages slot in next to the existing JSON.
+  server.on("/i18n/i18n.js", HTTP_GET, []() {
+    serveFile("/i18n/i18n.js", "application/javascript");
+  });
+  server.on("/i18n/en.json", HTTP_GET, []() {
+    serveFile("/i18n/en.json", "application/json");
+  });
+  server.on("/i18n/nl.json", HTTP_GET, []() {
+    serveFile("/i18n/nl.json", "application/json");
+  });
+
+  // RAL Classic colour picker: shared JS module + 205-entry palette.
+  // Lazy-loaded only when the user opens the RAL dialog in the brand UI.
+  server.on("/ral-picker.js", HTTP_GET, []() {
+    serveFile("/ral-picker.js", "application/javascript");
+  });
+  server.on("/ral-classic.json", HTTP_GET, []() {
+    serveFile("/ral-classic.json", "application/json");
+  });
+
   // Factory reset token endpoint (public): returns a short-lived token for reset
   server.on("/factorytoken", HTTP_GET, []() {
     // Issue new token valid for 60s
@@ -1248,6 +1276,59 @@ void setupWebRoutes() {
     safeRestart();
   });
 
+  // Wi-Fi enrolment from the admin page: the operator can hand the clock a
+  // new network (a customer's router change, a repaired clock going back out)
+  // without ever opening the config portal.
+  //
+  // The GET is open like the rest of the UI, it returns a network name the
+  // operator is standing in front of, no secret. The POST writes credentials,
+  // so it takes admin auth, same as /setUIPassword. The stored password is
+  // never readable back through either.
+  server.on("/api/wifi", HTTP_GET, []() {
+    if (!ensureUiAuth()) return;
+    JsonDocument doc;
+    doc["ssid"] = getStoredWifiSsid();
+    doc["connected"] = isWiFiConnected();
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
+  server.on("/api/wifi", HTTP_POST, []() {
+    if (!ensureAdminAuth()) return;
+    String ssid, password;
+    if (server.hasArg("ssid")) {
+      ssid = server.arg("ssid");
+      if (server.hasArg("password")) password = server.arg("password");
+    } else if (server.hasArg("plain")) {
+      JsonDocument doc;
+      if (!deserializeJson(doc, server.arg("plain"))) {
+        if (doc["ssid"].is<const char*>()) ssid = String(doc["ssid"].as<const char*>());
+        if (doc["password"].is<const char*>()) password = String(doc["password"].as<const char*>());
+      }
+    }
+    if (ssid.isEmpty() || ssid.length() > 32) {
+      server.send(400, "text/plain", "ssid must be 1-32 characters");
+      return;
+    }
+    // Empty means an open network. Anything in between is not a WPA key and
+    // would be rejected by the driver with a less obvious error.
+    if (!password.isEmpty() && (password.length() < 8 || password.length() > 63)) {
+      server.send(400, "text/plain", "password must be empty (open network) or 8-63 characters");
+      return;
+    }
+    if (!storeWifiCredentials(ssid, password)) {
+      server.send(500, "text/plain", "Storing credentials failed");
+      return;
+    }
+    JsonDocument doc;
+    doc["ssid"] = ssid;
+    doc["applies"] = "next_boot";
+    String out;
+    serializeJson(doc, out);
+    server.send(200, "application/json", out);
+  });
+
   server.on("/resetwifi", []() {
     if (!ensureUiAuth()) return;
   logInfo("⚠️ WiFi reset requested via dashboard");
@@ -1561,7 +1642,7 @@ void setupWebRoutes() {
     server.send(200, "text/plain", getUiVersion());
   });
 
-  // Sell mode endpoints (force 11:49 display)
+  // Sell mode endpoints (force the SELL_MODE_HOUR:SELL_MODE_MINUTE display)
   server.on("/getSellMode", []() {
     if (!ensureUiAuth()) return;
     server.send(200, "text/plain", displaySettings.isSellMode() ? "on" : "off");
@@ -1578,13 +1659,15 @@ void setupWebRoutes() {
     // Trigger animation to new effective time
     struct tm t = {};
     if (on) {
-      t.tm_hour = 11;
-      t.tm_min = 49;
+      t.tm_hour = SELL_MODE_HOUR;
+      t.tm_min = SELL_MODE_MINUTE;
     } else {
       if (!getLocalTime(&t)) { server.send(200, "text/plain", "OK"); return; }
     }
     wordclock_force_animation_for_time(&t);
-  logInfo(String("🛒 Sell time ") + (on ? "ON (11:49)" : "OFF"));
+    char sellLabel[8];
+    snprintf(sellLabel, sizeof(sellLabel), "%02d:%02d", SELL_MODE_HOUR, SELL_MODE_MINUTE);
+    logInfo(String("🛒 Sell time ") + (on ? String("ON (") + sellLabel + ")" : String("OFF")));
     server.send(200, "text/plain", "OK");
   });
 

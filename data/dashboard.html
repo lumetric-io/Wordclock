@@ -3,257 +3,430 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wordclock Dashboard</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    .spinner {
-      width: 1rem;
-      height: 1rem;
-      border: 2px solid #cbd5e1;
-      border-top-color: #1f2937;
-      border-radius: 9999px;
-      animation: spin 1s linear infinite;
-      display: inline-block;
-      vertical-align: middle;
-    }
-    .spinner.hidden {
-      display: none;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-  </style>
+  <title>Wordclock — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/chronolett.css" />
+  <link rel="stylesheet" href="/chronolett-compact.css" />
+  <script src="/i18n/i18n.js" defer></script>
+  <script src="/ral-picker.js" defer></script>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans">
-  <div class="max-w-xl mx-auto p-4">
-    <header class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-3xl font-bold">🕒 Wordclock Dashboard</h1>
-        <p class="text-sm text-gray-600">Easily manage your smart clock</p>
+<body class="dash-tabbed">
+  <header class="topbar">
+    <div class="page">
+      <div class="container topbar-inner">
+        <a href="/dashboard.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by" data-i18n="common.brand.wordclock">Wordclock</span></a>
+        <nav class="topnav">
+          <a href="/mqtt.html" data-i18n="common.nav.mqtt">MQTT</a>
+          <a href="/logs.html" data-i18n="common.nav.logs">Logs</a>
+          <span class="lang-toggle">
+            <a href="#" data-lang-toggle="en" data-i18n="common.lang.en">EN</a>
+            <a href="#" data-lang-toggle="nl" data-i18n="common.lang.nl">NL</a>
+          </span>
+        </nav>
       </div>
-      <div class="flex items-center gap-4">
-        <a href="/mqtt.html" class="text-sm text-blue-600 hover:underline">MQTT</a>
-        <a href="/logs.html" class="text-sm text-blue-600 hover:underline">Logs</a>
-      </div>
-    </header>
+    </div>
+  </header>
 
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <div class="flex justify-between items-center mb-2">
-        <h2 class="text-xl font-semibold">Status</h2>
-        <div class="flex items-center gap-2">
-          <span id="statusIndicator" class="inline-block w-4 h-4 rounded-full bg-gray-400"></span>
-          <span id="statusText" class="text-sm text-gray-600">-</span>
-        </div>
-      </div>
-      <div id="ledEventRow" class="mb-2 text-sm text-gray-600">
-        <span class="font-medium">LED event:</span> <span id="ledEventText">-</span>
-      </div>
-      <div class="flex gap-2">
-        <button id="toggleClockOn" class="w-full py-2 rounded bg-green-500 text-white hover:bg-green-600">On</button>
-        <button id="toggleClockOff" class="w-full py-2 rounded bg-red-500 text-white hover:bg-red-600">Off</button>
-      </div>
-    </section>
+  <main class="page">
+    <div class="container">
 
-    
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <h2 class="text-xl font-semibold mb-2">Color</h2>
-      <input type="color" id="colorPicker" class="w-full h-12 rounded p-0 border-2" />
-    </section>
-
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <h2 class="text-xl font-semibold mb-2">Brightness</h2>
-      <div class="flex items-center gap-3 mb-2">
-        <label class="text-sm">Level: <span id="brightnessValue2" class="font-mono">-</span></label>
-        <input type="number" id="brightnessInput" min="0" max="255" step="1" class="w-20 border rounded p-1 text-sm" />
-        <div class="flex items-center gap-1">
-          <button id="brightnessDec" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">−10</button>
-          <button id="brightnessInc" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+10</button>
-        </div>
-      </div>
-      <input type="range" min="0" max="255" id="brightnessSlider" class="w-full">
-      <div class="mt-3 hidden" id="logoBrightnessSection">
-        <div class="flex items-center gap-3 mb-2">
-          <label class="text-sm">Logo brightness: <span id="logoBrightnessValue" class="font-mono">-</span></label>
-          <input type="number" id="logoBrightnessInput" min="0" max="255" step="1" class="w-20 border rounded p-1 text-sm" />
-          <div class="flex items-center gap-1">
-            <button id="logoBrightnessDec" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">−10</button>
-            <button id="logoBrightnessInc" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+10</button>
+      <div class="sticky-controls">
+        <div class="statusbar">
+          <div class="status-line">
+            <span id="statusIndicator" class="dot off"></span>
+            <span id="statusText" class="status-text">—</span>
+          </div>
+          <div class="power-switch" role="group" aria-label="Power">
+            <button id="toggleClockOn" class="on" data-i18n="dashboard.status.on_btn">On</button>
+            <button id="toggleClockOff" class="off" data-i18n="dashboard.status.off_btn">Off</button>
           </div>
         </div>
-        <input type="range" min="0" max="255" id="logoBrightness" class="w-full">
-      </div>
-    </section>
-
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <div class="flex items-center justify-between mb-2">
-        <h2 class="text-xl font-semibold">Nightmode</h2>
-        <span id="nightModeStatus" class="text-xs text-gray-600">-</span>
-      </div>
-      <label class="inline-flex items-center space-x-2 mb-3">
-        <input type="checkbox" id="nightModeEnabled" class="form-checkbox">
-        <span>Nightmode inschakelen</span>
-      </label>
-      <div class="mb-3">
-        <label for="nightModeEffect" class="block text-sm mb-1">Effect</label>
-        <select id="nightModeEffect" class="w-full border rounded p-2 text-sm">
-          <option value="dim">Dimmen tot percentage</option>
-          <option value="off">Volledig uit</option>
-        </select>
-      </div>
-      <div class="mb-3" id="nightModeDimControls">
-        <label class="block text-sm mb-1">Dim-percentage: <span id="nightModeDimValue" class="font-mono">-</span>%</label>
-        <div class="flex items-center gap-3">
-          <input type="range" min="0" max="100" value="20" id="nightModeDimSlider" class="flex-1">
-          <input type="number" id="nightModeDimInput" min="0" max="100" step="1" class="w-20 border rounded p-1 text-sm">
-        </div>
-        <p class="text-xs text-gray-500 mt-1">0% = helemaal uit, 100% = originele helderheid</p>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-sm mb-1" for="nightModeStart">Starttijd</label>
-          <input type="time" id="nightModeStart" class="w-full border rounded p-2 text-sm">
-        </div>
-        <div>
-          <label class="block text-sm mb-1" for="nightModeEnd">Eindtijd</label>
-          <input type="time" id="nightModeEnd" class="w-full border rounded p-2 text-sm">
+        <div class="tabbar" role="tablist" aria-label="Controls">
+          <button data-tab="light" role="tab" aria-selected="true" data-i18n="dashboard.tab.light">Light</button>
+          <button data-tab="schedule" role="tab" aria-selected="false" data-i18n="dashboard.tab.schedule">Schedule</button>
+          <button data-tab="display" role="tab" aria-selected="false" data-i18n="dashboard.tab.display">Display</button>
+          <button data-tab="system" role="tab" aria-selected="false" data-i18n="dashboard.tab.system">System</button>
         </div>
       </div>
-      <p class="text-xs text-gray-500 mt-2">Als de eindtijd eerder is dan de starttijd loopt nightmode over middernacht.</p>
-    </section>
 
+      <div id="ledEventRow" class="event-row">
+        <span class="event-label" data-i18n="dashboard.status.led_event">LED event</span>
+        <span id="ledEventText">—</span>
+      </div>
 
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <h2 class="text-xl font-semibold mb-2">Actions</h2>
-      <div class="grid grid-cols-2 gap-2">
-        <button id="restartBtn" class="py-2 rounded bg-yellow-500 text-white hover:bg-yellow-600">🔁 Restart</button>
-        <button id="resetWifiBtn" class="py-2 rounded bg-blue-500 text-white hover:bg-blue-600">📶 Reset WiFi</button>
-        <button id="startSequenceBtn" class="py-2 rounded bg-purple-500 text-white hover:bg-purple-600">✨ Start Sequence</button>
-      </div>
-      
-    </section>
-
-    <section class="bg-white p-4 rounded-2xl shadow mb-4" id="firmwareUpdateSection">
-      <h2 class="text-xl font-semibold mb-2">Firmware updates</h2>
-      <h3 class="text-sm font-semibold text-gray-700 mt-1 mb-1">Release channel</h3>
-      <div class="space-y-1 mb-3">
-        <label class="inline-flex items-center space-x-2">
-          <input type="radio" name="updateChannel" value="stable" class="form-radio">
-          <span>Stable (recommended)</span>
-        </label><br>
-        <label class="inline-flex items-center space-x-2">
-          <input type="radio" name="updateChannel" value="early" class="form-radio">
-          <span>Early (experimental)</span>
-        </label>
-        <p id="updateChannelStatus" class="text-xs text-gray-500">Default: stable. Early kan instabiel zijn.</p>
-      </div>
-      <h3 class="text-sm font-semibold text-gray-700 mt-1 mb-1">Automatic</h3>
-      <div class="mb-3">
-        <label class="inline-flex items-center space-x-2">
-          <input type="checkbox" id="autoUpdate" class="form-checkbox">
-          <span>Automatic firmware updates</span>
-        </label>
-      </div>
-      <h3 class="text-sm font-semibold text-gray-700 mt-2 mb-1">Check for update</h3>
-      <div class="flex items-center gap-2 mb-3">
-        <button id="checkUpdateBtn" class="py-2 px-3 rounded bg-gray-700 text-white hover:bg-gray-800">🔎 Check for update</button>
-        <span id="updateStatus" class="text-xs text-gray-600"></span>
-        <span id="updateSpinner" class="spinner hidden" aria-label="Update in progress"></span>
-      </div>
-      <h3 class="text-sm font-semibold text-gray-700 mt-2 mb-1">Manual upload</h3>
-      <form id="firmwareUploadForm" action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="space-y-2">
-        <input type="file" name="firmwareFile" accept=".bin" required class="block w-full text-sm text-gray-700" />
-        <button type="submit" class="py-2 px-3 rounded bg-gray-700 text-white hover:bg-gray-800">Upload</button>
-      </form>
-      <p id="firmwareUploadStatus" class="text-xs text-gray-600 mt-1"></p>
-      <p class="mt-2 text-sm">
-        <strong>Firmware version:</strong> <span id="version">-</span>
-        <span class="ml-4"><strong>UI version:</strong> <span id="uiVersion">-</span></span>
-        <span class="ml-4"><strong>Grid:</strong> <span id="gridVariantLabel">-</span></span>
-      </p>
-    </section>
-
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <h2 class="text-xl font-semibold mb-2">Display</h2>
-      <label class="inline-flex items-center space-x-2 mb-2">
-        <input type="checkbox" id="animateWords" class="form-checkbox">
-        <span>Word-by-word animation</span>
-      </label>
-      <div id="hetIsSection">
-        <label class="inline-flex items-center space-x-2 mb-2">
-          <input type="checkbox" id="hetIsAlways2" class="form-checkbox">
-          <span>Always show 'HET IS'</span>
-        </label>
-        <div>
-          <label for="hetIsDuration2" class="block text-sm mb-1">Show 'HET IS' (seconds):
-            <span id="hetIsDurationValue2" class="font-mono">30</span>
-          </label>
-          <div class="flex items-center gap-3 mb-2">
-            <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="w-24 border rounded p-1 text-sm" />
-            <div class="flex items-center gap-1">
-              <button id="hetIsDec" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">−5s</button>
-              <button id="hetIsInc" class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+5s</button>
+      <div class="tab-panel active" data-panel="light" role="tabpanel">
+<section class="chapter">
+        <header class="section-head">
+          <span class="section-num">02</span>
+          <h2 class="section-title" data-i18n="dashboard.colour.title">Colour</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.colour.label">Pick</span>
+          <div class="section-body">
+            <div class="swatch-grid" id="colorSwatches" aria-label="Color presets"></div>
+            <div class="swatch-custom-row">
+              <button type="button" class="btn line small" id="colorCustomBtn" data-i18n="dashboard.colour.custom">Custom…</button>
+              <button type="button" class="btn line small" id="colorRalBtn" data-i18n="dashboard.colour.ral.btn">RAL…</button>
+              <input type="color" id="colorPicker" tabindex="-1" />
+              <span class="value-mono muted" id="colorValue">—</span>
             </div>
-            <input type="range" min="0" max="360" value="360" id="hetIsDuration2" class="flex-1">
+            <div class="swatch-input-row">
+              <span class="label" data-i18n="dashboard.colour.hex_label">Hex</span>
+              <input type="text" id="colorHexInput" class="input tight" placeholder="#FFAA00" maxlength="7" autocomplete="off" spellcheck="false" />
+              <span class="label" data-i18n="dashboard.colour.rgb_label">RGB</span>
+              <input type="number" id="colorRInput" class="input tight rgb-field" min="0" max="255" placeholder="R" />
+              <input type="number" id="colorGInput" class="input tight rgb-field" min="0" max="255" placeholder="G" />
+              <input type="number" id="colorBInput" class="input tight rgb-field" min="0" max="255" placeholder="B" />
+            </div>
+            <p class="help" data-i18n="dashboard.colour.help">Tap a swatch to set the LED hue. Applied immediately.</p>
           </div>
-          <p class="text-xs text-gray-500 mt-1">0 = nooit, 360 = altijd</p>
         </div>
+      </section>
+<section class="chapter">
+        <header class="section-head">
+          <span class="section-num">03</span>
+          <h2 class="section-title" data-i18n="dashboard.brightness.title">Brightness</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.brightness.label">Level</span>
+          <div class="section-body">
+            <div class="slider-block">
+              <div class="slider-meta">
+                <span class="value-mono"><span data-i18n="dashboard.brightness.value_prefix">Level</span> <span id="brightnessValue2">—</span></span>
+                <input type="number" id="brightnessInput" min="0" max="255" step="1" class="input tight short" />
+                <div class="step-btns">
+                  <button id="brightnessDec" class="btn line small">−10</button>
+                  <button id="brightnessInc" class="btn line small">+10</button>
+                </div>
+              </div>
+              <input type="range" min="0" max="255" id="brightnessSlider" />
+            </div>
+            <div id="logoBrightnessSection" class="hidden">
+              <hr class="h-rule" style="margin: 16px 0" />
+              <span class="label" data-i18n="dashboard.brightness.logo_label">Logo brightness</span>
+              <div class="slider-block">
+                <div class="slider-meta">
+                  <span class="value-mono"><span data-i18n="dashboard.brightness.value_prefix">Level</span> <span id="logoBrightnessValue">—</span></span>
+                  <input type="number" id="logoBrightnessInput" min="0" max="255" step="1" class="input tight short" />
+                  <div class="step-btns">
+                    <button id="logoBrightnessDec" class="btn line small">−10</button>
+                    <button id="logoBrightnessInc" class="btn line small">+10</button>
+                  </div>
+                </div>
+                <input type="range" min="0" max="255" id="logoBrightness" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+<section class="chapter hidden" id="logoLedsSection">
+        <header class="section-head">
+          <span class="section-num">08</span>
+          <h2 class="section-title" data-i18n="dashboard.logo.title">Logo LEDs</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.logo.label">Pixels</span>
+          <div class="section-body">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="value-mono muted" id="logoStatus">—</span>
+            </div>
+            <div id="logoGrid" class="logo-color-grid"></div>
+            <hr class="h-rule" style="margin: 16px 0" />
+            <span class="label" data-i18n="dashboard.logo.fill_label">Fill colour</span>
+            <div class="swatch-grid" id="logoColorSwatches" aria-label="Logo color presets"></div>
+            <div class="swatch-custom-row">
+              <button type="button" class="btn line small" id="logoColorCustomBtn" data-i18n="dashboard.colour.custom">Custom…</button>
+              <button type="button" class="btn line small" id="logoColorRalBtn" data-i18n="dashboard.colour.ral.btn">RAL…</button>
+              <input type="color" id="logoAllColor" tabindex="-1" />
+              <span class="value-mono muted" id="logoColorValue">—</span>
+            </div>
+            <div class="swatch-input-row">
+              <span class="label" data-i18n="dashboard.colour.hex_label">Hex</span>
+              <input type="text" id="logoColorHexInput" class="input tight" placeholder="#FFAA00" maxlength="7" autocomplete="off" spellcheck="false" />
+              <span class="label" data-i18n="dashboard.colour.rgb_label">RGB</span>
+              <input type="number" id="logoColorRInput" class="input tight rgb-field" min="0" max="255" placeholder="R" />
+              <input type="number" id="logoColorGInput" class="input tight rgb-field" min="0" max="255" placeholder="G" />
+              <input type="number" id="logoColorBInput" class="input tight rgb-field" min="0" max="255" placeholder="B" />
+            </div>
+            <div class="slider-meta" style="margin-top: 12px">
+              <button id="logoFillAll" class="btn line" data-i18n="dashboard.logo.fill_all">Fill all</button>
+              <button id="logoApply" class="btn" data-i18n="dashboard.logo.save">Save</button>
+            </div>
+          </div>
+        </div>
+      </section>
       </div>
-    </section>
 
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <h2 class="text-xl font-semibold mb-2">Grid layout</h2>
-      <select id="gridVariantPublic" class="w-full border rounded p-2 text-sm"></select>
-      <p class="text-xs text-gray-600 mt-2" id="gridVariantStatusPublic"></p>
-    </section>
+      <div class="tab-panel" data-panel="schedule" role="tabpanel">
+<section class="chapter">
+        <header class="section-head">
+          <span class="section-num">04</span>
+          <h2 class="section-title" data-i18n="dashboard.nightmode.title">Nightmode</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.nightmode.label">Schedule</span>
+          <div class="section-body">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+              <label class="check-row">
+                <input type="checkbox" id="nightModeEnabled" />
+                <span data-i18n="dashboard.nightmode.enable">Enable nightmode</span>
+              </label>
+              <span id="nightModeStatus" class="value-mono muted">—</span>
+            </div>
+            <div class="field">
+              <span class="label" data-i18n="dashboard.nightmode.effect_label">Effect</span>
+              <select id="nightModeEffect" class="select">
+                <option value="dim" data-i18n="dashboard.nightmode.effect_dim">Dim to percentage</option>
+                <option value="off" data-i18n="dashboard.nightmode.effect_off">Fully off</option>
+              </select>
+            </div>
+            <div class="field" id="nightModeDimControls">
+              <span class="label"><span data-i18n="dashboard.nightmode.dim_label">Dim percentage</span> — <span id="nightModeDimValue" class="value-mono">—</span>%</span>
+              <div class="slider-meta">
+                <input type="range" min="0" max="100" value="20" id="nightModeDimSlider" style="flex:1" />
+                <input type="number" id="nightModeDimInput" min="0" max="100" step="1" class="input tight short" />
+              </div>
+              <p class="help" data-i18n="dashboard.nightmode.dim_help">0% = fully off · 100% = original brightness</p>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <span class="label" data-i18n="dashboard.nightmode.start">Start</span>
+                <input type="time" id="nightModeStart" class="input" />
+              </div>
+              <div class="field">
+                <span class="label" data-i18n="dashboard.nightmode.end">End</span>
+                <input type="time" id="nightModeEnd" class="input" />
+              </div>
+            </div>
+            <p class="help" data-i18n="dashboard.nightmode.midnight_help">If end is earlier than start, nightmode runs over midnight.</p>
+          </div>
+        </div>
+      </section>
+      </div>
 
-    <section class="bg-white p-4 rounded-2xl shadow mb-4 hidden" id="logoLedsSection">
-      <div class="flex items-center justify-between mb-2">
-        <h2 class="text-xl font-semibold">Logo LEDs</h2>
-        <span id="logoStatus" class="text-xs text-gray-500">-</span>
+      <div class="tab-panel" data-panel="display" role="tabpanel">
+<section class="chapter">
+        <header class="section-head">
+          <span class="section-num">07</span>
+          <h2 class="section-title" data-i18n="dashboard.display.title">Display</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.display.label">Words</span>
+          <div class="section-body">
+            <label class="check-row">
+              <input type="checkbox" id="animateWords" />
+              <span data-i18n="dashboard.display.animate">Word-by-word animation</span>
+            </label>
+            <div id="hetIsSection">
+              <hr class="h-rule" />
+              <label class="check-row">
+                <input type="checkbox" id="hetIsAlways2" />
+                <span data-i18n="dashboard.display.always_het_is">Always show "HET IS"</span>
+              </label>
+              <div class="field" style="margin-top:12px">
+                <span class="label"><span data-i18n="dashboard.display.show_het_is">Show "HET IS"</span> — <span id="hetIsDurationValue2" class="value-mono">30</span>s</span>
+                <div class="slider-meta">
+                  <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="input tight short" />
+                  <div class="step-btns">
+                    <button id="hetIsDec" class="btn line small">−5s</button>
+                    <button id="hetIsInc" class="btn line small">+5s</button>
+                  </div>
+                </div>
+                <input type="range" min="0" max="360" value="360" id="hetIsDuration2" />
+                <p class="help" data-i18n="dashboard.display.het_is_help">0 = never · 360 = always</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+<!-- Legacy-only section: the legacy build model ships several front-plate
+     grids in one firmware image and the active one is a runtime setting.
+     Nextgen builds one variant per product and has no selector, so this
+     section must survive any future re-sync with the nextgen UI. -->
+<section class="chapter" id="gridVariantSection">
+        <header class="section-head">
+          <span class="section-num">11</span>
+          <h2 class="section-title" data-i18n="dashboard.grid.title">Grid layout</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.grid.label">Front plate</span>
+          <div class="section-body">
+            <div class="field">
+              <select id="gridVariantPublic" class="select"></select>
+              <p class="help" id="gridVariantStatusPublic"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+<!-- Last section in the tab on purpose. Language is a once-ever setting a
+     customer should be able to reach when something is wrong, not something
+     to trip over while adjusting the display. It also hides itself entirely
+     when there is nothing to choose. -->
+<section class="chapter hidden" id="languageSection">
+        <header class="section-head">
+          <span class="section-num">10</span>
+          <h2 class="section-title" data-i18n="dashboard.language.title">Language</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.language.label">Front plate</span>
+          <div class="section-body">
+            <div class="field hidden" id="languageConfirm">
+              <p class="help text-warn" id="languageConfirmText"></p>
+              <div class="btn-row">
+                <button id="languageConfirmOk" class="btn line small" data-i18n="dashboard.language.confirm_ok">That's right</button>
+                <button id="languageConfirmBack" class="btn line small"></button>
+              </div>
+              <hr class="h-rule" />
+            </div>
+            <div class="field hidden" id="languageField">
+              <div id="languageOptions"></div>
+              <p class="help" data-i18n="dashboard.language.help">Pick the language printed on your clock's front plate. Switching restarts the clock.</p>
+            </div>
+            <div class="field hidden" id="dialectField">
+              <hr class="h-rule" id="dialectRule" />
+              <span class="label" data-i18n="dashboard.language.dialect_label">Reading</span>
+              <p class="help" id="dialectQuestion" data-i18n="dashboard.language.dialect_question">How does your clock say a quarter past three?</p>
+              <p class="help hidden" id="dialectAxisIntro" data-i18n="dashboard.language.dialect_axis_intro">Your plate can be read in more than one way. Answer both questions the way you say the time.</p>
+              <div id="dialectOptions" class="field"></div>
+              <p class="help" data-i18n="dashboard.language.dialect_help">Applies immediately — watch the clock while you choose.</p>
+            </div>
+            <p id="languageStatus" class="help muted"></p>
+          </div>
+        </div>
+      </section>
       </div>
-      <div id="logoGrid" class="grid gap-2 mb-3"></div>
-      <div class="flex items-center gap-3">
-        <input type="color" id="logoAllColor" class="h-10 w-16 p-0 border rounded">
-        <button id="logoFillAll" class="px-3 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 text-sm">Vul alles</button>
-        <button id="logoApply" class="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm">Opslaan</button>
-      </div>
-    </section>
 
-    <section class="bg-white p-4 rounded-2xl shadow">
-      <h2 class="text-xl font-semibold mb-2">Logs</h2>
-      <div class="flex items-center gap-3 mb-2">
-        <label for="logLevel" class="text-sm">Log level</label>
-        <select id="logLevel" class="flex-1 rounded-md border-gray-300 shadow-sm">
-          <option value="ERROR">ERROR</option>
-          <option value="WARN">WARN</option>
-          <option value="INFO">INFO</option>
-          <option value="DEBUG">DEBUG</option>
-        </select>
+      <div class="tab-panel" data-panel="system" role="tabpanel">
+<section class="chapter">
+        <header class="section-head">
+          <span class="section-num">05</span>
+          <h2 class="section-title" data-i18n="dashboard.actions.title">Actions</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.actions.label">Run</span>
+          <div class="section-body">
+            <div class="btn-row three">
+              <button id="restartBtn" class="btn line" data-i18n="dashboard.actions.restart">Restart</button>
+              <button id="resetWifiBtn" class="btn line" data-i18n="dashboard.actions.reset_wifi">Reset Wi-Fi</button>
+              <button id="startSequenceBtn" class="btn line" data-i18n="dashboard.actions.start_sequence">Start sequence</button>
+            </div>
+          </div>
+        </div>
+      </section>
+<section class="chapter" id="firmwareUpdateSection">
+        <header class="section-head">
+          <span class="section-num">06</span>
+          <h2 class="section-title" data-i18n="dashboard.firmware.title">Firmware</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.firmware.channel_label">Channel</span>
+          <div class="section-body">
+            <div class="field">
+              <label class="check-row">
+                <input type="radio" name="updateChannel" value="stable" />
+                <span><span data-i18n="dashboard.firmware.stable">Stable</span> <span class="muted" data-i18n="dashboard.firmware.stable_hint">(recommended)</span></span>
+              </label>
+              <label class="check-row">
+                <input type="radio" name="updateChannel" value="early" />
+                <span><span data-i18n="dashboard.firmware.early">Early</span> <span class="muted" data-i18n="dashboard.firmware.early_hint">(experimental)</span></span>
+              </label>
+              <p id="updateChannelStatus" class="help" data-i18n="dashboard.firmware.channel_help">Default: stable. Early may be unstable.</p>
+            </div>
+            <hr class="h-rule" />
+            <span class="label" data-i18n="dashboard.firmware.automatic">Automatic</span>
+            <label class="check-row">
+              <input type="checkbox" id="autoUpdate" />
+              <span data-i18n="dashboard.firmware.auto_label">Automatic firmware updates</span>
+            </label>
+            <hr class="h-rule" />
+            <span class="label" data-i18n="dashboard.firmware.check_label">Check</span>
+            <div class="slider-meta">
+              <button id="checkUpdateBtn" class="btn" data-i18n="dashboard.firmware.check_btn">Check for update</button>
+              <span id="updateSpinner" class="spinner hidden" aria-label="Update in progress"></span>
+              <span id="updateStatus" class="value-mono muted"></span>
+            </div>
+            <hr class="h-rule" />
+            <span class="label" data-i18n="dashboard.firmware.manual_label">Manual upload</span>
+            <form id="firmwareUploadForm" action="/uploadFirmware" method="POST" enctype="multipart/form-data" class="field">
+              <input type="file" name="firmwareFile" accept=".bin" required />
+              <button type="submit" class="btn ghost" data-i18n="dashboard.firmware.upload_btn">Upload firmware</button>
+            </form>
+            <p id="firmwareUploadStatus" class="help"></p>
+            <hr class="h-rule" />
+            <dl class="dl">
+              <dt data-i18n="update.versions.firmware">Firmware</dt><dd id="version">—</dd>
+              <dt data-i18n="update.versions.ui">UI</dt><dd id="uiVersion">—</dd>
+              <dt data-i18n="update.versions.grid">Grid</dt><dd id="gridVariantLabel">-</dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+<section class="chapter">
+        <header class="section-head">
+          <span class="section-num">09</span>
+          <h2 class="section-title" data-i18n="dashboard.logs.title">Logs</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="dashboard.logs.label">Tail</span>
+          <div class="section-body">
+            <div class="field">
+              <span class="label" data-i18n="dashboard.logs.level_label">Log level</span>
+              <select id="logLevel" class="select">
+                <option value="ERROR">ERROR</option>
+                <option value="WARN">WARN</option>
+                <option value="INFO">INFO</option>
+                <option value="DEBUG">DEBUG</option>
+              </select>
+              <p id="logLevelStatus" class="help"></p>
+            </div>
+            <div class="value-mono muted">
+              <span data-i18n="dashboard.logs.storage">Storage:</span> <span id="logSummary">—</span> <span id="logSummaryStatus" class="muted"></span>
+            </div>
+            <pre id="logOutput" class="log-output"></pre>
+          </div>
+        </div>
+      </section>
       </div>
-      <p id="logLevelStatus" class="text-xs text-gray-500 mb-2"></p>
-      <div class="flex items-center gap-3 mb-2 text-sm">
-        <span>Storage: <span id="logSummary" class="font-semibold">-</span></span>
-        <span id="logSummaryStatus" class="text-xs text-gray-500"></span>
+
+      <div class="footer-sig">
+        <span>Chronolett<span class="copper">.</span></span>
       </div>
-      <pre id="logOutput" class="bg-gray-100 p-2 h-40 overflow-y-auto rounded"></pre>
-    </section>
-  </div>
+
+    </div>
+  </main>
+
+  <dialog id="ralPickerModal" class="ral-modal" aria-labelledby="ralPickerTitle">
+    <div class="ral-modal-head">
+      <h3 id="ralPickerTitle" data-i18n="dashboard.colour.ral.title">RAL Classic colours</h3>
+      <button type="button" class="btn line small" id="ralPickerClose" data-i18n="dashboard.colour.ral.close">Close</button>
+    </div>
+    <div class="ral-modal-body">
+      <input type="search" class="input tight" id="ralPickerSearch"
+             data-i18n-placeholder="dashboard.colour.ral.search_placeholder"
+             placeholder="Search code or name" autocomplete="off" />
+      <p class="ral-caveat" data-i18n="dashboard.colour.ral.gamut_warning">
+        Preview only — LED gamut differs from coating finish.
+      </p>
+      <ul class="ral-list" id="ralPickerList" role="listbox"></ul>
+    </div>
+  </dialog>
 
   <script>
-    // DataLoader class voor onafhankelijk laden van data
+    // === Identical logic to dashboard.html, with selector-only adjustments ===
+    const T = (k, fb) => (window.chronolettI18n ? window.chronolettI18n.t(k, fb) : fb);
+
     class DataLoader {
       constructor() {
         this.loaders = new Map();
-        this.retryDelays = [1000, 2000, 5000]; // Progressive backoff
+        this.retryDelays = [1000, 2000, 5000];
         this.intervals = new Map();
       }
-
       register(name, loaderFn, options = {}) {
         this.loaders.set(name, {
           fn: loaderFn,
-          loading: false,
-          lastError: null,
-          retryCount: 0,
+          loading: false, lastError: null, retryCount: 0,
           interval: options.interval || null,
           priority: options.priority || 0,
           timeout: options.timeout || 5000,
@@ -261,301 +434,158 @@
           onError: options.onError || null,
         });
       }
-
       async load(name) {
         const loader = this.loaders.get(name);
-        if (!loader) {
-          return;
-        }
-        if (loader.loading) {
-          return;
-        }
-
-        loader.loading = true;
-        loader.lastError = null;
-        // Only log if not in interval mode to reduce noise
-        if (!this.intervals.has(name)) {
-        }
-
+        if (!loader || loader.loading) return;
+        loader.loading = true; loader.lastError = null;
         try {
           const result = await Promise.race([
             loader.fn(),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout')), loader.timeout)
-            )
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), loader.timeout))
           ]);
-
           loader.retryCount = 0;
-          // Only log if not in interval mode to reduce noise
-          if (!this.intervals.has(name)) {
-          }
           if (loader.onSuccess) loader.onSuccess(result);
           return result;
         } catch (error) {
           loader.lastError = error;
           if (loader.onError) loader.onError(error);
-          
-          // Retry logic
           if (loader.retryCount < this.retryDelays.length) {
             const delay = this.retryDelays[loader.retryCount];
             loader.retryCount++;
             setTimeout(() => this.load(name), delay);
-          } else {
           }
-        } finally {
-          loader.loading = false;
+        } finally { loader.loading = false; }
+      }
+      async loadAll() {
+        // Serialized: ESP32 WebServer is single-threaded. Firing 10+
+        // concurrent fetches on a stressed/near-full FS can saturate the
+        // TCP table and hang the chip. One at a time keeps it responsive.
+        const sorted = Array.from(this.loaders.entries()).sort((a, b) => b[1].priority - a[1].priority);
+        for (const [name] of sorted) {
+          try { await this.load(name); } catch (e) {}
         }
       }
-
-      async loadAll() {
-        const sorted = Array.from(this.loaders.entries())
-          .sort((a, b) => b[1].priority - a[1].priority);
-        
-        // Laad eerst hoge prioriteit items
-        const highPriority = sorted.filter(([_, l]) => l.priority >= 5);
-        await Promise.allSettled(highPriority.map(([name]) => this.load(name)));
-        
-        // Laad dan rest parallel
-        const rest = sorted.filter(([_, l]) => l.priority < 5);
-        await Promise.allSettled(rest.map(([name]) => this.load(name)));
-      }
-
       startInterval(name) {
         const loader = this.loaders.get(name);
-        if (!loader) {
-          return;
-        }
-        if (!loader.interval) {
-          return;
-        }
-        
-        if (this.intervals.has(name)) {
-          clearInterval(this.intervals.get(name));
-          this.intervals.delete(name);
-        }
-        
-        // Store reference to this for use in interval callback
+        if (!loader || !loader.interval) return;
+        if (this.intervals.has(name)) { clearInterval(this.intervals.get(name)); this.intervals.delete(name); }
         const self = this;
-        const intervalMs = loader.interval;
-        const intervalSeconds = intervalMs / 1000;
-        
-        // Load immediately, then set interval
-        this.load(name);
-        
-        const intervalId = setInterval(function() {
-          self.load(name);
-        }, intervalMs);
-        
-        this.intervals.set(name, intervalId);
-      }
-
-      stopInterval(name) {
-        if (this.intervals.has(name)) {
-          clearInterval(this.intervals.get(name));
-          this.intervals.delete(name);
-        }
+        // No immediate load() — loadAll() already populated initial values.
+        // Avoids a second burst of concurrent requests right after init.
+        const id = setInterval(() => self.load(name), loader.interval);
+        this.intervals.set(name, id);
       }
     }
 
-    // Helper functies voor loading/error states
-    function setLoadingState(elementId, loading) {
-      const el = document.getElementById(elementId);
+    function setLoadingState(id, loading) {
+      const el = document.getElementById(id);
       if (!el) return;
-      
-      if (loading) {
-        el.classList.add('opacity-50');
-        el.setAttribute('data-loading', 'true');
-      } else {
-        el.classList.remove('opacity-50');
-        el.removeAttribute('data-loading');
-      }
+      if (loading) el.setAttribute('data-loading', 'true');
+      else el.removeAttribute('data-loading');
     }
-
-    function setErrorState(elementId, error, fallbackText = '-') {
-      const el = document.getElementById(elementId);
+    function setErrorState(id, error, fallbackText = '—') {
+      const el = document.getElementById(id);
       if (!el) return;
-      
-      el.classList.add('text-red-600');
+      el.classList.add('text-err');
       el.setAttribute('title', `Error: ${error.message || error}`);
-      if (el.tagName === 'SPAN' || el.tagName === 'P' || el.tagName === 'DIV') {
-        el.textContent = fallbackText;
-      }
+      if (el.tagName === 'SPAN' || el.tagName === 'P' || el.tagName === 'DIV') el.textContent = fallbackText;
     }
-
-    function clearErrorState(elementId) {
-      const el = document.getElementById(elementId);
+    function clearErrorState(id) {
+      const el = document.getElementById(id);
       if (!el) return;
-      el.classList.remove('text-red-600');
+      el.classList.remove('text-err');
       el.removeAttribute('title');
     }
 
-    // Initialize DataLoader
     const dataLoader = new DataLoader();
     let isLogoProduct = false;
+    let isMiniProduct = false;
     const logoBrightnessSection = document.getElementById('logoBrightnessSection');
     const logoLedsSection = document.getElementById('logoLedsSection');
     const hetIsSection = document.getElementById('hetIsSection');
-    let isMiniProduct = false;
-    const setLogoSectionsVisible = (visible) => {
-      if (logoBrightnessSection) {
-        logoBrightnessSection.classList.toggle('hidden', !visible);
-      }
-      if (logoLedsSection) {
-        logoLedsSection.classList.toggle('hidden', !visible);
-      }
+    const setLogoSectionsVisible = (v) => {
+      if (logoBrightnessSection) logoBrightnessSection.classList.toggle('hidden', !v);
+      if (logoLedsSection) logoLedsSection.classList.toggle('hidden', !v);
     };
-    const setHetIsSectionVisible = (visible) => {
-      if (hetIsSection) {
-        hetIsSection.classList.toggle('hidden', !visible);
-      }
+    const setHetIsSectionVisible = (v) => {
+      if (hetIsSection) hetIsSection.classList.toggle('hidden', !v);
     };
 
-    const formatVariantLabel = (variant) => {
-      if (!variant) return '';
-      const base = variant.label || variant.key || '';
-      const lang = variant.language ? variant.language.toUpperCase() : '';
-      const ver = variant.version ? variant.version.toUpperCase() : '';
-      const suffix = [lang, ver].filter(Boolean).join(' ');
-      return suffix ? `${base} [${suffix}]` : base;
+    // Map LED event ids to i18n keys + English fallbacks. Resolved through
+    // T() at render time so language switches re-translate without a reload.
+    const LED_EVENT_KEYS = {
+      FirmwareCheck:       ['dashboard.led.idle',          'Idle'],
+      FirmwareAvailable:   ['dashboard.led.fw_available',  'Firmware available'],
+      FirmwareDownloading: ['dashboard.led.fw_downloading','Firmware downloading'],
+      FirmwareApplying:    ['dashboard.led.fw_applying',   'Firmware applying'],
+      NtpFailed:           ['dashboard.led.ntp_failed',    'NTP failed'],
+      MqttDisconnected:    ['dashboard.led.mqtt_disc',     'MQTT disconnected'],
+      BleProvisioning:     ['dashboard.led.ble_prov',      'BLE provisioning'],
+      WifiManagerPortal:   ['dashboard.led.wifi_portal',   'Wi-Fi manager portal'],
     };
-
-    const gridSelectPublic = document.getElementById('gridVariantPublic');
-    const gridStatusPublic = document.getElementById('gridVariantStatusPublic');
-    const loadGridVariantsPublic = async () => {
-      if (!gridSelectPublic) return;
-      try {
-        const res = await fetch('/listGridVariants');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const variants = await res.json();
-        gridSelectPublic.innerHTML = '';
-        variants.forEach((v) => {
-          const opt = document.createElement('option');
-          opt.value = v.id;
-          opt.textContent = formatVariantLabel(v);
-          if (v.active) opt.selected = true;
-          gridSelectPublic.appendChild(opt);
-        });
-        if (gridStatusPublic) {
-          const active = variants.find(v => v.active);
-          gridStatusPublic.textContent = active ? `Actieve grid: ${formatVariantLabel(active)}` : '';
-        }
-      } catch (err) {
-        if (gridStatusPublic) gridStatusPublic.textContent = 'Kon grid-varianten niet laden';
-      }
-    };
-    
-    // Grid Variants list loader (normale prioriteit)
-    if (gridSelectPublic) {
-      dataLoader.register('gridVariantsList', loadGridVariantsPublic, {
-        priority: 5,
-        onError: (error) => {
-          if (gridStatusPublic) gridStatusPublic.textContent = 'Kon grid-varianten niet laden';
-        }
-      });
-      gridSelectPublic.addEventListener('change', async () => {
-        const id = gridSelectPublic.value;
-        if (gridStatusPublic) gridStatusPublic.textContent = 'Bezig met opslaan…';
-        try {
-          const res = await fetch(`/setGridVariant?id=${encodeURIComponent(id)}`);
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const body = await res.json();
-          if (gridStatusPublic) gridStatusPublic.textContent = `Actieve grid: ${formatVariantLabel(body)}`;
-          if (isLogoProduct && dataLoader.loaders.has('logoState')) {
-            dataLoader.load('logoState');
-          }
-        } catch (err) {
-          if (gridStatusPublic) gridStatusPublic.textContent = 'Opslaan mislukt';
-        }
-      });
+    function ledEventLabel(name) {
+      const e = LED_EVENT_KEYS[name];
+      return e ? T(e[0], e[1]) : name;
     }
+    let lastLedEvent = 'FirmwareCheck';
+    let lastStatusOn = null;
 
-    // Human-readable labels for LED events
-    const LED_EVENT_LABELS = {
-      FirmwareCheck: 'Idle',
-      FirmwareAvailable: 'Firmware available',
-      FirmwareDownloading: 'Firmware downloading',
-      FirmwareApplying: 'Firmware applying',
-      NtpFailed: 'NTP failed',
-      MqttDisconnected: 'MQTT disconnected',
-      BleProvisioning: 'BLE provisioning',
-      WifiManagerPortal: 'WiFi manager portal'
-    };
-
-    // Status loader (hoge prioriteit, interval)
-    // Interval will be set dynamically based on branch (dev: 5min, others: 30sec)
     dataLoader.register('status', async () => {
-      setLoadingState('statusIndicator', true);
       const res = await fetch('/status');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.text();
     }, {
-      priority: 10,
-      interval: 30000, // Default, will be updated based on branch
+      priority: 10, interval: 30000,
       onSuccess: (status) => {
-        setLoadingState('statusIndicator', false);
         clearErrorState('statusText');
-      const on = status === 'on';
-      document.getElementById('statusIndicator').className =
-        'inline-block w-4 h-4 rounded-full ' + (on ? 'bg-green-500' : 'bg-red-500');
-      const st = document.getElementById('statusText');
-      if (st) st.textContent = on ? 'Wordclock on' : 'Wordclock off';
+        const on = status === 'on';
+        lastStatusOn = on;
+        const ind = document.getElementById('statusIndicator');
+        if (ind) ind.className = 'dot ' + (on ? 'on' : 'off');
+        const st = document.getElementById('statusText');
+        if (st) st.textContent = on
+          ? T('dashboard.status.dyn_on', 'Wordclock on')
+          : T('dashboard.status.dyn_off', 'Wordclock off');
       },
-      onError: (error) => {
-        setLoadingState('statusIndicator', false);
-        setErrorState('statusText', error, 'Error loading status');
-      }
+      onError: (err) => setErrorState('statusText', err, T('dashboard.status.error', 'Error loading status'))
     });
 
-    // LED event loader (same interval as status, show when event is triggered)
     dataLoader.register('ledEvent', async () => {
       const res = await fetch('/api/led/event');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     }, {
-      priority: 10,
-      interval: 30000,
+      priority: 10, interval: 30000,
       onSuccess: (data) => {
         const el = document.getElementById('ledEventText');
         const row = document.getElementById('ledEventRow');
         if (!el || !row) return;
         const name = (data && data.event) ? data.event : 'FirmwareCheck';
-        const label = LED_EVENT_LABELS[name] || name;
-        el.textContent = label;
-        const isActive = name !== 'FirmwareCheck';
-        row.classList.toggle('bg-amber-50', isActive);
-        row.classList.toggle('rounded', isActive);
-        row.classList.toggle('px-2', isActive);
-        row.classList.toggle('py-1', isActive);
+        lastLedEvent = name;
+        el.textContent = ledEventLabel(name);
+        row.classList.toggle('active', name !== 'FirmwareCheck');
       },
-      onError: () => {
-        const el = document.getElementById('ledEventText');
-        if (el) el.textContent = '-';
-      }
+      onError: () => { const el = document.getElementById('ledEventText'); if (el) el.textContent = '—'; }
     });
 
-    const updateStatus = () => {
-      dataLoader.load('status');
-    };
-
     const autoUpdCb = document.getElementById('autoUpdate');
-
-    // Release channel selection (stable/early/develop)
     const channelRadios = document.querySelectorAll('input[name="updateChannel"]');
     const channelStatus = document.getElementById('updateChannelStatus');
+    let lastChannel = 'stable';
     const applyChannelGuard = (ch) => {
+      lastChannel = ch;
       const disabled = (ch === 'develop');
       if (autoUpdCb) {
-        if (disabled) {
-          autoUpdCb.checked = false;
-          autoUpdCb.disabled = true;
-        } else {
-          autoUpdCb.disabled = false;
-        }
+        if (disabled) { autoUpdCb.checked = false; autoUpdCb.disabled = true; }
+        else { autoUpdCb.disabled = false; }
       }
-      if (channelStatus) channelStatus.textContent = `Current channel: ${ch}${disabled ? ' (automatic updates disabled)' : ''}`;
+      if (channelStatus) {
+        channelStatus.textContent = T('dashboard.firmware.current', 'Current channel:') + ' ' + ch +
+          (disabled ? ' ' + T('dashboard.firmware.auto_disabled', '(automatic updates disabled)') : '');
+      }
     };
     const loadChannel = async () => {
-      if (channelStatus) channelStatus.textContent = 'Loading channel…';
+      if (channelStatus) channelStatus.textContent = T('dashboard.firmware.loading', 'Loading channel…');
       try {
         const res = await fetch('/api/update/channel');
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -568,21 +598,13 @@
         applyChannelGuard('stable');
       }
     };
-    
-    // Channel loader (normale prioriteit)
-    dataLoader.register('channel', loadChannel, {
-      priority: 5,
-      onError: (error) => {
-        channelRadios.forEach(r => { if (r.value === 'stable') r.checked = true; });
-        applyChannelGuard('stable');
-      }
-    });
+    dataLoader.register('channel', loadChannel, { priority: 5 });
     channelRadios.forEach(r => {
       r.addEventListener('change', async () => {
         if (!r.checked) return;
         const ch = r.value;
         if (ch === 'develop') {
-          const ok = window.confirm('Weet je zeker dat je het ontwikkelkanaal wilt gebruiken? Dit kan de klok onbruikbaar maken en herstel is niet gegarandeerd.');
+          const ok = window.confirm(T('dashboard.firmware.develop_confirm', 'Use the develop channel? This may make the clock unusable; recovery is not guaranteed.'));
           if (!ok) {
             r.checked = false;
             const stable = Array.from(channelRadios).find(x => x.value === 'stable');
@@ -591,7 +613,7 @@
             return;
           }
         }
-        if (channelStatus) channelStatus.textContent = 'Saving…';
+        if (channelStatus) channelStatus.textContent = T('common.saving', 'Saving…');
         try {
           const res = await fetch('/api/update/channel', {
             method: 'POST',
@@ -601,23 +623,173 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
           applyChannelGuard(ch);
         } catch (err) {
-          if (channelStatus) channelStatus.textContent = 'Save failed; keeping previous value';
+          if (channelStatus) channelStatus.textContent = T('dashboard.firmware.save_failed', 'Save failed; keeping previous value');
           await loadChannel();
         }
       });
     });
     dataLoader.load('channel');
 
-    document.getElementById('toggleClockOn').onclick = () => {
-      fetch('/toggle?state=on').then(() => dataLoader.load('status'));
-    };
-    document.getElementById('toggleClockOff').onclick = () => {
-      fetch('/toggle?state=off').then(() => dataLoader.load('status'));
-    };
-    document.getElementById('colorPicker').oninput = (e) => {
-      const hex = e.target.value.substring(1);
-      fetch(`/setColor?color=${hex}`);
-    };
+    document.getElementById('toggleClockOn').onclick = () => fetch('/toggle?state=on').then(() => dataLoader.load('status'));
+    document.getElementById('toggleClockOff').onclick = () => fetch('/toggle?state=off').then(() => dataLoader.load('status'));
+
+    // ─── Color swatches + custom-hex fallback ───────────────────────
+    // 12 brand-curated swatches plus a hidden native picker reachable via
+    // the "Custom…" button. Replaces the bare <input type="color"> whose
+    // rendering differs per-browser and drops out of the brand entirely.
+    const COLOR_SWATCHES = [
+      '#FFE4B5', '#F5F2ED', '#FFA500', '#FF7043',
+      '#B87333', '#E8A0A0', '#B22222', '#6B85A8',
+      '#B5DEFF', '#88C8A0', '#2D5F3F', '#6B3F70',
+    ];
+    const colorSwatchEl = document.getElementById('colorSwatches');
+    const colorPickerEl = document.getElementById('colorPicker');
+    const colorValueEl = document.getElementById('colorValue');
+    const colorCustomBtn = document.getElementById('colorCustomBtn');
+    const colorHexInput = document.getElementById('colorHexInput');
+    const colorRgbInputs = ['R', 'G', 'B'].map((c) => document.getElementById('color' + c + 'Input'));
+
+    function paintSelectedSwatch(hexUpper) {
+      colorSwatchEl.querySelectorAll('.swatch').forEach((s) => {
+        s.classList.toggle('selected', s.dataset.color.toUpperCase() === hexUpper);
+      });
+      if (colorValueEl) colorValueEl.textContent = hexUpper;
+      // Keep hex/RGB fields in sync — but don't clobber whichever input the
+      // user is currently typing into.
+      if (colorHexInput && document.activeElement !== colorHexInput) {
+        colorHexInput.value = hexUpper;
+        colorHexInput.classList.remove('input-err');
+      }
+      const clean = hexUpper.replace('#', '');
+      if (clean.length === 6 && colorRgbInputs.every((el) => el)) {
+        const parts = [clean.slice(0, 2), clean.slice(2, 4), clean.slice(4, 6)].map((s) => parseInt(s, 16));
+        colorRgbInputs.forEach((el, i) => {
+          if (document.activeElement !== el) el.value = parts[i];
+          el.classList.remove('input-err');
+        });
+      }
+    }
+
+    // Last-clicked colour, used to discard out-of-order /setColor responses
+    // when the user taps multiple swatches quickly (single-threaded ESP32
+    // WebServer can return responses in arrival order, but the post-success
+    // reload would otherwise repaint to whichever request finished last).
+    let pendingColor = null;
+    async function applyColor(hex) {
+      const clean = hex.replace('#', '').toUpperCase();
+      if (clean.length !== 6) return;
+      pendingColor = clean;
+      // Update the hidden native picker so a subsequent "Custom…" press
+      // opens with the right starting colour.
+      if (colorPickerEl) colorPickerEl.value = '#' + clean;
+      // Optimistic paint — snappy UI; reconciled below if server disagrees.
+      paintSelectedSwatch('#' + clean);
+      try {
+        const res = await fetch(`/setColor?color=${clean}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        // Confirm with a re-read from the server so the visible selection
+        // always reflects the device's actual state. Cheap roundtrip and
+        // catches the "request silently failed / something else overwrote"
+        // class of bugs that the original fire-and-forget hid.
+        if (pendingColor === clean) {
+          dataLoader.load('color').catch(() => {});
+        }
+      } catch (err) {
+        if (colorValueEl) {
+          colorValueEl.textContent = T('dashboard.colour.set_failed', 'Save failed') + ' (' + (err.message || err) + ')';
+          colorValueEl.classList.add('text-err');
+          // Drop the error tag on the next successful paint.
+          setTimeout(() => colorValueEl.classList.remove('text-err'), 4000);
+        }
+        // Revert optimistic paint — re-read what the device actually has.
+        dataLoader.load('color').catch(() => {});
+      }
+    }
+
+    if (colorSwatchEl) {
+      COLOR_SWATCHES.forEach((hex) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'swatch';
+        btn.dataset.color = hex;
+        btn.style.background = hex;
+        btn.title = hex;
+        btn.setAttribute('aria-label', hex);
+        btn.addEventListener('click', () => applyColor(hex));
+        colorSwatchEl.appendChild(btn);
+      });
+    }
+    if (colorCustomBtn && colorPickerEl) {
+      colorCustomBtn.addEventListener('click', () => colorPickerEl.click());
+    }
+    if (colorPickerEl) {
+      colorPickerEl.addEventListener('input', (e) => applyColor(e.target.value));
+    }
+
+    // Hex text input — accepts "#FFAA00", "FFAA00", "#FA0", "FA0".
+    // Server's parseHexColor strips non-hex chars, so we expand the short
+    // form client-side to canonical 6-char before sending.
+    function tryApplyHex(value) {
+      const s = value.trim().replace(/^#/, '');
+      let hex = null;
+      if (/^[0-9a-fA-F]{6}$/.test(s)) {
+        hex = '#' + s.toUpperCase();
+      } else if (/^[0-9a-fA-F]{3}$/.test(s)) {
+        hex = '#' + s.split('').map((c) => c + c).join('').toUpperCase();
+      }
+      if (hex) { applyColor(hex); return true; }
+      return false;
+    }
+    if (colorHexInput) {
+      const submit = () => {
+        if (!colorHexInput.value.trim()) return;
+        const ok = tryApplyHex(colorHexInput.value);
+        colorHexInput.classList.toggle('input-err', !ok);
+      };
+      colorHexInput.addEventListener('blur', submit);
+      colorHexInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      });
+    }
+
+    // RGB triplet — three 0–255 inputs. Apply on Enter or blur, only when
+    // all three carry valid integers. Empty fields don't trigger.
+    function tryApplyRgb(rStr, gStr, bStr) {
+      const parts = [rStr, gStr, bStr].map((v) => parseInt(v, 10));
+      if (parts.some((n) => !Number.isFinite(n) || n < 0 || n > 255)) return false;
+      const toHex = (n) => n.toString(16).padStart(2, '0').toUpperCase();
+      applyColor('#' + parts.map(toHex).join(''));
+      return true;
+    }
+    if (colorRgbInputs.every((el) => el)) {
+      const submit = () => {
+        const vals = colorRgbInputs.map((el) => el.value);
+        if (vals.every((v) => !String(v).trim())) return;
+        const ok = tryApplyRgb(vals[0], vals[1], vals[2]);
+        colorRgbInputs.forEach((el) => el.classList.toggle('input-err', !ok));
+      };
+      colorRgbInputs.forEach((el) => {
+        el.addEventListener('blur', submit);
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); submit(); }
+        });
+      });
+    }
+
+    // Deferred external scripts (ral-picker.js) execute after this inline
+    // block, so wait for DOMContentLoaded before calling initRalPicker.
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof window.initRalPicker !== 'function') return;
+      window.initRalPicker({
+        openBtn: document.getElementById('colorRalBtn'),
+        modal: document.getElementById('ralPickerModal'),
+        closeBtn: document.getElementById('ralPickerClose'),
+        search: document.getElementById('ralPickerSearch'),
+        list: document.getElementById('ralPickerList'),
+        onPick: applyColor,
+      });
+    });
+
     const brightnessSlider = document.getElementById('brightnessSlider');
     const brightnessInput = document.getElementById('brightnessInput');
     const brightnessDec = document.getElementById('brightnessDec');
@@ -625,57 +797,34 @@
     let brightnessTimer = null;
     const sendBrightnessDebounced = (val) => {
       if (brightnessTimer) clearTimeout(brightnessTimer);
-      brightnessTimer = setTimeout(() => {
-        fetch(`/setBrightness?level=${val}`);
-        brightnessTimer = null;
-      }, 200);
+      brightnessTimer = setTimeout(() => { fetch(`/setBrightness?level=${val}`); brightnessTimer = null; }, 200);
     };
-    brightnessSlider.oninput = (e) => {
-      const v = e.target.value;
+    const setBrightness = (v) => {
+      brightnessSlider.value = v;
+      if (brightnessInput) brightnessInput.value = v;
       const lbl = document.getElementById('brightnessValue2');
       if (lbl) lbl.textContent = v;
-      if (brightnessInput) brightnessInput.value = v;
       sendBrightnessDebounced(v);
     };
+    brightnessSlider.oninput = (e) => setBrightness(e.target.value);
     if (brightnessInput) {
       brightnessInput.addEventListener('change', () => {
-        let v = parseInt(brightnessInput.value, 10);
-        if (isNaN(v)) v = 0; v = Math.max(0, Math.min(255, v));
-        brightnessInput.value = v;
-        brightnessSlider.value = v;
-        const lbl = document.getElementById('brightnessValue2');
-        if (lbl) lbl.textContent = v;
-        sendBrightnessDebounced(v);
+        let v = parseInt(brightnessInput.value, 10); if (isNaN(v)) v = 0;
+        v = Math.max(0, Math.min(255, v));
+        setBrightness(v);
       });
     }
-    if (brightnessDec) {
-      brightnessDec.addEventListener('click', () => {
-        let v = parseInt(brightnessSlider.value || '0', 10) - 10;
-        v = Math.max(0, v);
-        brightnessSlider.value = v;
-        if (brightnessInput) brightnessInput.value = v;
-        const lbl = document.getElementById('brightnessValue2');
-        if (lbl) lbl.textContent = v;
-        sendBrightnessDebounced(v);
-      });
-    }
-    if (brightnessInc) {
-      brightnessInc.addEventListener('click', () => {
-        let v = parseInt(brightnessSlider.value || '0', 10) + 10;
-        v = Math.min(255, v);
-        brightnessSlider.value = v;
-        if (brightnessInput) brightnessInput.value = v;
-        const lbl = document.getElementById('brightnessValue2');
-        if (lbl) lbl.textContent = v;
-        sendBrightnessDebounced(v);
-      });
-    }
+    if (brightnessDec) brightnessDec.addEventListener('click', () => {
+      let v = parseInt(brightnessSlider.value || '0', 10) - 10; v = Math.max(0, v); setBrightness(v);
+    });
+    if (brightnessInc) brightnessInc.addEventListener('click', () => {
+      let v = parseInt(brightnessSlider.value || '0', 10) + 10; v = Math.min(255, v); setBrightness(v);
+    });
 
     let logoControlsInitialized = false;
     const initLogoControls = () => {
       if (logoControlsInitialized || !isLogoProduct) return;
       logoControlsInitialized = true;
-
       const DEFAULT_LOGO_COUNT = 50;
       const logoGrid = document.getElementById('logoGrid');
       const logoPickers = [];
@@ -684,24 +833,20 @@
         const target = Math.max(1, Math.min(500, parseInt(count, 10) || DEFAULT_LOGO_COUNT));
         while (logoPickers.length < target) {
           const input = document.createElement('input');
-          input.type = 'color';
-          input.className = 'w-full h-10 p-0 border rounded';
-          input.value = '#000000';
+          input.type = 'color'; input.value = '#000000';
           logoGrid.appendChild(input);
           logoPickers.push(input);
         }
         while (logoPickers.length > target) {
           const input = logoPickers.pop();
-          if (input && input.parentElement === logoGrid) {
-            logoGrid.removeChild(input);
-          }
+          if (input && input.parentElement === logoGrid) logoGrid.removeChild(input);
         }
-        const cols = Math.max(1, Math.min(10, Math.ceil(target / 5)));
-        logoGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+        // Column count is CSS-driven now (grid-template-columns:
+        // repeat(auto-fill, minmax(48px, 1fr)) in chronolett.css), so the
+        // grid adapts to the container width on phones instead of being
+        // forced into a fixed count derived from total LED count.
       };
-      if (logoGrid) {
-        syncLogoGrid(DEFAULT_LOGO_COUNT);
-      }
+      if (logoGrid) syncLogoGrid(DEFAULT_LOGO_COUNT);
       const logoBrightness = document.getElementById('logoBrightness');
       const logoBrightnessInput = document.getElementById('logoBrightnessInput');
       const logoBrightnessDec = document.getElementById('logoBrightnessDec');
@@ -718,13 +863,12 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ brightness: Math.max(0, Math.min(255, level)) })
           });
-          logoBrightnessTimer = null;
         }, 200);
       };
       const setLogoStatus = (msg, error) => {
         if (!logoStatus) return;
         logoStatus.textContent = msg;
-        logoStatus.className = 'text-xs ' + (error ? 'text-red-600' : 'text-gray-600');
+        logoStatus.classList.toggle('text-err', !!error);
       };
       const renderLogoState = (data) => {
         syncLogoGrid(data && data.count);
@@ -741,65 +885,44 @@
           });
         }
       };
-      if (logoBrightness) {
-        logoBrightness.addEventListener('input', () => {
-          if (logoBrightnessValue) logoBrightnessValue.textContent = logoBrightness.value;
-          if (logoBrightnessInput) logoBrightnessInput.value = logoBrightness.value;
-          sendLogoBrightnessDebounced(logoBrightness.value);
-        });
-      }
-      if (logoBrightnessInput) {
-        logoBrightnessInput.addEventListener('change', () => {
-          let v = parseInt(logoBrightnessInput.value, 10);
-          if (isNaN(v)) v = 0; v = Math.max(0, Math.min(255, v));
-          logoBrightnessInput.value = v;
-          if (logoBrightness) logoBrightness.value = v;
-          if (logoBrightnessValue) logoBrightnessValue.textContent = v;
-          sendLogoBrightnessDebounced(v);
-        });
-      }
-      if (logoBrightnessDec) {
-        logoBrightnessDec.addEventListener('click', () => {
-          let v = parseInt(logoBrightness ? logoBrightness.value : '0', 10) - 10;
-          v = Math.max(0, v);
-          if (logoBrightness) logoBrightness.value = v;
-          if (logoBrightnessInput) logoBrightnessInput.value = v;
-          if (logoBrightnessValue) logoBrightnessValue.textContent = v;
-          sendLogoBrightnessDebounced(v);
-        });
-      }
-      if (logoBrightnessInc) {
-        logoBrightnessInc.addEventListener('click', () => {
-          let v = parseInt(logoBrightness ? logoBrightness.value : '0', 10) + 10;
-          v = Math.min(255, v);
-          if (logoBrightness) logoBrightness.value = v;
-          if (logoBrightnessInput) logoBrightnessInput.value = v;
-          if (logoBrightnessValue) logoBrightnessValue.textContent = v;
-          sendLogoBrightnessDebounced(v);
-        });
-      }
+      const setLogo = (v) => {
+        if (logoBrightness) logoBrightness.value = v;
+        if (logoBrightnessInput) logoBrightnessInput.value = v;
+        if (logoBrightnessValue) logoBrightnessValue.textContent = v;
+        sendLogoBrightnessDebounced(v);
+      };
+      if (logoBrightness) logoBrightness.addEventListener('input', () => setLogo(logoBrightness.value));
+      if (logoBrightnessInput) logoBrightnessInput.addEventListener('change', () => {
+        let v = parseInt(logoBrightnessInput.value, 10); if (isNaN(v)) v = 0;
+        v = Math.max(0, Math.min(255, v));
+        setLogo(v);
+      });
+      if (logoBrightnessDec) logoBrightnessDec.addEventListener('click', () => {
+        let v = parseInt(logoBrightness ? logoBrightness.value : '0', 10) - 10;
+        v = Math.max(0, v); setLogo(v);
+      });
+      if (logoBrightnessInc) logoBrightnessInc.addEventListener('click', () => {
+        let v = parseInt(logoBrightness ? logoBrightness.value : '0', 10) + 10;
+        v = Math.min(255, v); setLogo(v);
+      });
       const loadLogoState = async () => {
         if (!logoGrid) return;
-        setLogoStatus('Laden…');
+        setLogoStatus(T('common.loading', 'Loading…'));
         try {
           const res = await fetch('/logo/state');
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const data = await res.json();
           renderLogoState(data);
-          setLogoStatus('Opgeslagen');
-        } catch (err) {
-          setLogoStatus('Laden mislukt', true);
-        }
+          setLogoStatus(T('common.saved', 'Saved'));
+        } catch (err) { setLogoStatus(T('dashboard.logo.load_failed', 'Load failed'), true); }
       };
-      if (logoGrid) {
-        dataLoader.register('logoState', loadLogoState, { priority: 5 });
-      }
+      if (logoGrid) dataLoader.register('logoState', loadLogoState, { priority: 5 });
       const saveLogoState = async () => {
         if (!logoGrid) return;
-        setLogoStatus('Opslaan…');
+        setLogoStatus(T('common.saving', 'Saving…'));
         const payload = {
           brightness: parseInt(logoBrightness ? logoBrightness.value : '0', 10) || 0,
-          colors: logoPickers.map((p) => (p.value || '#000000').replace('#', '').toUpperCase())
+          colors: logoPickers.map(p => (p.value || '#000000').replace('#', '').toUpperCase())
         };
         try {
           const res = await fetch('/logo/state', {
@@ -810,26 +933,117 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const data = await res.json();
           renderLogoState(data);
-          setLogoStatus('Opgeslagen');
-        } catch (err) {
-          setLogoStatus('Opslaan mislukt', true);
-        }
+          setLogoStatus(T('common.saved', 'Saved'));
+        } catch (err) { setLogoStatus(T('dashboard.nightmode.save_failed', 'Save failed'), true); }
       };
       const logoApplyBtn = document.getElementById('logoApply');
-      if (logoApplyBtn) {
-        logoApplyBtn.addEventListener('click', saveLogoState);
-      }
-      const logoFillAll = document.getElementById('logoFillAll');
+      if (logoApplyBtn) logoApplyBtn.addEventListener('click', saveLogoState);
+
+      // ─── Logo fill-all colour picker ─────────────────────────────────────
       const logoAllColor = document.getElementById('logoAllColor');
-      if (logoFillAll) {
-        logoFillAll.addEventListener('click', () => {
-          if (!logoAllColor) return;
-          const val = logoAllColor.value || '#000000';
-          logoPickers.forEach((p) => { p.value = val; });
+      const logoColorSwatchEl = document.getElementById('logoColorSwatches');
+      const logoColorValueEl = document.getElementById('logoColorValue');
+      const logoColorCustomBtn = document.getElementById('logoColorCustomBtn');
+      const logoColorHexInput = document.getElementById('logoColorHexInput');
+      const logoColorRgbInputs = ['R', 'G', 'B'].map((c) => document.getElementById('logoColor' + c + 'Input'));
+
+      function paintLogoSwatch(hexUpper) {
+        if (logoColorSwatchEl) {
+          logoColorSwatchEl.querySelectorAll('.swatch').forEach((s) => {
+            s.classList.toggle('selected', s.dataset.color.toUpperCase() === hexUpper);
+          });
+        }
+        if (logoColorValueEl) logoColorValueEl.textContent = hexUpper;
+        if (logoColorHexInput && document.activeElement !== logoColorHexInput) {
+          logoColorHexInput.value = hexUpper;
+          logoColorHexInput.classList.remove('input-err');
+        }
+        const clean = hexUpper.replace('#', '');
+        if (clean.length === 6 && logoColorRgbInputs.every((el) => el)) {
+          const parts = [clean.slice(0, 2), clean.slice(2, 4), clean.slice(4, 6)].map((s) => parseInt(s, 16));
+          logoColorRgbInputs.forEach((el, i) => {
+            if (document.activeElement !== el) el.value = parts[i];
+            el.classList.remove('input-err');
+          });
+        }
+      }
+
+      function applyLogoAllColor(hex) {
+        const clean = hex.replace('#', '').toUpperCase();
+        if (clean.length !== 6) return;
+        if (logoAllColor) logoAllColor.value = '#' + clean;
+        paintLogoSwatch('#' + clean);
+      }
+
+      if (logoColorSwatchEl) {
+        COLOR_SWATCHES.forEach((hex) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'swatch';
+          btn.dataset.color = hex;
+          btn.style.background = hex;
+          btn.title = hex;
+          btn.setAttribute('aria-label', hex);
+          btn.addEventListener('click', () => applyLogoAllColor(hex));
+          logoColorSwatchEl.appendChild(btn);
         });
       }
+      if (logoColorCustomBtn && logoAllColor) {
+        logoColorCustomBtn.addEventListener('click', () => logoAllColor.click());
+      }
+      if (logoAllColor) {
+        logoAllColor.addEventListener('input', (e) => applyLogoAllColor(e.target.value));
+      }
+      if (logoColorHexInput) {
+        const submit = () => {
+          if (!logoColorHexInput.value.trim()) return;
+          const s = logoColorHexInput.value.trim().replace(/^#/, '');
+          let hex = null;
+          if (/^[0-9a-fA-F]{6}$/.test(s)) hex = '#' + s.toUpperCase();
+          else if (/^[0-9a-fA-F]{3}$/.test(s)) hex = '#' + s.split('').map((c) => c + c).join('').toUpperCase();
+          if (hex) { applyLogoAllColor(hex); logoColorHexInput.classList.remove('input-err'); }
+          else logoColorHexInput.classList.add('input-err');
+        };
+        logoColorHexInput.addEventListener('blur', submit);
+        logoColorHexInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+      }
+      if (logoColorRgbInputs.every((el) => el)) {
+        const submit = () => {
+          const vals = logoColorRgbInputs.map((el) => el.value);
+          if (vals.every((v) => !String(v).trim())) return;
+          const parts = vals.map((v) => parseInt(v, 10));
+          const ok = parts.every((n) => Number.isFinite(n) && n >= 0 && n <= 255);
+          logoColorRgbInputs.forEach((el) => el.classList.toggle('input-err', !ok));
+          if (!ok) return;
+          const toHex = (n) => n.toString(16).padStart(2, '0').toUpperCase();
+          applyLogoAllColor('#' + parts.map(toHex).join(''));
+        };
+        logoColorRgbInputs.forEach((el) => {
+          el.addEventListener('blur', submit);
+          el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+        });
+      }
+      const logoRalBtn = document.getElementById('logoColorRalBtn');
+      if (logoRalBtn && typeof window.initRalPicker === 'function') {
+        window.initRalPicker({
+          openBtn: logoRalBtn,
+          modal: document.getElementById('ralPickerModal'),
+          closeBtn: document.getElementById('ralPickerClose'),
+          search: document.getElementById('ralPickerSearch'),
+          list: document.getElementById('ralPickerList'),
+          onPick: applyLogoAllColor,
+        });
+      }
+
+      const logoFillAll = document.getElementById('logoFillAll');
+      if (logoFillAll) logoFillAll.addEventListener('click', () => {
+        if (!logoAllColor) return;
+        const val = logoAllColor.value || '#000000';
+        logoPickers.forEach(p => { p.value = val; });
+      });
     };
 
+    // Nightmode
     const nightModeEnabled = document.getElementById('nightModeEnabled');
     const nightModeEffect = document.getElementById('nightModeEffect');
     const nightModeDimSlider = document.getElementById('nightModeDimSlider');
@@ -839,28 +1053,25 @@
     const nightModeStart = document.getElementById('nightModeStart');
     const nightModeEnd = document.getElementById('nightModeEnd');
     let nightModeCurrent = null;
-
-    const setNightModeSaving = () => {
-      if (nightModeStatus) nightModeStatus.textContent = 'Bezig met opslaan…';
-    };
-    const setNightModeError = () => {
-      if (nightModeStatus) nightModeStatus.textContent = 'Opslaan mislukt';
-    };
+    const setNightModeSaving = () => { if (nightModeStatus) nightModeStatus.textContent = T('common.saving', 'Saving…'); };
+    const setNightModeError = () => { if (nightModeStatus) nightModeStatus.textContent = T('dashboard.nightmode.save_failed', 'Save failed'); };
     const setNightModeDimDisabled = (disabled) => {
       if (nightModeDimSlider) nightModeDimSlider.disabled = disabled;
       if (nightModeDimInput) nightModeDimInput.disabled = disabled;
-      if (nightModeDimValue) nightModeDimValue.classList.toggle('text-gray-400', disabled);
+      if (nightModeDimValue) nightModeDimValue.classList.toggle('muted', disabled);
     };
     const formatNightModeStatus = (cfg) => {
-      if (!cfg) return '-';
+      if (!cfg) return '—';
       const parts = [];
-      parts.push(cfg.active ? 'Actief' : 'Inactief');
-      if (cfg.override === 'force_on') parts.push('handmatig aan');
-      else if (cfg.override === 'force_off') parts.push('handmatig uit');
-      else if (cfg.schedule_active) parts.push('volgens schema');
-      else parts.push('wacht op schema');
-      if (!cfg.time_synced) parts.push('tijd onbekend');
-      return parts.join(' • ');
+      parts.push(cfg.active
+        ? T('dashboard.nightmode.active', 'Active')
+        : T('dashboard.nightmode.inactive', 'Inactive'));
+      if (cfg.override === 'force_on') parts.push(T('dashboard.nightmode.manual_on', 'manual on'));
+      else if (cfg.override === 'force_off') parts.push(T('dashboard.nightmode.manual_off', 'manual off'));
+      else if (cfg.schedule_active) parts.push(T('dashboard.nightmode.on_schedule', 'on schedule'));
+      else parts.push(T('dashboard.nightmode.waiting', 'waiting'));
+      if (!cfg.time_synced) parts.push(T('dashboard.nightmode.time_unknown', 'time unknown'));
+      return parts.join(' · ');
     };
     const applyNightModeConfig = (cfg) => {
       if (!cfg) return;
@@ -871,8 +1082,7 @@
       if (nightModeDimSlider) nightModeDimSlider.value = dim;
       if (nightModeDimInput) nightModeDimInput.value = dim;
       if (nightModeDimValue) nightModeDimValue.textContent = dim;
-      const disableDim = (cfg.effect || 'dim') === 'off';
-      setNightModeDimDisabled(disableDim);
+      setNightModeDimDisabled((cfg.effect || 'dim') === 'off');
       if (nightModeStart && cfg.start) nightModeStart.value = cfg.start;
       if (nightModeEnd && cfg.end) nightModeEnd.value = cfg.end;
       if (nightModeStatus) nightModeStatus.textContent = formatNightModeStatus(cfg);
@@ -889,7 +1099,7 @@
         applyNightModeConfig(cfg);
       } catch (err) {
         setNightModeError();
-        setTimeout(() => { loadNightMode(); }, 1500);
+        setTimeout(() => loadNightMode(), 1500);
       }
     };
     const loadNightMode = async () => {
@@ -897,36 +1107,17 @@
       try {
         const res = await fetch('/getNightModeConfig');
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const cfg = await res.json();
-        applyNightModeConfig(cfg);
-      } catch (err) {
-        setNightModeError();
-      }
+        applyNightModeConfig(await res.json());
+      } catch (err) { setNightModeError(); }
     };
-    
-    // Night Mode loader (normale prioriteit)
-    if (nightModeEnabled) {
-      dataLoader.register('nightMode', loadNightMode, {
-        priority: 5,
-        onError: (error) => {
-          setNightModeError();
-        }
-      });
-    }
-    if (nightModeEnabled) {
-      nightModeEnabled.addEventListener('change', () => {
-        setNightModeSaving();
-        updateNightMode({ enabled: nightModeEnabled.checked });
-      });
-    }
-    if (nightModeEffect) {
-      nightModeEffect.addEventListener('change', () => {
-        const eff = nightModeEffect.value;
-        setNightModeDimDisabled(eff === 'off');
-        setNightModeSaving();
-        updateNightMode({ effect: eff });
-      });
-    }
+    if (nightModeEnabled) dataLoader.register('nightMode', loadNightMode, { priority: 5 });
+    if (nightModeEnabled) nightModeEnabled.addEventListener('change', () => { setNightModeSaving(); updateNightMode({ enabled: nightModeEnabled.checked }); });
+    if (nightModeEffect) nightModeEffect.addEventListener('change', () => {
+      const eff = nightModeEffect.value;
+      setNightModeDimDisabled(eff === 'off');
+      setNightModeSaving();
+      updateNightMode({ effect: eff });
+    });
     if (nightModeDimSlider) {
       nightModeDimSlider.addEventListener('input', () => {
         const v = parseInt(nightModeDimSlider.value || '0', 10);
@@ -935,162 +1126,103 @@
       });
       nightModeDimSlider.addEventListener('change', () => {
         const v = parseInt(nightModeDimSlider.value || '0', 10);
-        if (nightModeDimInput) nightModeDimInput.value = v;
-        if (nightModeDimValue) nightModeDimValue.textContent = v;
         setNightModeSaving();
         updateNightMode({ dim_percent: v });
       });
     }
-    if (nightModeDimInput) {
-      nightModeDimInput.addEventListener('change', () => {
-        let v = parseInt(nightModeDimInput.value || '0', 10);
-        if (isNaN(v)) v = 0;
-        v = Math.max(0, Math.min(100, v));
-        nightModeDimInput.value = v;
-        if (nightModeDimSlider) nightModeDimSlider.value = v;
-        if (nightModeDimValue) nightModeDimValue.textContent = v;
-        setNightModeSaving();
-        updateNightMode({ dim_percent: v });
-      });
-    }
-    if (nightModeStart) {
-      nightModeStart.addEventListener('change', () => {
-        if (!nightModeStart.value) {
-          if (nightModeCurrent && nightModeCurrent.start) nightModeStart.value = nightModeCurrent.start;
-          return;
-        }
-        setNightModeSaving();
-        updateNightMode({ start: nightModeStart.value });
-      });
-    }
-    if (nightModeEnd) {
-      nightModeEnd.addEventListener('change', () => {
-        if (!nightModeEnd.value) {
-          if (nightModeCurrent && nightModeCurrent.end) nightModeEnd.value = nightModeCurrent.end;
-          return;
-        }
-        setNightModeSaving();
-        updateNightMode({ end: nightModeEnd.value });
-      });
-    }
-    // Night mode wordt geladen via dataLoader
+    if (nightModeDimInput) nightModeDimInput.addEventListener('change', () => {
+      let v = parseInt(nightModeDimInput.value || '0', 10); if (isNaN(v)) v = 0;
+      v = Math.max(0, Math.min(100, v));
+      nightModeDimInput.value = v;
+      if (nightModeDimSlider) nightModeDimSlider.value = v;
+      if (nightModeDimValue) nightModeDimValue.textContent = v;
+      setNightModeSaving();
+      updateNightMode({ dim_percent: v });
+    });
+    if (nightModeStart) nightModeStart.addEventListener('change', () => {
+      if (!nightModeStart.value) {
+        if (nightModeCurrent && nightModeCurrent.start) nightModeStart.value = nightModeCurrent.start;
+        return;
+      }
+      setNightModeSaving();
+      updateNightMode({ start: nightModeStart.value });
+    });
+    if (nightModeEnd) nightModeEnd.addEventListener('change', () => {
+      if (!nightModeEnd.value) {
+        if (nightModeCurrent && nightModeCurrent.end) nightModeEnd.value = nightModeCurrent.end;
+        return;
+      }
+      setNightModeSaving();
+      updateNightMode({ end: nightModeEnd.value });
+    });
 
-    document.getElementById('restartBtn').onclick = () => {
-      if (confirm('Restart Wordclock?')) fetch('/restart');
-    };
-    document.getElementById('resetWifiBtn').onclick = () => {
-      if (confirm('Reset WiFi?')) fetch('/resetwifi');
-    };
+    document.getElementById('restartBtn').onclick = () => { if (confirm(T('dashboard.actions.restart_confirm', 'Restart Wordclock?'))) fetch('/restart'); };
+    document.getElementById('resetWifiBtn').onclick = () => { if (confirm(T('dashboard.actions.reset_wifi_confirm', 'Reset Wi-Fi?'))) fetch('/resetwifi'); };
     document.getElementById('startSequenceBtn').onclick = () => fetch('/startSequence');
+
+    // OTA check
     const checkBtn = document.getElementById('checkUpdateBtn');
     const updateStatusEl = document.getElementById('updateStatus');
     const updateSpinner = document.getElementById('updateSpinner');
     if (checkBtn) {
       const fetchWithTimeout = async (url, options = {}, timeoutMs = 5000) => {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const res = await fetch(url, { ...options, signal: controller.signal, cache: 'no-store' });
-          return res;
-        } finally {
-          clearTimeout(id);
-        }
+        const c = new AbortController();
+        const id = setTimeout(() => c.abort(), timeoutMs);
+        try { return await fetch(url, { ...options, signal: c.signal, cache: 'no-store' }); }
+        finally { clearTimeout(id); }
       };
-      const getDeviceInfo = async () => {
-        const res = await fetchWithTimeout('/api/device/info');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.json();
-      };
-      const getVersion = async () => {
-        const res = await fetchWithTimeout('/version');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.text();
-      };
+      const getDeviceInfo = async () => { const r = await fetchWithTimeout('/api/device/info'); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
+      const getVersion = async () => { const r = await fetchWithTimeout('/version'); if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); };
       const waitForUpdateCompletion = async (preUptime, preVersion) => {
-        const start = Date.now();
-        const maxMs = 180000;
-        let sawOffline = false;
+        const start = Date.now(); const maxMs = 180000; let sawOffline = false;
         while (Date.now() - start < maxMs) {
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+          await new Promise(r => setTimeout(r, 3000));
           try {
             const res = await fetchWithTimeout('/api/update/status');
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const body = await res.json();
-            if (body.running) {
-              continue;
-            }
-            let uptime = null;
-            let version = null;
-            try {
-              const info = await getDeviceInfo();
-              uptime = info.uptime_ms;
-            } catch (e) {
-            }
-            try {
-              version = await getVersion();
-            } catch (e) {
-            }
-            if (preUptime !== null && uptime !== null && uptime < preUptime) {
-              return 'reboot';
-            }
-            if (preVersion && version && version.trim() !== preVersion.trim()) {
-              return 'version';
-            }
-            if (sawOffline) {
-              return 'reboot';
-            }
+            if (body.running) continue;
+            let uptime = null, version = null;
+            try { const info = await getDeviceInfo(); uptime = info.uptime_ms; } catch (e) {}
+            try { version = await getVersion(); } catch (e) {}
+            if (preUptime !== null && uptime !== null && uptime < preUptime) return 'reboot';
+            if (preVersion && version && version.trim() !== preVersion.trim()) return 'version';
+            if (sawOffline) return 'reboot';
             return 'no-update';
-          } catch (e) {
-            sawOffline = true;
-          }
+          } catch (e) { sawOffline = true; }
         }
         return 'timeout';
       };
       checkBtn.addEventListener('click', async () => {
-        updateStatusEl.textContent = 'Checking for updates...';
+        updateStatusEl.textContent = T('dashboard.firmware.checking', 'Checking for updates…');
         if (updateSpinner) updateSpinner.classList.remove('hidden');
-        checkBtn.disabled = true;
-        checkBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        checkBtn.disabled = true; checkBtn.classList.add('disabled');
         try {
-          let preUptime = null;
-          let preVersion = null;
-          try {
-            const info = await getDeviceInfo();
-            preUptime = info.uptime_ms;
-          } catch (e) {
-          }
-          try {
-            preVersion = await getVersion();
-          } catch (e) {
-          }
+          let preUptime = null, preVersion = null;
+          try { const info = await getDeviceInfo(); preUptime = info.uptime_ms; } catch (e) {}
+          try { preVersion = await getVersion(); } catch (e) {}
           const r = await fetch('/checkForUpdate');
           if (r.ok) {
-            updateStatusEl.textContent = 'Update started (if available).';
+            updateStatusEl.textContent = T('dashboard.firmware.started', 'Update started (if available).');
             const result = await waitForUpdateCompletion(preUptime, preVersion);
-            if (result === 'reboot' || result === 'version') {
-              location.reload();
-              return;
-            }
-            if (result === 'no-update') {
-              updateStatusEl.textContent = 'No update applied.';
-            } else {
-              updateStatusEl.textContent = 'Update may still be running.';
-            }
+            if (result === 'reboot' || result === 'version') { location.reload(); return; }
+            updateStatusEl.textContent = (result === 'no-update')
+              ? T('dashboard.firmware.no_update', 'No update applied.')
+              : T('dashboard.firmware.may_running', 'Update may still be running.');
             if (updateSpinner) updateSpinner.classList.add('hidden');
           } else {
-            updateStatusEl.textContent = 'Update check failed';
+            updateStatusEl.textContent = T('dashboard.firmware.check_failed', 'Update check failed');
             if (updateSpinner) updateSpinner.classList.add('hidden');
           }
         } catch (e) {
-          updateStatusEl.textContent = 'Network error during update check';
+          updateStatusEl.textContent = T('dashboard.firmware.network_error', 'Network error during update check');
           if (updateSpinner) updateSpinner.classList.add('hidden');
         } finally {
-          checkBtn.disabled = false;
-          checkBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          checkBtn.disabled = false; checkBtn.classList.remove('disabled');
         }
       });
     }
-    
+
     if (autoUpdCb) {
       autoUpdCb.addEventListener('change', async () => {
         const desired = autoUpdCb.checked;
@@ -1098,154 +1230,90 @@
           const res = await fetch(`/setAutoUpdate?state=${desired ? 'on' : 'off'}`);
           if (!res.ok) throw new Error('HTTP ' + res.status);
         } catch (e) {
-          autoUpdCb.checked = !desired; // revert on failure so UI matches device state
-          if (updateStatusEl) updateStatusEl.textContent = 'Saving automatic updates failed';
+          autoUpdCb.checked = !desired;
+          if (updateStatusEl) updateStatusEl.textContent = T('dashboard.firmware.auto_save_failed', 'Saving automatic updates failed');
         }
       });
     }
 
+    // Manual firmware upload
     const manualUploadForm = document.getElementById('firmwareUploadForm');
     const manualUploadStatusEl = document.getElementById('firmwareUploadStatus');
     if (manualUploadForm) {
       const submitBtn = manualUploadForm.querySelector('button[type="submit"]');
       const fileInput = manualUploadForm.querySelector('input[name="firmwareFile"]');
-      const setManualStatus = (msg) => {
-        if (manualUploadStatusEl) manualUploadStatusEl.textContent = msg || '';
-      };
+      const setManualStatus = (msg) => { if (manualUploadStatusEl) manualUploadStatusEl.textContent = msg || ''; };
       const setButtonDisabled = (disabled) => {
         if (!submitBtn) return;
         submitBtn.disabled = disabled;
-        submitBtn.classList.toggle('opacity-50', disabled);
-        submitBtn.classList.toggle('cursor-not-allowed', disabled);
+        submitBtn.classList.toggle('disabled', disabled);
       };
       manualUploadForm.addEventListener('submit', (evt) => {
         evt.preventDefault();
-        if (!fileInput || fileInput.files.length === 0) {
-          setManualStatus('Selecteer eerst een firmwarebestand (.bin).');
-          return;
-        }
+        if (!fileInput || fileInput.files.length === 0) { setManualStatus(T('dashboard.firmware.select_file', 'Select a firmware file (.bin) first.')); return; }
         const formData = new FormData();
         formData.append('firmwareFile', fileInput.files[0]);
         setButtonDisabled(true);
-
         const xhr = new XMLHttpRequest();
         xhr.open('POST', manualUploadForm.action || '/uploadFirmware');
         xhr.responseType = 'text';
-
-        xhr.upload.addEventListener('loadstart', () => setManualStatus('📂 Upload gestart...'));
+        xhr.upload.addEventListener('loadstart', () => setManualStatus(T('dashboard.firmware.upload_started', 'Upload started…')));
         xhr.upload.addEventListener('progress', (event) => {
           if (event.lengthComputable && event.total > 0) {
             const percent = Math.round((event.loaded / event.total) * 100);
-            setManualStatus(`✏️ Uploaden... ${percent}%`);
-          } else {
-            setManualStatus('✏️ Uploaden...');
-          }
+            setManualStatus(T('dashboard.firmware.uploading', 'Uploading…') + ' ' + percent + '%');
+          } else setManualStatus(T('dashboard.firmware.uploading', 'Uploading…'));
         });
-        xhr.upload.addEventListener('load', () => setManualStatus('📥 Bestand verstuurd, firmware wordt gecontroleerd...'));
-
+        xhr.upload.addEventListener('load', () => setManualStatus(T('dashboard.firmware.uploaded', 'File sent. Verifying firmware…')));
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            setManualStatus('✅ Upload afgerond. De klok herstart binnen enkele seconden. Pagina ververst in 15s.');
+            setManualStatus(T('dashboard.firmware.upload_complete', 'Upload complete. Clock will restart shortly. Page reloads in 15s.'));
             setTimeout(() => location.reload(), 15000);
           } else {
-            setManualStatus(`❌ Upload mislukt (${xhr.status} ${xhr.statusText || ''}).`);
+            setManualStatus(T('dashboard.firmware.upload_failed', 'Upload failed') + ' (' + xhr.status + ' ' + (xhr.statusText || '') + ').');
             setButtonDisabled(false);
           }
         });
-
-        const handleFailure = (msg) => {
-          setManualStatus(msg);
-          setButtonDisabled(false);
-        };
-
-        xhr.addEventListener('error', () => handleFailure('❌ Netwerkfout tijdens upload.'));
-        xhr.addEventListener('abort', () => handleFailure('⚠️ Upload afgebroken.'));
-
+        xhr.addEventListener('error', () => { setManualStatus(T('dashboard.firmware.upload_network_err', 'Network error during upload.')); setButtonDisabled(false); });
+        xhr.addEventListener('abort', () => { setManualStatus(T('dashboard.firmware.upload_aborted', 'Upload aborted.')); setButtonDisabled(false); });
         xhr.send(formData);
       });
     }
 
-
-    // Brightness loader (normale prioriteit)
     dataLoader.register('brightness', async () => {
-      setLoadingState('brightnessSlider', true);
       const res = await fetch('/getBrightness');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.text();
     }, {
       priority: 5,
       onSuccess: (val) => {
-        setLoadingState('brightnessSlider', false);
-        clearErrorState('brightnessValue2');
-        const s = document.getElementById('brightnessSlider');
-        const i = document.getElementById('brightnessInput');
+        if (brightnessSlider) brightnessSlider.value = val;
+        if (brightnessInput) brightnessInput.value = val;
         const lbl = document.getElementById('brightnessValue2');
-        if (s) s.value = val;
-        if (i) i.value = val;
         if (lbl) lbl.textContent = val;
       },
-      onError: (error) => {
-        setLoadingState('brightnessSlider', false);
-        setErrorState('brightnessValue2', error, '-');
-      }
+      onError: (err) => setErrorState('brightnessValue2', err, '—')
     });
 
-    // Versions loader (lage prioriteit, interval)
     dataLoader.register('versions', async () => {
-      setLoadingState('version', true);
-      setLoadingState('uiVersion', true);
       const [fwRes, uiRes] = await Promise.all([
         fetch('/version', { cache: 'no-store' }),
         fetch('/uiversion', { cache: 'no-store' })
       ]);
       if (!fwRes.ok || !uiRes.ok) throw new Error('Version fetch failed');
-      return {
-        firmware: await fwRes.text(),
-        ui: await uiRes.text()
-      };
+      return { firmware: await fwRes.text(), ui: await uiRes.text() };
     }, {
-      priority: 1,
-      interval: 30000,
-      onSuccess: ({firmware, ui}) => {
-        setLoadingState('version', false);
-        setLoadingState('uiVersion', false);
-        clearErrorState('version');
-        clearErrorState('uiVersion');
-        const fwEl = document.getElementById('version');
-        const uiEl = document.getElementById('uiVersion');
-        if (fwEl) fwEl.textContent = firmware;
-        if (uiEl) uiEl.textContent = ui;
+      priority: 1, interval: 30000,
+      onSuccess: ({ firmware, ui }) => {
+        const fwEl = document.getElementById('version'); if (fwEl) fwEl.textContent = firmware;
+        const uiEl = document.getElementById('uiVersion'); if (uiEl) uiEl.textContent = ui;
       },
-      onError: (error) => {
-        setLoadingState('version', false);
-        setLoadingState('uiVersion', false);
-        setErrorState('version', error, '-');
-        setErrorState('uiVersion', error, '-');
+      onError: () => {
+        const fwEl = document.getElementById('version'); if (fwEl) fwEl.textContent = '—';
+        const uiEl = document.getElementById('uiVersion'); if (uiEl) uiEl.textContent = '—';
       }
     });
 
-    // Grid Variant loader (normale prioriteit)
-    dataLoader.register('gridVariant', async () => {
-      setLoadingState('gridVariantLabel', true);
-      const res = await fetch('/getGridVariant');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    }, {
-      priority: 5,
-      onSuccess: (v) => {
-        setLoadingState('gridVariantLabel', false);
-        clearErrorState('gridVariantLabel');
-        const el = document.getElementById('gridVariantLabel');
-        if (el) el.textContent = v.label || v.key || ('ID ' + v.id);
-      },
-      onError: (error) => {
-        setLoadingState('gridVariantLabel', false);
-        const el = document.getElementById('gridVariantLabel');
-        if (el) el.textContent = 'n.v.t.';
-      }
-    });
-
-    // Color loader (normale prioriteit)
     dataLoader.register('color', async () => {
       const res = await fetch('/getColor');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1253,17 +1321,13 @@
     }, {
       priority: 5,
       onSuccess: (hex) => {
-        const cp = document.getElementById('colorPicker');
-        if (cp && hex && hex.length === 6) {
-          cp.value = '#' + hex;
-        }
-      },
-      onError: (error) => {
+        if (!hex || hex.length !== 6) return;
+        const upper = hex.toUpperCase();
+        if (colorPickerEl) colorPickerEl.value = '#' + upper;
+        paintSelectedSwatch('#' + upper);
       }
     });
 
-    // Auto Update loader (normale prioriteit)
-    // autoUpdCb is al gedeclareerd bij channel loader
     if (autoUpdCb) {
       dataLoader.register('autoUpdate', async () => {
         const res = await fetch('/getAutoUpdate');
@@ -1271,18 +1335,12 @@
         return res.text();
       }, {
         priority: 5,
-        onSuccess: (v) => {
-          if (!autoUpdCb.disabled) autoUpdCb.checked = (v.trim() === 'on');
-        },
-        onError: (error) => {
-          if (!autoUpdCb.disabled) autoUpdCb.checked = true;
-        }
+        onSuccess: (v) => { if (!autoUpdCb.disabled) autoUpdCb.checked = (v.trim() === 'on'); },
+        onError: () => { if (!autoUpdCb.disabled) autoUpdCb.checked = true; }
       });
     }
 
-    // Animation loaders (normale prioriteit)
     const animateCb = document.getElementById('animateWords');
-
     if (animateCb) {
       dataLoader.register('animate', async () => {
         const res = await fetch('/getAnimate');
@@ -1290,32 +1348,24 @@
         return res.text();
       }, {
         priority: 5,
-        onSuccess: (v) => {
-          animateCb.checked = (v.trim() === 'on');
-        },
-        onError: (error) => {
-          animateCb.checked = false;
-        }
+        onSuccess: (v) => { animateCb.checked = (v.trim() === 'on'); },
+        onError: () => { animateCb.checked = false; }
       });
     }
 
-
-    // HET IS Duration loader (normale prioriteit)
+    // HET IS duration
     const durSlider2 = document.getElementById('hetIsDuration2');
     const durValue2 = document.getElementById('hetIsDurationValue2');
     const alwaysCb2 = document.getElementById('hetIsAlways2');
     const durInput = document.getElementById('hetIsDurationInput');
     if (durSlider2) {
       dataLoader.register('hetIsDuration', async () => {
-        setLoadingState('hetIsDuration2', true);
         const res = await fetch('/getHetIsDuration');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
       }, {
         priority: 5,
         onSuccess: (secStr) => {
-          setLoadingState('hetIsDuration2', false);
-          clearErrorState('hetIsDurationValue2');
           const sec = parseInt(secStr, 10) || 30;
           durSlider2.value = sec;
           if (durValue2) durValue2.textContent = sec;
@@ -1323,15 +1373,11 @@
           if (alwaysCb2) alwaysCb2.checked = sec >= 360;
           durSlider2.disabled = alwaysCb2 ? alwaysCb2.checked : false;
           if (durInput) durInput.disabled = alwaysCb2 ? alwaysCb2.checked : false;
-        },
-        onError: (error) => {
-          setLoadingState('hetIsDuration2', false);
-          setErrorState('hetIsDurationValue2', error, '-');
         }
       });
     }
 
-    // Log Level loader (lage prioriteit)
+    // Log level + summary + tail
     const logLevelSel = document.getElementById('logLevel');
     const logLevelStatus = document.getElementById('logLevelStatus');
     if (logLevelSel) {
@@ -1343,14 +1389,11 @@
         priority: 1,
         onSuccess: (lvl) => {
           if (logLevelSel) logLevelSel.value = lvl || 'INFO';
-          if (logLevelStatus) logLevelStatus.textContent = `Current log level: ${lvl || 'INFO'}`;
-        },
-        onError: (error) => {
+          if (logLevelStatus) logLevelStatus.textContent = T('dashboard.logs.current_level', 'Current log level:') + ' ' + (lvl || 'INFO');
         }
       });
     }
 
-    // Log Summary loader (lage prioriteit)
     const logSummaryEl = document.getElementById('logSummary');
     const logSummaryStatus = document.getElementById('logSummaryStatus');
     const formatBytes = (n) => {
@@ -1360,228 +1403,539 @@
     };
     const setLogSummaryColor = (bytes) => {
       if (!logSummaryEl) return;
-      logSummaryEl.classList.remove('text-green-600','text-orange-500','text-red-600');
-      if (bytes < 200 * 1024) logSummaryEl.classList.add('text-green-600');
-      else if (bytes < 500 * 1024) logSummaryEl.classList.add('text-orange-500');
-      else logSummaryEl.classList.add('text-red-600');
+      logSummaryEl.classList.remove('text-ok', 'text-warn', 'text-err');
+      if (bytes < 200 * 1024) logSummaryEl.classList.add('text-ok');
+      else if (bytes < 500 * 1024) logSummaryEl.classList.add('text-warn');
+      else logSummaryEl.classList.add('text-err');
     };
     if (logSummaryEl) {
       dataLoader.register('logSummary', async () => {
-        setLoadingState('logSummary', true);
         const res = await fetch('/api/logs/summary');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       }, {
         priority: 1,
         onSuccess: (j) => {
-          setLoadingState('logSummary', false);
-          clearErrorState('logSummary');
           const total = j.total_bytes || 0;
-          logSummaryEl.textContent = `${formatBytes(total)} (${j.count || 0} files)`;
+          logSummaryEl.textContent = formatBytes(total) + ' (' + (j.count || 0) + ' ' + T('dashboard.logs.files', 'files') + ')';
           setLogSummaryColor(total);
           if (logSummaryStatus) logSummaryStatus.textContent = '';
         },
-        onError: (error) => {
-          setLoadingState('logSummary', false);
-          logSummaryEl.textContent = '-';
-          if (logSummaryStatus) logSummaryStatus.textContent = 'Failed to load log summary';
+        onError: () => {
+          logSummaryEl.textContent = '—';
+          if (logSummaryStatus) logSummaryStatus.textContent = T('dashboard.logs.summary_failed', 'Failed to load log summary');
         }
       });
     }
 
-    // Logs loader (lage prioriteit, interval)
     let lastLogMarker = null;
     const loadLog = async () => {
       try {
-      const res = await fetch('/log');
+        const res = await fetch('/log');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      const rawLines = text.split(/\r?\n/).filter(l => l.length > 0);
-      const esc = (s) => s
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-      const cls = (lvl) => {
-        switch (lvl) {
-          case 'ERROR': return 'text-red-700 font-semibold';
-          case 'WARN':  return 'text-yellow-700 font-semibold';
-          case 'DEBUG': return 'text-gray-500';
-          case 'INFO':
-          default:      return 'text-gray-700';
-        }
-      };
-      const renderLine = (line) => {
-        const m = line.match(/\[(DEBUG|INFO|WARN|ERROR)\]/);
-        const level = m ? m[1] : 'INFO';
-        return `<span class="${cls(level)}">${esc(line)}</span>`;
-      };
-      const el = document.getElementById('logOutput');
-      if (el) {
-        const atBottom = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 4);
-        let appended = false;
-        if (lastLogMarker) {
-          const idx = rawLines.lastIndexOf(lastLogMarker);
-          if (idx >= 0 && idx < rawLines.length - 1) {
-            const additions = rawLines.slice(idx + 1);
-            const addHtml = additions.map(renderLine).join('\n');
-            if (el.innerHTML && addHtml) {
-              el.innerHTML += '\n' + addHtml;
-            } else {
-              el.innerHTML = addHtml;
+        const text = await res.text();
+        const rawLines = text.split(/\r?\n/).filter(l => l.length > 0);
+        const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const renderLine = (line) => {
+          const m = line.match(/\[(DEBUG|INFO|WARN|ERROR)\]/);
+          const level = m ? m[1] : 'INFO';
+          return `<span class="log-line lvl-${level}">${esc(line)}</span>`;
+        };
+        const el = document.getElementById('logOutput');
+        if (el) {
+          const atBottom = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 4);
+          let appended = false;
+          if (lastLogMarker) {
+            const idx = rawLines.lastIndexOf(lastLogMarker);
+            if (idx >= 0 && idx < rawLines.length - 1) {
+              const additions = rawLines.slice(idx + 1);
+              const addHtml = additions.map(renderLine).join('\n');
+              if (el.innerHTML && addHtml) el.innerHTML += '\n' + addHtml;
+              else el.innerHTML = addHtml;
+              appended = true;
             }
-            appended = true;
+          }
+          if (!appended) el.innerHTML = rawLines.map(renderLine).join('\n');
+          if (rawLines.length > 0) lastLogMarker = rawLines[rawLines.length - 1];
+          if (atBottom) el.scrollTop = el.scrollHeight;
+        }
+      } catch (error) {}
+    };
+    dataLoader.register('logs', loadLog, { priority: 2, interval: 30000 });
+
+    // ─── Clock language & dialect ────────────────────────────────────
+    // A language is which physical front plate this clock has, so switching it
+    // swaps the letter grid and the LED counts and takes a reboot. A dialect is
+    // a second way of reading the same plate — it swaps the phrase table only
+    // and applies live, which is why the radio doubles as a preview: the
+    // customer looks at the wall, not at this page.
+    //
+    // Both lists come from the device. Never hardcode them: a Dutch product
+    // reports one language and one dialect and simply collapses to nothing, so
+    // the single-language case runs the same code as the German one and cannot
+    // rot unnoticed.
+    (function initLanguageControls() {
+      const section = document.getElementById('languageSection');
+      if (!section) return;
+      const langField    = document.getElementById('languageField');
+      const langOptions  = document.getElementById('languageOptions');
+      const dialectField = document.getElementById('dialectField');
+      const dialectOpts  = document.getElementById('dialectOptions');
+      const statusEl     = document.getElementById('languageStatus');
+      const confirmBox   = document.getElementById('languageConfirm');
+      const confirmText  = document.getElementById('languageConfirmText');
+      const confirmOk    = document.getElementById('languageConfirmOk');
+      const confirmBack  = document.getElementById('languageConfirmBack');
+
+      // Endonyms — a Dutch UI still says "Deutsch". Not translated, so not in
+      // the i18n files. Unknown codes fall back to the code itself.
+      const ENDONYMS = { nl: 'Nederlands', de: 'Deutsch', en: 'English' };
+      const languageName = (code) => ENDONYMS[code] || String(code || '').toUpperCase();
+
+      // null = offer whatever the firmware reports. Decided 2026-08-09: keep it
+      // null. The customer picks their language at setup, but when that goes
+      // wrong — wrong pick, wrong plate shipped, someone else set it up — they
+      // must be able to fix it themselves rather than needing support. That is
+      // worth more than hiding German from a Dutch owner who has no reason to
+      // pick it. The section sits last in the tab for the same reason: reachable,
+      // not prominent.
+      //
+      // Set to a list (e.g. ['nl']) if a language ever has to be held back. The
+      // active language is always offered even when filtered out, so a device
+      // switched over by hand can never get stuck.
+      const OFFERED_LANGUAGES = null;
+
+      const SWITCH_KEY = 'chronolett.langSwitch';
+
+      let langs    = { active: null, available: [] };
+      let dialects = { active: null, available: [], axes: [] };
+      let busy     = false;
+
+      const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg || ''; };
+
+      const offered = () => {
+        if (!OFFERED_LANGUAGES) return langs.available.slice();
+        const keep = langs.available.filter(c => OFFERED_LANGUAGES.indexOf(c) !== -1);
+        if (langs.active && keep.indexOf(langs.active) === -1) keep.unshift(langs.active);
+        return keep;
+      };
+
+      const fetchTimeout = async (url, options = {}, timeoutMs = 5000) => {
+        const c = new AbortController();
+        const id = setTimeout(() => c.abort(), timeoutMs);
+        try { return await fetch(url, { ...options, signal: c.signal, cache: 'no-store' }); }
+        finally { clearTimeout(id); }
+      };
+
+      function renderLanguages() {
+        const codes = offered();
+        langOptions.innerHTML = '';
+        codes.forEach((code) => {
+          const label = document.createElement('label');
+          label.className = 'check-row';
+          const input = document.createElement('input');
+          input.type = 'radio';
+          input.name = 'clockLanguage';
+          input.value = code;
+          input.checked = (code === langs.active);
+          input.addEventListener('change', () => { if (input.checked) pickLanguage(code); });
+          const span = document.createElement('span');
+          span.textContent = languageName(code);
+          label.appendChild(input);
+          label.appendChild(span);
+          langOptions.appendChild(label);
+        });
+        langField.classList.toggle('hidden', codes.length < 2);
+      }
+
+      // One radio row. The sample sentence leads: "Hochdeutsch" vs "Süd-Ost"
+      // means little to a customer, "viertel nach zehn" is the actual choice.
+      function dialectRow(groupName, value, sample, name, checked, onPick) {
+        const label = document.createElement('label');
+        label.className = 'check-row';
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = groupName;
+        input.value = value;
+        input.checked = checked;
+        input.addEventListener('change', () => { if (input.checked) onPick(); });
+        const span = document.createElement('span');
+        const sampleEl = document.createElement('span');
+        sampleEl.className = 'value-mono';
+        sampleEl.textContent = sample || value;
+        span.appendChild(sampleEl);
+        if (name) {
+          const nameEl = document.createElement('span');
+          nameEl.className = 'muted';
+          nameEl.textContent = ' — ' + name;
+          span.appendChild(nameEl);
+        }
+        label.appendChild(input);
+        label.appendChild(span);
+        return label;
+      }
+
+      function renderDialects() {
+        const list = dialects.available || [];
+        const axes = dialects.axes || [];
+        dialectOpts.innerHTML = '';
+
+        // A variant that declares axes asks one question per axis instead of
+        // showing the cross-product as a flat list: German has four readings
+        // but only two independent decisions, and "viertel elf" vs "zwanzig
+        // vor elf" are unrelated things to know about your own dialect. A
+        // variant that declares none (Dutch, and any older firmware whose
+        // /api/dialect predates `axes`) falls back to the flat list.
+        if (axes.length) {
+          axes.forEach((axis) => {
+            const group = document.createElement('div');
+            group.className = 'field';
+            const heading = document.createElement('span');
+            heading.className = 'label';
+            heading.textContent = T('dashboard.language.axis.' + axis.id, axis.label || axis.id);
+            group.appendChild(heading);
+            (axis.options || []).forEach((opt) => {
+              group.appendChild(dialectRow(
+                'clockAxis_' + axis.id,
+                opt.value,
+                opt.sample,
+                opt.label,
+                opt.value === axis.active,
+                () => pickAxis(axis.id, opt.value)
+              ));
+            });
+            dialectOpts.appendChild(group);
+          });
+        } else {
+          list.forEach((d) => {
+            dialectOpts.appendChild(dialectRow(
+              'clockDialect', d.id, d.sample, d.label,
+              d.id === dialects.active,
+              () => pickDialect(d.id)
+            ));
+          });
+        }
+
+        const question = document.getElementById('dialectQuestion');
+        const axisIntro = document.getElementById('dialectAxisIntro');
+        if (question)  question.classList.toggle('hidden', axes.length > 0);
+        if (axisIntro) axisIntro.classList.toggle('hidden', axes.length === 0);
+        dialectField.classList.toggle('hidden', list.length < 2);
+        // The divider only separates something when there is a language list
+        // above it — on a single-language product it would open the section.
+        const rule = document.getElementById('dialectRule');
+        if (rule) rule.classList.toggle('hidden', langField.classList.contains('hidden'));
+      }
+
+      function applyVisibility() {
+        // Nothing to choose on a single-language, single-dialect product —
+        // a radio group with one option that only confirms itself is noise
+        // here. Confirming the language is the onboarding card's job.
+        const anyChoice = offered().length > 1 || (dialects.available || []).length > 1;
+        section.classList.toggle('hidden', !anyChoice);
+      }
+
+      async function loadLanguage() {
+        const [langRes, dialRes] = await Promise.all([
+          fetchTimeout('/api/language'),
+          fetchTimeout('/api/dialect')
+        ]);
+        if (!langRes.ok) throw new Error('HTTP ' + langRes.status);
+        const l = await langRes.json();
+        langs = { active: l.active, available: Array.isArray(l.available) ? l.available : [] };
+        if (dialRes.ok) {
+          const d = await dialRes.json();
+          dialects = {
+            active: d.active,
+            available: Array.isArray(d.available) ? d.available : [],
+            axes: Array.isArray(d.axes) ? d.axes : []
+          };
+        } else {
+          dialects = { active: null, available: [], axes: [] };
+        }
+        renderLanguages();
+        renderDialects();
+        applyVisibility();
+        setStatus('');
+        showPendingConfirmation();
+      }
+
+      // Both entry points go through here. The device answers with the reading
+      // it settled on plus its axis values, and we adopt those rather than what
+      // we asked for: on an axis change the resulting dialect id is the
+      // device's to decide, and the other axis must be shown as it really is.
+      async function postDialect(query) {
+        if (busy) return;
+        busy = true;
+        const previous = JSON.parse(JSON.stringify({ active: dialects.active, axes: dialects.axes }));
+        setStatus(T('common.saving', 'Saving…'));
+        try {
+          const res = await fetchTimeout('/api/dialect?' + query, { method: 'POST' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const body = await res.json();
+          if (body.active) dialects.active = body.active;
+          if (body.axes) {
+            dialects.axes = (dialects.axes || []).map(a => (
+              body.axes[a.id] ? { ...a, active: body.axes[a.id] } : a
+            ));
+          }
+          renderDialects();
+          setStatus(T('common.saved', 'Saved'));
+        } catch (err) {
+          dialects.active = previous.active;
+          dialects.axes = previous.axes;
+          renderDialects();
+          setStatus(T('dashboard.language.save_failed', 'Could not change it; keeping the previous setting.'));
+        } finally {
+          busy = false;
+        }
+      }
+
+      const pickDialect = (id) => postDialect('dialect=' + encodeURIComponent(id));
+      const pickAxis = (axisId, value) =>
+        postDialect('axis=' + encodeURIComponent(axisId) + '&value=' + encodeURIComponent(value));
+
+      // Waits out the reboot the device performs ~100 ms after answering.
+      // Two signals, because either can be missed on its own: the device going
+      // unreachable, and uptime running backwards once it answers again.
+      async function waitForReboot(preUptime) {
+        const start = Date.now();
+        let sawOffline = false;
+        while (Date.now() - start < 120000) {
+          await new Promise(r => setTimeout(r, 2000));
+          try {
+            const res = await fetchTimeout('/api/device/info', {}, 3000);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const info = await res.json();
+            if (sawOffline) return true;
+            if (preUptime !== null && typeof info.uptime_ms === 'number' && info.uptime_ms < preUptime) return true;
+          } catch (e) {
+            sawOffline = true;
           }
         }
-        if (!appended) {
-          const fullHtml = rawLines.map(renderLine).join('\n');
-          el.innerHTML = fullHtml;
-        }
-        if (rawLines.length > 0) {
-          lastLogMarker = rawLines[rawLines.length - 1];
-        }
-        if (atBottom) {
-          el.scrollTop = el.scrollHeight;
-        }
-        }
-      } catch (error) {
+        return false;
       }
-    };
 
-    // Logs loader (interval will be set dynamically based on branch)
-    dataLoader.register('logs', loadLog, {
-      priority: 2,
-      interval: 30000, // Default, will be updated based on branch
-      onError: (error) => {
-      }
-    });
+      async function pickLanguage(code) {
+        if (busy) return;
+        const previous = langs.active;
+        if (code === previous) return;
+        const ok = window.confirm(
+          T('dashboard.language.switch_confirm',
+            'Switch this clock to %s? Your clock must physically have that front plate. The clock will restart.')
+            .replace('%s', languageName(code)));
+        if (!ok) { renderLanguages(); return; }
 
-    // Initialize all data loaders when DOM is ready
-    async function initializeDashboard() {
-      try {
-        
-        if (dataLoader.loaders.size === 0) {
+        busy = true;
+        let preUptime = null;
+        try { const r = await fetchTimeout('/api/device/info', {}, 3000); const j = await r.json(); preUptime = j.uptime_ms; } catch (e) {}
+
+        // Recorded before the POST: the device stops answering right after it,
+        // so this is the only chance to remember what to confirm afterwards.
+        try { sessionStorage.setItem(SWITCH_KEY, JSON.stringify({ from: previous, to: code })); } catch (e) {}
+
+        setStatus(T('dashboard.language.switching', 'Switching language…'));
+        let rebootRequired = false;
+        try {
+          const res = await fetchTimeout('/api/language?lang=' + encodeURIComponent(code), { method: 'POST' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const body = await res.json();
+          rebootRequired = !!body.rebootRequired;
+        } catch (err) {
+          try { sessionStorage.removeItem(SWITCH_KEY); } catch (e) {}
+          busy = false;
+          renderLanguages();
+          setStatus(T('dashboard.language.save_failed', 'Could not change it; keeping the previous setting.'));
           return;
         }
-        
-        // Get build info to determine branch and set intervals accordingly
-        let statusInterval = 30000; // 30 seconds
-        let logsInterval = 30000;   // 30 seconds
-        
+
+        if (!rebootRequired) {
+          try { sessionStorage.removeItem(SWITCH_KEY); } catch (e) {}
+          busy = false;
+          langs.active = code;
+          setStatus(T('common.saved', 'Saved'));
+          return;
+        }
+
+        setStatus(T('dashboard.language.rebooting', 'The clock is restarting — this page reloads when it is back.'));
+        const back = await waitForReboot(preUptime);
+        if (back) { location.reload(); return; }
+        busy = false;
+        setStatus(T('dashboard.language.reboot_timeout', 'The clock did not come back in time. Reload this page once it is reachable again.'));
+      }
+
+      // After the reload: ask whether the plate actually reads correctly. A
+      // wrong pick is otherwise easy to leave in place, and the way back is
+      // exactly the control the customer has just lost confidence in.
+      let pendingSwitch = null;
+      function showPendingConfirmation() {
+        let raw = null;
+        try { raw = sessionStorage.getItem(SWITCH_KEY); } catch (e) {}
+        if (!raw) return;
+        try { sessionStorage.removeItem(SWITCH_KEY); } catch (e) {}
+        let parsed = null;
+        try { parsed = JSON.parse(raw); } catch (e) { return; }
+        if (!parsed || parsed.to !== langs.active) return;
+        pendingSwitch = parsed;
+        renderConfirmation();
+        confirmBox.classList.remove('hidden');
+        section.classList.remove('hidden');
+      }
+      function renderConfirmation() {
+        if (!pendingSwitch) return;
+        confirmText.textContent = T('dashboard.language.confirm_question',
+          'Your clock now shows %s. Does the wall look right?').replace('%s', languageName(pendingSwitch.to));
+        confirmBack.textContent = T('dashboard.language.confirm_back', 'Back to %s')
+          .replace('%s', languageName(pendingSwitch.from));
+      }
+      if (confirmOk) confirmOk.addEventListener('click', () => {
+        pendingSwitch = null;
+        confirmBox.classList.add('hidden');
+      });
+      if (confirmBack) confirmBack.addEventListener('click', () => {
+        if (!pendingSwitch || !pendingSwitch.from) return;
+        const target = pendingSwitch.from;
+        pendingSwitch = null;
+        confirmBox.classList.add('hidden');
+        pickLanguage(target);
+      });
+
+      dataLoader.register('language', loadLanguage, {
+        priority: 4,
+        onError: () => setStatus(T('dashboard.language.load_failed', 'Could not read the clock language.'))
+      });
+
+      window.addEventListener('chronolett:lang', () => {
+        renderConfirmation();
+        // The axis headings are the only translated strings in this section
+        // that JS writes rather than data-i18n, so they need re-rendering.
+        renderDialects();
+        if (statusEl && statusEl.textContent) setStatus('');
+      });
+    })();
+
+    // Legacy-only: runtime grid selector. See the gridVariantSection comment
+    // in the markup; do not remove on a nextgen UI re-sync.
+    (function initGridControls() {
+      const gridSelect = document.getElementById('gridVariantPublic');
+      const gridStatus = document.getElementById('gridVariantStatusPublic');
+      const gridLabelEl = document.getElementById('gridVariantLabel');
+      if (!gridSelect) return;
+
+      const formatVariantLabel = (variant) => {
+        if (!variant) return '';
+        const base = variant.label || variant.key || '';
+        const lang = variant.language ? variant.language.toUpperCase() : '';
+        const ver = variant.version ? variant.version.toUpperCase() : '';
+        const suffix = [lang, ver].filter(Boolean).join(' ');
+        return suffix ? `${base} [${suffix}]` : base;
+      };
+      const setStatus = (txt) => { if (gridStatus) gridStatus.textContent = txt; };
+      const activeLabel = (v) => T('dashboard.grid.active', 'Active grid:') + ' ' + formatVariantLabel(v);
+
+      dataLoader.register('gridVariants', async () => {
+        const res = await fetch('/listGridVariants');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }, {
+        priority: 5,
+        onSuccess: (variants) => {
+          gridSelect.innerHTML = '';
+          variants.forEach((v) => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = formatVariantLabel(v);
+            if (v.active) opt.selected = true;
+            gridSelect.appendChild(opt);
+          });
+          const active = variants.find(v => v.active);
+          setStatus(active ? activeLabel(active) : '');
+        },
+        onError: () => setStatus(T('dashboard.grid.load_failed', 'Could not load grid variants'))
+      });
+
+      if (gridLabelEl) {
+        dataLoader.register('gridVariant', async () => {
+          const res = await fetch('/getGridVariant');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        }, {
+          priority: 5,
+          onSuccess: (v) => { gridLabelEl.textContent = v.label || v.key || ('ID ' + v.id); },
+          onError: () => { gridLabelEl.textContent = '-'; }
+        });
+      }
+
+      gridSelect.addEventListener('change', async () => {
+        const id = gridSelect.value;
+        setStatus(T('dashboard.grid.saving', 'Saving…'));
+        try {
+          const res = await fetch(`/setGridVariant?id=${encodeURIComponent(id)}`);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const body = await res.json();
+          setStatus(activeLabel(body));
+          if (dataLoader.loaders.has('gridVariant')) dataLoader.load('gridVariant');
+          if (isLogoProduct && dataLoader.loaders.has('logoState')) {
+            dataLoader.load('logoState');
+          }
+        } catch (err) {
+          setStatus(T('dashboard.grid.save_failed', 'Saving failed'));
+        }
+      });
+    })();
+
+    async function initializeDashboard() {
+      try {
+        if (dataLoader.loaders.size === 0) return;
         try {
           const buildRes = await fetch('/buildinfo');
           if (buildRes.ok) {
             const buildInfo = await buildRes.json();
             const env = (buildInfo.environment || '').toLowerCase();
-            isLogoProduct = env.indexOf('wordclock-logo') !== -1;
-            isMiniProduct = env.indexOf('wordclock-mini') !== -1;
+            // Match on the variant suffix, not the product prefix: legacy
+            // builds are wordclock-logo-*/wordclock-mini-*, nextgen builds
+            // are nextgen-logo-*/nextgen-mini-* (ada38ee broke legacy by
+            // matching the nextgen prefix only).
+            isLogoProduct = env.indexOf('-logo') !== -1;
+            isMiniProduct = env.indexOf('-mini') !== -1;
             setLogoSectionsVisible(isLogoProduct);
             setHetIsSectionVisible(!isMiniProduct);
             const updateSection = document.getElementById('firmwareUpdateSection');
-            if (buildInfo.ota_enabled === false && updateSection) {
-              updateSection.classList.add('hidden');
-            }
-            if (isLogoProduct) {
-              initLogoControls();
-            }
-            if (isMiniProduct) {
-              dataLoader.loaders.delete('hetIsDuration');
-            }
-          } else {
+            if (buildInfo.ota_enabled === false && updateSection) updateSection.classList.add('hidden');
+            if (isLogoProduct) initLogoControls();
+            if (isMiniProduct) dataLoader.loaders.delete('hetIsDuration');
           }
-        } catch (err) {
+        } catch (err) {}
+        // loadAll runs sequentially now; await it so intervals only start
+        // once the initial population has finished and the chip is idle.
+        await dataLoader.loadAll().catch(() => {});
+        // Stagger interval starts so the four pollers don't hit the
+        // single-threaded server simultaneously every cycle.
+        const intervalNames = ['status', 'ledEvent', 'logs', 'versions'];
+        for (let i = 0; i < intervalNames.length; i++) {
+          const name = intervalNames[i];
+          const loader = dataLoader.loaders.get(name);
+          if (loader && loader.interval) dataLoader.startInterval(name);
+          await new Promise(r => setTimeout(r, 250));
         }
-        
-        // Update loader intervals BEFORE starting them
-        const statusLoader = dataLoader.loaders.get('status');
-        const logsLoader = dataLoader.loaders.get('logs');
-        const versionsLoader = dataLoader.loaders.get('versions');
-        const ledEventLoader = dataLoader.loaders.get('ledEvent');
-        
-        if (statusLoader) {
-          statusLoader.interval = statusInterval;
-        } else {
-        }
-        
-        if (logsLoader) {
-          logsLoader.interval = logsInterval;
-        } else {
-        }
-        
-        // Initialize all data loaders
-        dataLoader.loadAll().catch(err => {
-        });
-        
-        // Start interval loaders (will use updated intervals)
-        if (statusLoader) {
-          if (statusLoader.interval) {
-            dataLoader.startInterval('status');
-          } else {
-          }
-        } else {
-        }
-        
-        if (ledEventLoader && ledEventLoader.interval) {
-          dataLoader.startInterval('ledEvent');
-        }
-        
-        if (logsLoader) {
-          if (logsLoader.interval) {
-            dataLoader.startInterval('logs');
-          } else {
-          }
-        } else {
-        }
-
-        if (versionsLoader) {
-          if (versionsLoader.interval) {
-            dataLoader.startInterval('versions');
-          } else {
-          }
-        } else {
-        }
-        
-        // Verify intervals are running
-        if (dataLoader.intervals.has('status')) {
-        } else {
-        }
-        
-        if (dataLoader.intervals.has('logs')) {
-        } else {
-        }
-        
-      } catch (error) {
-      }
+      } catch (error) {}
     }
-    
-    // Wait for DOM to be ready
-    try {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeDashboard);
-      } else {
-        // DOM is already ready
-        initializeDashboard();
-      }
-    } catch (error) {
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeDashboard);
+    else initializeDashboard();
 
-    // HET IS controls event listeners
+    // HET IS controls
     const hetIsDec = document.getElementById('hetIsDec');
     const hetIsInc = document.getElementById('hetIsInc');
-    if (animateCb) {
-    animateCb.addEventListener('change', () => {
-      fetch('/setAnimate?state=' + (animateCb.checked ? 'on' : 'off'));
-    });
-    }
-
+    if (animateCb) animateCb.addEventListener('change', () => fetch('/setAnimate?state=' + (animateCb.checked ? 'on' : 'off')));
     if (durSlider2) {
-    durSlider2.addEventListener('input', () => {
-      const sec = parseInt(durSlider2.value, 10);
+      durSlider2.addEventListener('input', () => {
+        const sec = parseInt(durSlider2.value, 10);
         if (durValue2) durValue2.textContent = sec;
-      if (durInput) durInput.value = sec;
-    });
-    durSlider2.addEventListener('change', () => {
-      const sec = parseInt(durSlider2.value, 10);
-      fetch(`/setHetIsDuration?seconds=${sec}`);
+        if (durInput) durInput.value = sec;
+      });
+      durSlider2.addEventListener('change', () => {
+        const sec = parseInt(durSlider2.value, 10);
+        fetch(`/setHetIsDuration?seconds=${sec}`);
         if (alwaysCb2) alwaysCb2.checked = sec >= 360;
         durSlider2.disabled = alwaysCb2 ? alwaysCb2.checked : false;
         if (durInput) durInput.disabled = alwaysCb2 ? alwaysCb2.checked : false;
@@ -1590,33 +1944,16 @@
     if (alwaysCb2) {
       alwaysCb2.addEventListener('change', () => {
         if (alwaysCb2.checked) {
-          durSlider2.disabled = true;
-          if (durSlider2) durSlider2.value = 360;
+          if (durSlider2) { durSlider2.disabled = true; durSlider2.value = 360; }
           if (durValue2) durValue2.textContent = 360;
           if (durInput) { durInput.disabled = true; durInput.value = 360; }
           fetch('/setHetIsDuration?seconds=360');
         } else {
-          // Reset to default 30 seconds and enable input
-          if (durSlider2) durSlider2.disabled = false;
-          if (durInput) durInput.disabled = false;
-          if (durSlider2) durSlider2.value = 30;
+          if (durSlider2) { durSlider2.disabled = false; durSlider2.value = 30; }
+          if (durInput) { durInput.disabled = false; durInput.value = 30; }
           if (durValue2) durValue2.textContent = 30;
-          if (durInput) durInput.value = 30;
           fetch('/setHetIsDuration?seconds=30');
         }
-      });
-    }
-    if (durInput) {
-      durInput.addEventListener('change', () => {
-        let sec = parseInt(durInput.value, 10);
-        if (isNaN(sec)) sec = 0; sec = Math.max(0, Math.min(360, sec));
-        durInput.value = sec;
-        if (durSlider2) durSlider2.value = sec;
-        if (durValue2) durValue2.textContent = sec;
-        fetch(`/setHetIsDuration?seconds=${sec}`);
-        if (alwaysCb2) alwaysCb2.checked = sec >= 360;
-        if (durSlider2) durSlider2.disabled = alwaysCb2 ? alwaysCb2.checked : false;
-        durInput.disabled = alwaysCb2 ? alwaysCb2.checked : false;
       });
     }
     function setHetIsSeconds(sec) {
@@ -1629,36 +1966,31 @@
       if (durSlider2) durSlider2.disabled = alwaysCb2 ? alwaysCb2.checked : false;
       if (durInput) durInput.disabled = alwaysCb2 ? alwaysCb2.checked : false;
     }
-    if (hetIsDec) {
-      hetIsDec.addEventListener('click', () => {
-        if (alwaysCb2 && alwaysCb2.checked) { 
-          alwaysCb2.checked = false; 
-          if (durSlider2) durSlider2.disabled = false; 
-          if (durInput) durInput.disabled = false; 
-        }
-        let sec = parseInt(durSlider2 ? durSlider2.value || '0' : '0', 10) - 5;
-        setHetIsSeconds(sec);
-      });
-    }
-    if (hetIsInc) {
-      hetIsInc.addEventListener('click', () => {
-        if (alwaysCb2 && alwaysCb2.checked) { 
-          alwaysCb2.checked = false; 
-          if (durSlider2) durSlider2.disabled = false; 
-          if (durInput) durInput.disabled = false; 
-        }
-        let sec = parseInt(durSlider2 ? durSlider2.value || '0' : '0', 10) + 5;
-        setHetIsSeconds(sec);
-      });
-    }
+    if (hetIsDec) hetIsDec.addEventListener('click', () => {
+      if (alwaysCb2 && alwaysCb2.checked) { alwaysCb2.checked = false; if (durSlider2) durSlider2.disabled = false; if (durInput) durInput.disabled = false; }
+      let sec = parseInt(durSlider2 ? durSlider2.value || '0' : '0', 10) - 5;
+      setHetIsSeconds(sec);
+    });
+    if (hetIsInc) hetIsInc.addEventListener('click', () => {
+      if (alwaysCb2 && alwaysCb2.checked) { alwaysCb2.checked = false; if (durSlider2) durSlider2.disabled = false; if (durInput) durInput.disabled = false; }
+      let sec = parseInt(durSlider2 ? durSlider2.value || '0' : '0', 10) + 5;
+      setHetIsSeconds(sec);
+    });
+    if (durInput) durInput.addEventListener('change', () => {
+      let sec = parseInt(durInput.value, 10); if (isNaN(sec)) sec = 0;
+      sec = Math.max(0, Math.min(360, sec));
+      durInput.value = sec;
+      if (durSlider2) durSlider2.value = sec;
+      if (durValue2) durValue2.textContent = sec;
+      fetch(`/setHetIsDuration?seconds=${sec}`);
+      if (alwaysCb2) alwaysCb2.checked = sec >= 360;
+      if (durSlider2) durSlider2.disabled = alwaysCb2 ? alwaysCb2.checked : false;
+      durInput.disabled = alwaysCb2 ? alwaysCb2.checked : false;
+    });
 
-    // Log controls event listeners
-    async function loadLogSummary() {
-      dataLoader.load('logSummary');
-    }
     function setLogLevelUI(lvl) {
       if (logLevelSel) logLevelSel.value = lvl;
-      if (logLevelStatus) logLevelStatus.textContent = `Current log level: ${lvl}`;
+      if (logLevelStatus) logLevelStatus.textContent = T('dashboard.logs.current_level', 'Current log level:') + ' ' + lvl;
     }
     if (logLevelSel) {
       logLevelSel.addEventListener('change', () => {
@@ -1667,13 +1999,69 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: `level=${encodeURIComponent(lvl)}`
-        })
-        .then(r => r.text())
-        .then(() => setLogLevelUI(lvl))
-        .catch(() => alert('Failed to change log level'));
+        }).then(r => r.text())
+          .then(() => setLogLevelUI(lvl))
+          .catch(() => alert(T('dashboard.logs.change_failed', 'Failed to change log level')));
       });
     }
+
+    // Re-render dynamic strings on language switch.
+    window.addEventListener('chronolett:lang', () => {
+      // Status text
+      if (lastStatusOn !== null) {
+        const st = document.getElementById('statusText');
+        if (st) st.textContent = lastStatusOn
+          ? T('dashboard.status.dyn_on', 'Wordclock on')
+          : T('dashboard.status.dyn_off', 'Wordclock off');
+      }
+      // LED event row
+      const ledEl = document.getElementById('ledEventText');
+      if (ledEl) ledEl.textContent = ledEventLabel(lastLedEvent);
+      // Channel status line
+      if (channelStatus && lastChannel) applyChannelGuard(lastChannel);
+      // Nightmode descriptor — easier to reload than rebuild parts.
+      if (nightModeEnabled) dataLoader.load('nightMode');
+      // Log level + summary
+      if (logLevelSel && logLevelStatus && logLevelSel.value) setLogLevelUI(logLevelSel.value);
+      if (logSummaryEl) dataLoader.load('logSummary');
+    });
   </script>
 
+  <script>
+    // ─── Tabbed shell + power-state mirror ───────────────────────────
+    // Purely presentational: switches control groups and reflects the
+    // device's live on/off state (read from #statusIndicator, which the
+    // main script keeps current) onto the segmented power control. No
+    // device endpoints are touched here.
+    (function () {
+      var bar = document.querySelector('.tabbar');
+      var panels = document.querySelectorAll('.tab-panel');
+      if (bar) {
+        bar.querySelectorAll('button').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            bar.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-selected', 'false'); });
+            btn.setAttribute('aria-selected', 'true');
+            var t = btn.dataset.tab;
+            panels.forEach(function (p) { p.classList.toggle('active', p.dataset.panel === t); });
+            window.scrollTo(0, 0);
+          });
+        });
+      }
+      // Mirror on/off onto the power segments by watching the status dot.
+      var ind = document.getElementById('statusIndicator');
+      var onBtn = document.getElementById('toggleClockOn');
+      var offBtn = document.getElementById('toggleClockOff');
+      function sync() {
+        if (!ind) return;
+        var on = ind.classList.contains('on');
+        if (onBtn) onBtn.setAttribute('aria-pressed', String(on));
+        if (offBtn) offBtn.setAttribute('aria-pressed', String(!on));
+      }
+      if (ind && window.MutationObserver) {
+        new MutationObserver(sync).observe(ind, { attributes: true, attributeFilter: ['class'] });
+      }
+      sync();
+    })();
+  </script>
 </body>
 </html>

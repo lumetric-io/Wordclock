@@ -3,124 +3,174 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MQTT-instellingen</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>.help{font-size:.8rem;color:#4B5563}</style>
+  <title>Wordclock — MQTT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/chronolett.css" />
+  <link rel="stylesheet" href="/chronolett-compact.css" />
+  <script src="/i18n/i18n.js" defer></script>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans">
-  <div class="max-w-xl mx-auto p-4">
-    <header class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-3xl font-bold">📡 MQTT</h1>
-        <p class="text-sm text-gray-600">Configure MQTT connection and topics</p>
+<body>
+  <header class="topbar">
+    <div class="page">
+      <div class="container topbar-inner">
+        <a href="/dashboard.html" class="brand">Chronolett<span class="copper-dot">.</span> <span class="by" data-i18n="common.brand.mqtt">MQTT</span></a>
+        <nav class="topnav">
+          <a href="/dashboard.html" data-i18n="common.nav.dashboard">Dashboard</a>
+          <a href="/logs.html" data-i18n="common.nav.logs">Logs</a>
+          <span class="lang-toggle">
+            <a href="#" data-lang-toggle="en" data-i18n="common.lang.en">EN</a>
+            <a href="#" data-lang-toggle="nl" data-i18n="common.lang.nl">NL</a>
+          </span>
+        </nav>
       </div>
-      <div class="flex items-center gap-4">
-        <a href="/dashboard.html" class="text-sm text-blue-600 hover:underline">Back</a>
-      </div>
-    </header>
+    </div>
+  </header>
 
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <div class="flex justify-between items-center mb-2">
-        <h2 class="text-xl font-semibold">Status</h2>
-        <div class="flex items-center gap-2">
-          <span id="mqttIndicator" class="inline-block w-3 h-3 rounded-full bg-gray-400"></span>
-          <span id="mqttStatus" class="text-sm text-gray-600">-</span>
-        </div>
-      </div>
-      <p id="mqttError" class="text-xs text-red-600"></p>
-    </section>
+  <main class="page">
+    <div class="container">
 
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <h2 class="text-xl font-semibold mb-3">Broker</h2>
-      <div class="space-y-3">
-        <div>
-          <label class="block text-sm font-medium mb-1" for="host">Hostname or IP</label>
-          <input id="host" type="text" placeholder="e.g. 192.168.1.10 or mqtt.local" class="w-full border rounded p-2" />
-          <p class="help">Enter the broker the clock should connect to.</p>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1" for="port">Port</label>
-          <input id="port" type="number" min="1" max="65535" placeholder="1883" class="w-full border rounded p-2" />
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-medium mb-1" for="user">User</label>
-            <input id="user" type="text" placeholder="mqtt_user" class="w-full border rounded p-2" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1" for="pass">Password</label>
-            <input id="pass" type="password" placeholder="••••••••" class="w-full border rounded p-2" />
+      <section class="hero">
+        <p class="kicker" data-i18n="mqtt.kicker">MQTT</p>
+        <h1><span data-i18n="mqtt.title">Broker</span><span class="copper-dot">.</span></h1>
+        <p class="lede" data-i18n="mqtt.lede">Configure the MQTT connection and Home Assistant discovery. The clock reconnects immediately after saving.</p>
+      </section>
+
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">01</span>
+          <h2 class="section-title" data-i18n="mqtt.status.title">Status</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="mqtt.status.label">Link</span>
+          <div class="section-body">
+            <div class="status-row">
+              <div class="status-pill">
+                <span id="mqttIndicator" class="dot off"></span>
+                <span id="mqttStatus">—</span>
+              </div>
+            </div>
+            <p id="mqttError" class="help text-err"></p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <input id="noauth" type="checkbox" class="h-4 w-4" />
-          <label for="noauth" class="text-sm">Connect without authentication (no user/password)</label>
-        </div>
-        <p class="help">User + password zijn verplicht, tenzij je expliciet kiest voor geen authenticatie.</p>
-      </div>
-    </section>
+      </section>
 
-    <section class="bg-white p-4 rounded-2xl shadow mb-4">
-      <h2 class="text-xl font-semibold mb-3">Home Assistant</h2>
-      <div class="space-y-3">
-        <div>
-          <label class="block text-sm font-medium mb-1" for="discovery">Discovery prefix</label>
-          <input id="discovery" type="text" placeholder="homeassistant" class="w-full border rounded p-2" />
-          <p class="help">Usually <code>homeassistant</code>.</p>
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">02</span>
+          <h2 class="section-title" data-i18n="mqtt.broker.title">Broker</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="mqtt.broker.label">Server</span>
+          <div class="section-body">
+            <div class="field">
+              <span class="label" data-i18n="mqtt.broker.host">Hostname or IP</span>
+              <input id="host" type="text" data-i18n-placeholder="mqtt.broker.host_ph" placeholder="e.g. 192.168.1.10 or mqtt.local" class="input" />
+              <p class="help" data-i18n="mqtt.broker.host_help">Enter the broker the clock should connect to.</p>
+            </div>
+            <div class="field">
+              <span class="label" data-i18n="mqtt.broker.port">Port</span>
+              <input id="port" type="number" min="1" max="65535" placeholder="1883" class="input" />
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <span class="label" data-i18n="mqtt.broker.user">User</span>
+                <input id="user" type="text" placeholder="mqtt_user" class="input" />
+              </div>
+              <div class="field">
+                <span class="label" data-i18n="mqtt.broker.pass">Password</span>
+                <input id="pass" type="password" placeholder="••••••••" class="input" />
+              </div>
+            </div>
+            <label class="check-row">
+              <input id="noauth" type="checkbox" />
+              <span data-i18n="mqtt.broker.noauth">Connect without authentication</span>
+            </label>
+            <p class="help" data-i18n="mqtt.broker.auth_help">User + password are required, unless you explicitly opt for no authentication.</p>
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-1" for="basetopic">Base topic (device)</label>
-          <input id="basetopic" type="text" placeholder="wordclock" class="w-full border rounded p-2" />
-          <p class="help">Used as prefix for all states/commands.</p>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="bg-white p-4 rounded-2xl shadow">
-      <h2 class="text-xl font-semibold mb-3">Save</h2>
-      <p class="text-sm text-gray-600 mb-3">Change settings and save. The clock will try to reconnect immediately.</p>
-      <div class="flex gap-2 items-center">
-        <button id="saveBtn" class="py-2 px-3 rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
-        <button id="testBtn" class="py-2 px-3 rounded bg-gray-200 text-gray-800 hover:bg-gray-300">Test connection</button>
-        <button id="clearBtn" class="py-2 px-3 rounded bg-red-600 text-white hover:bg-red-700">Clear</button>
-        <span id="saveMsg" class="text-sm text-gray-600"></span>
-        <a href="/dashboard.html" class="ml-auto py-2 px-3 rounded bg-white border hover:bg-gray-50">Cancel</a>
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">03</span>
+          <h2 class="section-title" data-i18n="mqtt.ha.title">Home Assistant</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="mqtt.ha.label">Topics</span>
+          <div class="section-body">
+            <div class="field">
+              <span class="label" data-i18n="mqtt.ha.discovery">Discovery prefix</span>
+              <input id="discovery" type="text" placeholder="homeassistant" class="input" />
+              <p class="help"><span data-i18n="mqtt.ha.discovery_help_pre">Usually</span> <code>homeassistant</code>.</p>
+            </div>
+            <div class="field">
+              <span class="label" data-i18n="mqtt.ha.basetopic">Base topic (device)</span>
+              <input id="basetopic" type="text" placeholder="wordclock" class="input" />
+              <p class="help" data-i18n="mqtt.ha.basetopic_help">Used as a prefix for all states and commands.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="chapter">
+        <header class="section-head">
+          <span class="section-num">04</span>
+          <h2 class="section-title" data-i18n="mqtt.save.title">Save</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="mqtt.save.label">Apply</span>
+          <div class="section-body">
+            <p class="help" data-i18n="mqtt.save.help">Change settings and save. The clock will try to reconnect immediately.</p>
+            <div class="btn-row three">
+              <button id="saveBtn" class="btn" data-i18n="mqtt.save.btn">Save</button>
+              <button id="testBtn" class="btn ghost" data-i18n="mqtt.test.btn">Test</button>
+              <button id="clearBtn" class="btn danger" data-i18n="mqtt.clear.btn">Clear</button>
+            </div>
+            <p id="saveMsg" class="help"></p>
+            <a href="/dashboard.html" class="btn line block" data-i18n="common.cancel">Cancel</a>
+          </div>
+        </div>
+      </section>
+
+      <div class="footer-sig">
+        <span>Chronolett<span class="copper">.</span></span>
       </div>
-    </section>
-  </div>
+
+    </div>
+  </main>
 
   <script>
+    const T = (k, fb) => (window.chronolettI18n ? window.chronolettI18n.t(k, fb) : fb);
+
     const qs = id => document.getElementById(id);
     let hasStoredPass = false;
+    let lastConnected = null;  // remember status so language change can re-render
     function setStatus(connected, err) {
+      lastConnected = connected;
       const ind = qs('mqttIndicator');
       const st = qs('mqttStatus');
       const er = qs('mqttError');
-      if (ind) ind.className = 'inline-block w-3 h-3 rounded-full ' + (connected ? 'bg-green-500' : 'bg-red-500');
-      if (st) st.textContent = connected ? 'Connected' : 'Disconnected';
+      if (ind) ind.className = 'dot ' + (connected ? 'on' : 'off');
+      if (st) st.textContent = connected ? T('mqtt.status.connected', 'Connected') : T('mqtt.status.disconnected', 'Disconnected');
       if (er) er.textContent = err || '';
     }
     function applyAuthState() {
       const noauth = qs('noauth').checked;
-      const user = qs('user');
-      const pass = qs('pass');
-      user.disabled = noauth;
-      pass.disabled = noauth;
-      if (noauth) {
-        user.value = '';
-        pass.value = '';
-      }
+      const user = qs('user'); const pass = qs('pass');
+      user.disabled = noauth; pass.disabled = noauth;
+      if (noauth) { user.value = ''; pass.value = ''; }
     }
     function validateAuth() {
       const noauth = qs('noauth').checked;
       if (noauth) return { ok: true, msg: '' };
       const user = qs('user').value.trim();
       const pass = qs('pass').value;
-      if (!user) return { ok: false, msg: 'User is verplicht tenzij je \"geen authenticatie\" aanvinkt.' };
-      if (!pass && !hasStoredPass) return { ok: false, msg: 'Password is verplicht tenzij je \"geen authenticatie\" aanvinkt.' };
+      if (!user) return { ok: false, msg: T('mqtt.err.user_required', 'User is required unless "no authentication" is checked.') };
+      if (!pass && !hasStoredPass) return { ok: false, msg: T('mqtt.err.pass_required', 'Password is required unless "no authentication" is checked.') };
       return { ok: true, msg: '' };
     }
-
     async function loadCfg() {
       try {
         const r = await fetch('/api/mqtt/config');
@@ -128,85 +178,65 @@
         qs('host').value = j.host || '';
         qs('port').value = j.port || 1883;
         qs('user').value = j.user || '';
-        // do not show password; leave it empty
         hasStoredPass = !!j.has_pass;
         qs('noauth').checked = !!j.allow_unauth;
         qs('discovery').value = j.discovery || 'homeassistant';
         qs('basetopic').value = j.base || 'wordclock';
         applyAuthState();
-        // load status
         const s = await fetch('/api/mqtt/status');
         const sj = await s.json();
         setStatus(!!sj.connected, sj.last_error);
-      } catch (e) {
-      }
+      } catch (e) {}
     }
     async function saveCfg() {
       const msg = qs('saveMsg');
-      msg.textContent = 'Saving...';
+      msg.textContent = T('mqtt.msg.saving', 'Saving…');
       const authCheck = validateAuth();
-      if (!authCheck.ok) {
-        msg.textContent = authCheck.msg;
-        return;
-      }
+      if (!authCheck.ok) { msg.textContent = authCheck.msg; return; }
       const form = new URLSearchParams();
       form.set('host', qs('host').value.trim());
       form.set('port', qs('port').value.trim());
       form.set('user', qs('user').value.trim());
       form.set('allow_unauth', qs('noauth').checked ? '1' : '0');
-      const pw = qs('pass').value; // empty = keep password unchanged
+      const pw = qs('pass').value;
       if (pw) form.set('pass', pw);
       form.set('discovery', qs('discovery').value.trim());
       form.set('base', qs('basetopic').value.trim());
       try {
-        const r = await fetch('/api/mqtt/config', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:String(form) });
+        const r = await fetch('/api/mqtt/config', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: String(form) });
         if (r.ok) {
-          msg.textContent = 'Saved. Reconnecting...';
+          msg.textContent = T('mqtt.msg.saved', 'Saved. Reconnecting…');
           qs('pass').value = '';
           setTimeout(() => msg.textContent = '', 5000);
         } else {
-          const t = await r.text();
-          msg.textContent = 'Failed: ' + t;
+          msg.textContent = T('common.failed_prefix', 'Failed: ') + (await r.text());
         }
-      } catch (e) {
-        msg.textContent = 'Network error';
-      }
+      } catch (e) { msg.textContent = T('common.network_error', 'Network error'); }
     }
     qs('saveBtn').addEventListener('click', saveCfg);
     qs('noauth').addEventListener('change', applyAuthState);
     qs('clearBtn').addEventListener('click', async () => {
-      if (!confirm('Clear MQTT settings and disable MQTT?')) return;
+      if (!confirm(T('mqtt.clear.confirm', 'Clear MQTT settings and disable MQTT?'))) return;
       const msg = qs('saveMsg');
-      msg.textContent = 'Clearing...';
+      msg.textContent = T('mqtt.msg.clearing', 'Clearing…');
       try {
         const r = await fetch('/api/mqtt/clear', { method: 'POST' });
         if (r.ok) {
-          msg.textContent = 'Cleared. MQTT disabled.';
-          qs('host').value = '';
-          qs('port').value = 1883;
-          qs('user').value = '';
-          qs('pass').value = '';
-          qs('discovery').value = 'homeassistant';
-          qs('basetopic').value = 'wordclock';
+          msg.textContent = T('mqtt.msg.cleared', 'Cleared. MQTT disabled.');
+          qs('host').value = ''; qs('port').value = 1883;
+          qs('user').value = ''; qs('pass').value = '';
+          qs('discovery').value = 'homeassistant'; qs('basetopic').value = 'wordclock';
           qs('noauth').checked = false;
           applyAuthState();
-          setStatus(false, 'MQTT not configured');
-        } else {
-          const t = await r.text();
-          msg.textContent = 'Failed: ' + t;
-        }
-      } catch (e) {
-        msg.textContent = 'Network error';
-      }
+          setStatus(false, T('mqtt.status.not_configured', 'MQTT not configured'));
+        } else { msg.textContent = T('common.failed_prefix', 'Failed: ') + (await r.text()); }
+      } catch (e) { msg.textContent = T('common.network_error', 'Network error'); }
     });
     qs('testBtn').addEventListener('click', async () => {
       const msg = qs('saveMsg');
-      msg.textContent = 'Testing...';
+      msg.textContent = T('mqtt.msg.testing', 'Testing…');
       const authCheck = validateAuth();
-      if (!authCheck.ok) {
-        msg.textContent = authCheck.msg;
-        return;
-      }
+      if (!authCheck.ok) { msg.textContent = authCheck.msg; return; }
       const form = new URLSearchParams();
       form.set('host', qs('host').value.trim());
       form.set('port', qs('port').value.trim());
@@ -215,21 +245,20 @@
       const pw = qs('pass').value;
       if (pw) form.set('pass', pw);
       try {
-        const r = await fetch('/api/mqtt/test', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:String(form) });
-        if (r.ok) {
-          msg.textContent = 'Connection OK';
-        } else {
-          const t = await r.text();
-          msg.textContent = 'Failed: ' + t;
-        }
-      } catch (e) {
-        msg.textContent = 'Network error';
-      }
-      // refresh status after a short delay
+        const r = await fetch('/api/mqtt/test', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: String(form) });
+        if (r.ok) msg.textContent = T('mqtt.msg.test_ok', 'Connection OK');
+        else msg.textContent = T('common.failed_prefix', 'Failed: ') + (await r.text());
+      } catch (e) { msg.textContent = T('common.network_error', 'Network error'); }
       setTimeout(async () => {
         try { const s = await fetch('/api/mqtt/status'); const sj = await s.json(); setStatus(!!sj.connected, sj.last_error); } catch {}
       }, 800);
     });
+
+    // Re-render the connection-status text on language switch.
+    window.addEventListener('chronolett:lang', () => {
+      if (lastConnected !== null) setStatus(lastConnected, '');
+    });
+
     loadCfg();
   </script>
 </body>

@@ -167,10 +167,10 @@ ClockDisplay::DisplayTime ClockDisplay::prepareDisplayTime() {
     // Use cached time
     dt.effective = time_.cached;
     
-    // Apply sell-mode override (forces 11:49)
+    // Apply sell-mode override (forces SELL_MODE_HOUR:SELL_MODE_MINUTE)
     if (displaySettings.isSellMode()) {
-        dt.effective.tm_hour = 11;
-        dt.effective.tm_min = 49;
+        dt.effective.tm_hour = SELL_MODE_HOUR;
+        dt.effective.tm_min = SELL_MODE_MINUTE;
     }
     
     dt.rounded = (dt.effective.tm_min / 5) * 5;
