@@ -1642,7 +1642,7 @@ void setupWebRoutes() {
     server.send(200, "text/plain", getUiVersion());
   });
 
-  // Sell mode endpoints (force 11:49 display)
+  // Sell mode endpoints (force the SELL_MODE_HOUR:SELL_MODE_MINUTE display)
   server.on("/getSellMode", []() {
     if (!ensureUiAuth()) return;
     server.send(200, "text/plain", displaySettings.isSellMode() ? "on" : "off");
@@ -1659,13 +1659,15 @@ void setupWebRoutes() {
     // Trigger animation to new effective time
     struct tm t = {};
     if (on) {
-      t.tm_hour = 11;
-      t.tm_min = 49;
+      t.tm_hour = SELL_MODE_HOUR;
+      t.tm_min = SELL_MODE_MINUTE;
     } else {
       if (!getLocalTime(&t)) { server.send(200, "text/plain", "OK"); return; }
     }
     wordclock_force_animation_for_time(&t);
-  logInfo(String("🛒 Sell time ") + (on ? "ON (11:49)" : "OFF"));
+    char sellLabel[8];
+    snprintf(sellLabel, sizeof(sellLabel), "%02d:%02d", SELL_MODE_HOUR, SELL_MODE_MINUTE);
+    logInfo(String("🛒 Sell time ") + (on ? String("ON (") + sellLabel + ")" : String("OFF")));
     server.send(200, "text/plain", "OK");
   });
 
