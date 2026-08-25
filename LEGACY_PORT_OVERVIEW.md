@@ -5,8 +5,11 @@ Purpose: catalogue every substantive commit made to the wordclock firmware
 onto the legacy (ESP32) firmware. This is the planning document that precedes
 building a parallel `legacy-main` branch.
 
-Status: DRAFT / planning. Read-only analysis, nothing ported yet.
-Repo: `/home/ron/repos/wordclock`. Generated 2026-08-24.
+Status: EXECUTED. Every tier has landed on `legacy-main` or been decided;
+section 8 is the outcome ledger. Note that Ron REVERSED the "no wholesale v2
+dashboard" verdict on 2026-08-25 (section 8.4), so the section 4.3 SKIPs there
+no longer reflect reality.
+Repo: `/home/ron/repos/wordclock`. Generated 2026-08-24, outcomes added 2026-08-25.
 
 ---
 
@@ -219,3 +222,81 @@ Board-agnostic, touch only legacy-present files, little/no adaptation.
 2. **Cut Tier A first** - the five clean reconnect/OTA/mDNS fixes - as the first `legacy-main` increment; do the one `pio run` build-check (`14cdad2`).
 3. Then Tier B (with the `earlyLedClear` strip-size verify) and Tier C, each as its own reviewable commit.
 4. Hold the Ron-only behavioral decisions and the v2 dashboard question for a separate conversation.
+
+---
+
+## 8. Outcome ledger (added 2026-08-25)
+
+What actually happened to every shortlisted item. Hashes are `legacy-main`
+commits unless stated otherwise.
+
+### 8.1 Tier A - DONE, live
+
+All five landed as `7a13750..4b74fed`, released as 26.8.24-dev.1 on the
+develop channel and OTA'd onto Ron's .205 clock.
+
+### 8.2 Tier B - DONE or decided
+
+| item | outcome |
+|---|---|
+| `4d769e6` fw hunk (grid-by-ID + boot self-heal) | DONE, `793a78f` |
+| `040ae60` logLevel heartbeat field | DONE, `5b8a60d` |
+| `4443ef1` maxAllocHeap heartbeat field | DONE, `dc116c9` |
+| `09ad373` fw hunk (earlyLedClear 256->600) | landed as `41b4f7c`, then REVERTED (`f8faf28`): legacy strips never exceed 256, the bump only cost RAM |
+| `df5dbae` LED segment table | SKIP, Ron 2026-08-24: pure refactor of the highest-risk file, no legacy consumer since the 100x100 logo product was removed (`c774e8e`) |
+
+### 8.3 Tier C - DONE
+
+| item | outcome |
+|---|---|
+| `6903cb4` (+`7f8c106`) log sink retry/health | DONE, `18bc7e7`; test script ported on `fix/legacy-v2-dashboard` (`9b20fcb`) |
+| `64b136b`->`501e0ba`->`e7dcf9a` device-commands downlink | DONE, `3e03e09` (collapsed into one commit; server side already live, P4.13) |
+| `499f71e` Wi-Fi enroll from admin page | DONE on `fix/legacy-v2-dashboard` (`d51fbdc`); factory-wifi guard dropped as planned |
+| `a5c8ec0`+`3bd455a`+`a98229d` sell-mode 08:43 | DONE on `fix/legacy-v2-dashboard` (`698ade5`), one SELL_MODE_HOUR/MINUTE constant pair |
+| `4ee3b00` check-cache-headers.sh | DONE on `fix/legacy-v2-dashboard` (`9b20fcb`) |
+| `f480117` 10# octal guard | already present in the ported `release.sh`, nothing to do |
+| `7d7de6c`+`dc7cc2f` publish-ota.sh fs-version-keep | NOT ported (optional; would not fire on an fs-changing release like this one anyway) |
+
+### 8.4 v2 dashboard - verdict REVERSED, ported
+
+Ron asked for the port on 2026-08-25, overriding the section 4.3 "not worth
+wholesale adoption" SKIP (which was always flagged as a Ron-decides branding
+call). Landed on branch `fix/legacy-v2-dashboard`:
+
+| commit | what |
+|---|---|
+| `4b77013` | the whole v2 UI from `feat/device-commands`: dashboard/admin/mqtt/logs/update.html, chronolett.css, chronolett-compact.css, i18n (i18n.js + en/nl.json), RAL picker; static routes added in web_routes.h |
+| `d51fbdc` | Wi-Fi enrolment backend (see 8.3) |
+| `698ade5` | sell-mode 08:43 (see 8.3) |
+| `9b20fcb` | tools scripts (see 8.3) |
+
+This closes the colour-picker family (`03399fa`/`2f1002f`/`d543536`/`26f5251`),
+the front-end i18n infra (`c324616`/`1d91a52`) and the mobile redesign
+(`cf6fc1e`/`2ceebc4`) in one move, since the pages were copied wholesale.
+Legacy grafts inside the copied pages:
+
+- product detection matches the `-logo`/`-mini` SUFFIX, not the `nextgen-*`
+  prefix, so `ada38ee` (the "would BREAK legacy" commit) is neutralised
+  rather than ported
+- a legacy-only grid-variant selector section + dataLoader wiring on the
+  dashboard (nextgen removed the selector, 14283ed; legacy keeps it, so this
+  graft must survive any future re-sync with the nextgen UI)
+- the bootstrap re-install card is stripped from admin.html (no bootstrap
+  firmware on legacy); `/api/firmware/identity` therefore not ported
+- the language section self-hides (no `/api/language` on legacy, its loader
+  fails and the section stays hidden by design)
+- `setup.html` kept untouched: the classic wizard remains the provisioning
+  path (86ba669 stays a Ron-only decision, still open, still "keep")
+
+Known inherited quirk: the copied nextgen pages contain em dashes in some UI
+strings. New legacy-side text uses none; sweeping the copies would diverge
+them from nextgen, so that cleanup is a Ron call (ideally done in nextgen
+first).
+
+### 8.5 Still open after all this
+
+- `7d7de6c`+`dc7cc2f` fs-version-keep for `publish-ota.sh` (optional)
+- `d2b7d5c`/`7676c9c` flash.sh pair (legacy flashes via `tools/full_upload.py`,
+  no flash.sh exists; unchanged verdict, only port if a legacy flash.sh appears)
+- `commands_min_firmware` LOV row in the portal (server side, Ron)
+- Ron-only decisions unchanged: setup wizard stays, runtime grid selector stays
