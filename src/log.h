@@ -39,6 +39,14 @@ void initLogSettings();
 void logEnableFileSink();
 void logCloseFile();
 void logFlushFile();
+
+// Pause and resume the file sink around operations that rewrite the littlefs
+// partition underneath a live mount (the fs half of an OTA, a manual fs
+// upload). While paused, lines still reach the ring buffer and serial;
+// nothing touches the filesystem. Not the same as logEnableFileSink(), which
+// is boot-time arming and re-runs delete-on-boot and low-space recovery.
+void logPauseFileSink();
+void logResumeFileSink();
 String logLatestFilePath();
 void logRewriteUnsynced();
 

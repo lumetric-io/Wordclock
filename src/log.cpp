@@ -16,6 +16,10 @@ void initLogSettings() {}
 
 void logEnableFileSink() {}
 
+void logPauseFileSink() {}
+
+void logResumeFileSink() {}
+
 void logFlushFile() {}
 
 String logLatestFilePath() {
@@ -55,6 +59,11 @@ int logIndex = 0;
 // two used to be one flag, and merging them is what made a transient failure
 // permanent.
 static bool fileSinkConfigured = false;
+// Set while the littlefs partition is being rewritten raw (fs OTA, manual fs
+// upload). A write through the stale mount in that window lands on blocks the
+// new image owns; volatile because the OTA task flips it while logln runs on
+// the main loop.
+static volatile bool fileSinkPaused = false;
 static LogSinkHealth sinkHealth;
 static File logFile;
 static String currentLogTag;
@@ -209,7 +218,7 @@ void log(String msg, int level) {
   Serial.print(line);
 #endif
 
-  if (fileSinkConfigured) {
+  if (fileSinkConfigured && !fileSinkPaused) {
     ensureLogFile();
     if (logFile) {
       // print() has always returned how many bytes it took and nothing ever
@@ -383,6 +392,17 @@ uint32_t logBytesOnDisk() {
 
 void logCloseFile() {
   closeLogFile();
+}
+
+void logPauseFileSink() {
+  // Flag first, then close: a line logged from another task between the two
+  // must not reopen the file.
+  fileSinkPaused = true;
+  closeLogFile();
+}
+
+void logResumeFileSink() {
+  fileSinkPaused = false;
 }
 
 void logFlushFile() {
