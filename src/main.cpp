@@ -3,6 +3,7 @@
 #include "startup_sequence_init.h"
 #include "wordclock_main.h"
 #include "time_sync.h"
+#include "photo_sell_time.h"
 #include "wordclock_system_init.h"
 #include "runtime_services.h"
 #include "device_commands.h"
@@ -93,9 +94,19 @@ void setup() {
   bool wifiConnected = isWiFiConnected();
   runtimeInitOnSetup(wifiConnected, server);
 
+#if !PHOTO_SESSION_WIFI
   // Synchroniseer tijd via NTP
   initTimeSync(TZ_INFO, NTP_SERVER1, NTP_SERVER2);
+#endif
   initDisplay();
+#if PHOTO_SESSION_WIFI
+  // No NTP on the photo build — the face is driven by sell mode instead.
+  //
+  // Must run *after* initDisplay(), not in place of initTimeSync() above:
+  // initDisplay() calls displaySettings.begin() a second time, which re-reads
+  // sell_on from NVS (false) and silently undoes setSellModeVolatile().
+  photoInitSellTime();
+#endif
   initWordclockSystem(uiAuth);
   initStartupSequence(startupSequence);
 }

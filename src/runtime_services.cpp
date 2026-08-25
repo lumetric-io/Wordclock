@@ -24,6 +24,8 @@
 #include "network_init.h"
 #include "night_mode.h"
 #include "ota_updater.h"
+#include "photo_sell_time.h"
+#include "photo_session.h"
 #include "setup_state.h"
 #include "startup_sequence_init.h"
 #include "time_sync.h"
@@ -85,9 +87,33 @@ void ensureMdns() {
   startMdns();
 }
 
+// Single predicate for "may this build update itself *unattended*". Only the
+// automatic checks consult it — the boot check and the 02:00 daily one. The
+// admin UI's "check for updates" calls checkForFirmwareUpdate() straight from
+// web_routes.h and is deliberately untouched, so a photo clock can still be
+// installed from and returned to any channel by hand.
+//
+// Off for the whole photo build, including fallback boots. These are already
+// provisioned clocks, so their stored channel is usually "stable" — leaving the
+// automatic path on would mean the 02:00 check quietly reinstalls stable and
+// wipes the photo firmware off half the set the night before the shoot.
+bool firmwareAutoUpdateAllowed() {
+#if PHOTO_SESSION_WIFI
+  return false;
+#else
+  return displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
+#endif
+}
+
 void attemptAutoRegistration() {
+#if PHOTO_SESSION_WIFI
+  // Photo clocks stay out of the fleet entirely — no device row, no token, no
+  // telemetry from twenty units that will be reflashed the same week.
+  g_autoRegistrationHandled = true;
+  return;
+#else
   if (g_autoRegistrationHandled || !isWiFiConnected()) return;
-  
+
   // Skip if already registered (credentials exist)
   String existingId = get_device_id();
   String existingToken = get_device_token();
@@ -111,6 +137,7 @@ void attemptAutoRegistration() {
     }
   }
   g_autoRegistrationHandled = true;
+#endif
 }
 
 } // namespace
@@ -120,14 +147,22 @@ void runtimeInitOnSetup(bool wifiConnected, WebServer& server) {
     ensureMdns();
     initWebServer(server);
     g_serverInitialized = true;
+#if !PHOTO_SESSION_WIFI
+    // Never initialised on the photo build: a shoot clock must not appear in
+    // the owner's Home Assistant, and its 25 discovery entities would linger
+    // as retained topics long after the unit was wiped. Every publish path
+    // (mqtt_publish_state, mqtt_publish_update_status, publishBirth) returns
+    // early on !mqtt.connected(), so leaving the client uninitialised is
+    // enough — no call site needs its own guard.
     initMqtt();
     g_mqttInitialized = true;
+#endif
 #if SUPPORT_OTA_V2 == 0
     syncFilesFromManifest();
 #endif
     g_uiSyncHandled = true;
 #if OTA_ENABLED
-    bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
+    bool autoAllowed = firmwareAutoUpdateAllowed();
     if (autoAllowed) {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
       checkForFirmwareUpdate();
@@ -142,7 +177,7 @@ void runtimeInitOnSetup(bool wifiConnected, WebServer& server) {
   } else {
     logInfo("⚠️ No WiFi. Waiting for connection or config portal.");
 #if OTA_ENABLED
-    bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
+    bool autoAllowed = firmwareAutoUpdateAllowed();
     g_autoUpdateHandled = !autoAllowed;
 #else
     g_autoUpdateHandled = true;
@@ -197,10 +232,12 @@ void runtimeEnsureOnlineServices(WebServer& server) {
     initWebServer(server);
     g_serverInitialized = true;
   }
+#if !PHOTO_SESSION_WIFI
   if (!g_mqttInitialized) {
     initMqtt();
     g_mqttInitialized = true;
   }
+#endif
   if (!g_uiSyncHandled) {
 #if SUPPORT_OTA_V2 == 0
     syncFilesFromManifest();
@@ -209,7 +246,7 @@ void runtimeEnsureOnlineServices(WebServer& server) {
   }
   if (!g_autoUpdateHandled) {
 #if OTA_ENABLED
-    bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
+    bool autoAllowed = firmwareAutoUpdateAllowed();
     if (autoAllowed) {
       logInfo("✅ Connected to WiFi. Starting firmware check...");
       checkForFirmwareUpdate();
@@ -222,10 +259,14 @@ void runtimeEnsureOnlineServices(WebServer& server) {
   if (!g_autoRegistrationHandled) {
     attemptAutoRegistration();
   }
+#if !PHOTO_SESSION_WIFI
+  // Left uninitialised on the photo build, which also keeps the reconnect-edge
+  // triggerHeartbeat() in runtimeHandleWifiTransitionLogs() silent.
   if (!g_heartbeatInitialized) {
     initHeartbeat();
     g_heartbeatInitialized = true;
   }
+#endif
 }
 
 void runtimeHandleOnlineServices(WebServer& server, unsigned long nowMs) {
@@ -236,8 +277,12 @@ void runtimeHandleOnlineServices(WebServer& server, unsigned long nowMs) {
 #if OTA_ENABLED
   ArduinoOTA.handle();
 #endif
+#if !PHOTO_SESSION_WIFI
   mqttEventLoop();
   processHeartbeat(nowMs);
+#else
+  (void)nowMs;
+#endif
 }
 
 void runtimeHandlePeriodicSettings(unsigned long nowMs, unsigned long intervalMs) {
@@ -261,6 +306,12 @@ bool runtimeHandleStartupSequence(StartupSequence& startupSequence) {
 void runtimeHandleWordclockLoop(unsigned long nowMs) {
   if (nowMs - g_lastLoopMs >= 50) {
     g_lastLoopMs = nowMs;
+#if PHOTO_SESSION_WIFI
+    // Hold the system clock still. Sell mode pins the hour and minute the face
+    // shows, but night mode reads the cached time underneath it and would
+    // blank the display a few hours into a shoot. See photo_sell_time.h.
+    photoTickSellTime(nowMs);
+#endif
     runWordclockLoop();
 
 #if OTA_ENABLED
@@ -268,7 +319,7 @@ void runtimeHandleWordclockLoop(unsigned long nowMs) {
     if (getLocalTime(&timeinfo)) {
       time_t nowEpoch = time(nullptr);
       if (timeinfo.tm_hour == 2 && timeinfo.tm_min == 0 && nowEpoch - g_lastFirmwareCheck > 3600) {
-        bool autoAllowed = displaySettings.getAutoUpdate() && displaySettings.getUpdateChannel() != "develop";
+        bool autoAllowed = firmwareAutoUpdateAllowed();
         if (autoAllowed) {
           logInfo("🛠️ Daily firmware check started...");
           checkForFirmwareUpdate();

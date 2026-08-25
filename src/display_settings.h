@@ -23,6 +23,7 @@ public:
     hetIsDurationSec_ = prefs_.getUShort("his_sec", 360); // default ALWAYS (360s)
     if (hetIsDurationSec_ > 360) hetIsDurationSec_ = 360;
     sellMode_ = prefs_.getBool("sell_on", false);
+    sellModeVolatile_ = false;  // the stored value is authoritative again
     animateWords_ = prefs_.getBool("anim_on", false); // default OFF unless enabled via UI
     animationMode_ = WordAnimationMode::Classic; // Only Classic mode available
     
@@ -124,9 +125,23 @@ public:
   }
 
   void setSellMode(bool on) {
-    if (sellMode_ == on) return;
+    // Dropping volatility is itself a change worth persisting, so don't take
+    // the early-out on it: on the photo build sellMode_ already reads true,
+    // and an operator switching it on by hand must still end up stored.
+    const bool wasVolatile = sellModeVolatile_;
+    sellModeVolatile_ = false;
+    if (sellMode_ == on && !wasVolatile) return;
     sellMode_ = on;
     markDirty();
+  }
+
+  // Set sell mode for this boot only, leaving NVS alone. Used by the photo
+  // build to default it on without stamping sell_on=true into the device — a
+  // clock later returned to stable firmware would otherwise keep showing the
+  // sell time to its owner.
+  void setSellModeVolatile(bool on) {
+    sellMode_ = on;
+    sellModeVolatile_ = true;
   }
 
   void setAnimateWords(bool on) {
@@ -201,7 +216,13 @@ public:
     prefs_.begin("wc_display", false);
     // Batch write all settings
     prefs_.putUShort("his_sec", hetIsDurationSec_);
-    prefs_.putBool("sell_on", sellMode_);
+    // ...except a volatile sell mode. flush() writes every field whenever any
+    // one of them is dirty, so on the photo build changing the HET IS duration
+    // would otherwise stamp sell_on=true into a clock that later goes back to
+    // stable firmware. Leaving the key untouched keeps the stored value.
+    if (!sellModeVolatile_) {
+      prefs_.putBool("sell_on", sellMode_);
+    }
     prefs_.putBool("anim_on", animateWords_);
     prefs_.putUChar("anim_mode", static_cast<uint8_t>(animationMode_));
     prefs_.putBool("auto_upd", autoUpdate_);
@@ -253,6 +274,7 @@ private:
 
   uint16_t hetIsDurationSec_ = 360; // default ALWAYS
   bool sellMode_ = false;
+  bool sellModeVolatile_ = false;
   bool animateWords_ = false; // default OFF
   WordAnimationMode animationMode_ = WordAnimationMode::Classic;
   bool autoUpdate_ = true;    // default ON to keep current behavior

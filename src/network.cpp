@@ -14,6 +14,7 @@
 #include "led_events.h"
 #include "log.h"
 #include "led_controller.h"
+#include "photo_session.h"
 #include "secrets.h"
 #include "system_utils.h"
 
@@ -37,6 +38,14 @@ static const unsigned long WIFI_RECONNECT_WINDOW_MS   = 10000; // 10s active sca
 static unsigned long disconnectedSinceMs = 0; // millis() when WiFi first became unavailable
 #if WIFI_MANAGER_ENABLED
 static bool g_wifiManagerStarted = false;
+#endif
+
+#if PHOTO_SESSION_WIFI
+// True only while this boot is actually using the compiled-in studio network.
+// Everything photo-specific keys off this rather than off PHOTO_SESSION_WIFI,
+// because a photo-firmware clock away from the studio has to behave like an
+// ordinary clock — see photoShouldTryHardcoded().
+static bool g_photoHardcodedActive = false;
 #endif
 
 void stopWiFiForBleProvisioning() {
@@ -125,6 +134,16 @@ String getStoredWifiSsid() {
 }
 
 static void startWiFiManagerPortal() {
+#if PHOTO_SESSION_WIFI
+  if (g_photoHardcodedActive) {
+    // No portal on the shoot floor: it would raise an AP, light the portal LED
+    // event, and put a "configure me" animation in somebody's photograph. The
+    // studio SSID is compiled in, so there is nothing to configure anyway.
+    // Only suppressed while the studio network is actually in use — on a
+    // fallback boot the portal is the whole recovery path and must work.
+    return;
+  }
+#endif
 #if WIFI_MANAGER_ENABLED
   if (g_wifiManagerStarted) return;
   ledEventStart(LedEvent::WifiManagerPortal);
@@ -136,7 +155,99 @@ static void startWiFiManagerPortal() {
 #endif
 }
 
+#if PHOTO_SESSION_WIFI
+
+// Survives esp_restart(), garbage after a power cycle — which is exactly the
+// lifetime this needs. See photoShouldTryHardcoded().
+RTC_NOINIT_ATTR static uint32_t g_photoFallbackMark;
+static const uint32_t PHOTO_FALLBACK_MARK = 0x50484F31UL;  // 'PHO1'
+
+// Should this boot try the studio network at all?
+//
+// The problem being solved: once WiFi.begin(ssid, pass) has run with storage
+// forced to RAM, the driver's in-memory config *is* the studio network, and an
+// argless WiFi.begin() — which is what WiFiManager and the reconnect loop use
+// to mean "the network this clock is provisioned for" — would keep retrying the
+// studio SSID instead. There is no clean way to put the stored credentials back
+// without reinitialising the Wi-Fi driver mid-boot.
+//
+// So don't try. If the studio network isn't there, set a mark and reboot: the
+// next boot never touches persistent(false), never begins with hardcoded
+// credentials, and runs the ordinary main-branch path with pristine driver
+// state — stored credentials, portal, OTA, all of it.
+//
+// The mark lives in RTC RAM rather than NVS deliberately. A soft reset keeps it
+// (so the fallback boot doesn't loop), a power cycle loses it (so unplugging a
+// clock at the studio makes it try the studio network again). Neither behaviour
+// needs anyone to remember to clear a flag.
+static bool photoShouldTryHardcoded() {
+  if (g_photoFallbackMark == PHOTO_FALLBACK_MARK) {
+    g_photoFallbackMark = 0;  // consume it; a later power cycle starts over
+    return false;
+  }
+  return true;
+}
+
+bool connectPhotoWifi() {
+  // Caught at compile time rather than as a device that boots and quietly
+  // never joins anything — the failure would otherwise surface as twenty
+  // clocks sitting dark on a table with the photographer already there.
+  static_assert(sizeof(PHOTO_WIFI_SSID) > 1,
+                "PHOTO_WIFI_SSID is empty — set the studio Wi-Fi in include/secrets.h.");
+
+  if (WiFi.status() == WL_CONNECTED) return true;
+
+  // persistent(false) before the first begin(): ESP-IDF otherwise writes the
+  // SSID/password into nvs.net80211, and the studio network would then survive
+  // into whatever firmware is flashed next. Same reasoning as bootstrap_main.
+  //
+  // Order-sensitive. Arduino applies WIFI_STORAGE_RAM inside wifiLowLevelInit(),
+  // which runs once and is latched — so this has to land before anything else
+  // touches the radio, or storage stays FLASH and the write happens anyway. It
+  // does today only because initBleProvisioning() compiles to a stub on every
+  // legacy product (BLE_PROVISIONING_ENABLED 0 on all of them), leaving this
+  // the first WiFi call in setup(). Enabling BLE on a photo build would break
+  // it.
+  WiFi.persistent(false);
+  WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+  logInfo(String("[photo] Connecting to hardcoded SSID: ") + PHOTO_WIFI_SSID);
+  WiFi.begin(PHOTO_WIFI_SSID, PHOTO_WIFI_PASSWORD);
+
+  const unsigned long deadline = millis() + PHOTO_WIFI_CONNECT_TIMEOUT_MS;
+  while (WiFi.status() != WL_CONNECTED && millis() < deadline) {
+    delay(250);
+  }
+  return WiFi.status() == WL_CONNECTED;
+}
+#endif
+
 void initNetwork() {
+#if PHOTO_SESSION_WIFI
+  if (photoShouldTryHardcoded()) {
+    g_photoHardcodedActive = true;
+    // "Credentials at boot" is true by construction on the studio path; it is
+    // what keeps isInitialSetupMode() false, so the face renders the time from
+    // the first second rather than sitting in provisioning mode.
+    g_wifiHadCredentialsAtBoot = true;
+    if (connectPhotoWifi()) {
+      g_wifiConnected = true;
+      logInfo("✅ [photo] WiFi connected: " + String(WiFi.SSID()));
+      logInfo("📡 IP address: " + WiFi.localIP().toString());
+      return;
+    }
+    // Not at the studio. Reboot into the ordinary path rather than retry a
+    // network that isn't there — otherwise this clock has no route back to the
+    // OTA server and the only way to recover it is a USB cable.
+    g_photoHardcodedActive = false;
+    logWarn("⚠️ [photo] Studio WiFi not found — restarting into normal Wi-Fi mode.");
+    g_photoFallbackMark = PHOTO_FALLBACK_MARK;
+    safeRestart();  // does not return
+  }
+  logInfo("ℹ️ [photo] Studio network unavailable at power-on; using stored "
+          "credentials / config portal. Power-cycle to try the studio again.");
+#endif
+
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
 #if WIFI_MANAGER_ENABLED
@@ -312,24 +423,45 @@ void processNetwork() {
       WiFi.disconnect(false); // stop active scan; credentials are preserved
       reconnectWindowStartMs = 0;
     }
-    if (lastReconnectAttemptMs == 0 || now - lastReconnectAttemptMs >= WIFI_RECONNECT_INTERVAL_MS) {
-      logInfo("🔄 Attempting WiFi reconnect...");
-#if WIFI_MANAGER_ENABLED
-      if (g_wifiManagerStarted) {
-        // Portal active in AP+STA mode: WiFi.begin() is a no-op; use reconnect() instead.
-        WiFi.reconnect();
-      } else {
-        WiFi.begin(); // begin() reuses stored credentials without disconnecting first
-      }
-#else
-      WiFi.begin();
+    unsigned long retryInterval = WIFI_RECONNECT_INTERVAL_MS;
+#if PHOTO_SESSION_WIFI
+    // Faster and more insistent than the shipping cadence while at the studio:
+    // a clock that drops off mid-shoot should be back before anyone reaches
+    // for it, and the portal is suppressed so there is nothing else to try.
+    if (g_photoHardcodedActive) retryInterval = PHOTO_WIFI_RETRY_INTERVAL_MS;
 #endif
+
+    if (lastReconnectAttemptMs == 0 || now - lastReconnectAttemptMs >= retryInterval) {
+      bool handled = false;
+#if PHOTO_SESSION_WIFI
+      if (g_photoHardcodedActive) {
+        logInfo("🔄 [photo] Reconnecting to studio WiFi...");
+        // Explicit SSID/password: persistent(false) means there is nothing in
+        // flash for an argless begin() to fall back on.
+        WiFi.begin(PHOTO_WIFI_SSID, PHOTO_WIFI_PASSWORD);
+        handled = true;
+      }
+#endif
+      if (!handled) {
+        logInfo("🔄 Attempting WiFi reconnect...");
+#if WIFI_MANAGER_ENABLED
+        if (g_wifiManagerStarted) {
+          // Portal active in AP+STA mode: WiFi.begin() is a no-op; use reconnect() instead.
+          WiFi.reconnect();
+        } else {
+          WiFi.begin(); // begin() reuses stored credentials without disconnecting first
+        }
+#else
+        WiFi.begin();
+#endif
+      }
       lastReconnectAttemptMs = now;
       reconnectWindowStartMs = now;
     }
 
 #if WIFI_MANAGER_ENABLED
     // After the fallback period open the config portal so the user can intervene,
+    // (a no-op while the studio network is in use — see startWiFiManagerPortal),
     // while reconnect attempts continue in the background.
     if (!g_wifiManagerStarted && now - disconnectedSinceMs >= WIFI_PORTAL_FALLBACK_MS) {
       logWarn("⏱️ No WiFi for " + String(WIFI_CONFIG_PORTAL_TIMEOUT) + "s — opening config portal.");

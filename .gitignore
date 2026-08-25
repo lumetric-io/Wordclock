@@ -53,6 +53,10 @@ handover/
 !README.md
 !CHANGELOG.md
 !CONTRIBUTING.md
+# Branch `photo/legacy-session-wifi` only, the one-off firmware needs its
+# warning label tracked, or the next person to open the branch has no idea
+# what it is.
+!PHOTO-SESSION.md
 
 # Claude
 .claude/
