@@ -199,6 +199,11 @@ bool sendHeartbeat() {
   req["firmware"] = FIRMWARE_VERSION;
   req["ui"] = getUiVersion();
   req["channel"] = displaySettings.getUpdateChannel();
+  // The automatic OTA toggle, next to the channel it applies to. Off is a
+  // normal owner choice (and forced while the channel is develop); the
+  // registry uses this to tell "updates switched off" from "cannot reach the
+  // OTA host" when a release is not landing. See portal/sql/026.
+  req["autoUpdate"] = displaySettings.getAutoUpdate();
   req["uptime"] = (long)(millis() / 1000);
   req["freeHeap"] = (long)ESP.getFreeHeap();
   req["rssi"] = WiFi.RSSI();
