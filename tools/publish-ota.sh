@@ -11,6 +11,8 @@ FS_VERSION=""
 ASSUME_YES=false
 FS_ONLY=false
 FORCE_FS_VERSION=false
+NO_FS=false
+FS_FROM_VERSION=""
 FS_UNCHANGED=""
 
 # Reads one string field out of a JSON file, walking nested keys.
@@ -147,6 +149,14 @@ while [[ $# -gt 0 ]]; do
       FW_VERSION=""
       shift
       ;;
+    --no-fs)
+      NO_FS=true
+      shift
+      ;;
+    --fs-from)
+      FS_FROM_VERSION="$2"
+      shift 2
+      ;;
     --force-fs-version)
       FORCE_FS_VERSION=true
       shift
@@ -159,6 +169,7 @@ while [[ $# -gt 0 ]]; do
       echo "Usage:"
       echo "  ./publish-ota.sh [--product <product>] [--channel <channel>]"
       echo "                   [--fw-version <version>] [--fs-version <version>]"
+      echo "                   [--no-fs] [--fs-from <fw>]"
       echo "                   [--force-fs-version] [--yes]"
       echo
       echo "  --force-fs-version  Publish under the given FS version even when the"
@@ -166,6 +177,22 @@ while [[ $# -gt 0 ]]; do
       echo "                      does. Without it, an image whose contents are"
       echo "                      unchanged keeps its old version, so devices skip"
       echo "                      the filesystem write and keep their logs."
+      echo
+      echo "  --no-fs             Firmware-only publish: the channel json carries an"
+      echo "                      empty fs_manifest_url, so devices skip the"
+      echo "                      filesystem half entirely (ota_updater guards on"
+      echo "                      the empty string). Use to ship a firmware fix to"
+      echo "                      devices whose CURRENT firmware applies fs updates"
+      echo "                      unsafely: the fs half of an update runs under the"
+      echo "                      old firmware, so it must not be offered until the"
+      echo "                      fleet reboots into the fix."
+      echo "  --fs-from <fw>      Pin the channel's fs_manifest_url to an already"
+      echo "                      published artifact's fs.json instead of this"
+      echo "                      one's. Devices compare fs versions by equality,"
+      echo "                      so pointing at the fs the fleet already runs"
+      echo "                      means firmware only, fs untouched, while a valid"
+      echo "                      fs manifest stays in place. Mutually exclusive"
+      echo "                      with --no-fs."
       exit 0
       ;;
     *)
@@ -174,6 +201,15 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "$NO_FS" == true && -n "$FS_FROM_VERSION" ]]; then
+  echo "❌ --no-fs and --fs-from are mutually exclusive"
+  exit 1
+fi
+if [[ "$FS_ONLY" == true ]] && [[ "$NO_FS" == true || -n "$FS_FROM_VERSION" ]]; then
+  echo "❌ --fs-only cannot combine with --no-fs or --fs-from"
+  exit 1
+fi
 
 echo "=== OTA Publish Script ==="
 echo
@@ -232,7 +268,13 @@ fi
 if [[ -z "$FW_VERSION" && "$FS_ONLY" != true ]]; then
   read -rp "Firmware version (leave empty for FS-only): " FW_VERSION
 fi
+if [[ -z "$FW_VERSION" ]] && [[ "$NO_FS" == true || -n "$FS_FROM_VERSION" ]]; then
+  echo "❌ --no-fs and --fs-from publish firmware, so a firmware version is required"
+  exit 1
+fi
 
+# No fs image goes out under --no-fs / --fs-from, so no UI version is needed.
+if [[ "$NO_FS" != true && -z "$FS_FROM_VERSION" ]]; then
 if [[ -n "$CURRENT_UI_VERSION" ]]; then
   echo "Current UI version: $CURRENT_UI_VERSION"
   if [[ -n "$SUGGESTED_UI_VERSION" ]]; then
@@ -249,6 +291,7 @@ fi
 if [[ -z "$FS_VERSION" ]]; then
   echo "❌ UI version is required"
   exit 1
+fi
 fi
 
 if [[ "$CHANNEL" != "develop" && "$CHANNEL" != "early" && "$CHANNEL" != "stable" ]]; then
@@ -299,6 +342,18 @@ CHANNEL_SUFFIX="$(channel_suffix_for "$CHANNEL")"
 FW_VERSION="$(apply_channel_suffix "$FW_VERSION" "$CHANNEL_SUFFIX")"
 FS_VERSION="$(apply_channel_suffix "$FS_VERSION" "$CHANNEL_SUFFIX")"
 
+# Under --no-fs / --fs-from no fs image is read or published, so nothing here
+# applies. The --fs-from target must already exist, or every device on the
+# channel would start failing its fs check.
+if [[ -n "$FS_FROM_VERSION" ]]; then
+  FS_FROM_MANIFEST="$OTA_ROOT/$PRODUCT/artifacts/$FS_FROM_VERSION/fs.json"
+  if [[ ! -f "$FS_FROM_MANIFEST" ]]; then
+    echo "❌ fs manifest not found: $FS_FROM_MANIFEST"
+    echo "   Nothing published under that version. Check the name."
+    exit 1
+  fi
+fi
+if [[ "$NO_FS" != true && -z "$FS_FROM_VERSION" ]]; then
 FS_TYPE="littlefs"
 if [[ -f "$BUILD_DIR/littlefs.bin" ]]; then
   FS_SRC="$BUILD_DIR/littlefs.bin"
@@ -392,13 +447,20 @@ if [[ "$FORCE_FS_VERSION" != true ]]; then
     fi
   fi
 fi
+fi
 
 echo
 echo "Publishing to:"
 echo "  Product : $PRODUCT"
 echo "  Channel : $CHANNEL"
 echo "  FW ver  : ${FW_VERSION:-<unchanged>}"
-echo "  FS ver  : $FS_VERSION${FS_UNCHANGED:+ (unchanged image)}"
+if [[ "$NO_FS" == true ]]; then
+  echo "  FS ver  : SKIPPED (--no-fs, channel carries no fs_manifest_url)"
+elif [[ -n "$FS_FROM_VERSION" ]]; then
+  echo "  FS ver  : pinned to $FS_FROM_VERSION (no fs image published)"
+else
+  echo "  FS ver  : $FS_VERSION${FS_UNCHANGED:+ (unchanged image)}"
+fi
 echo "  Artifacts dir: $ARTIFACT_DIR"
 echo
 
@@ -462,8 +524,9 @@ EOF
 fi
 
 # -------------------------
-# Filesystem (required)
+# Filesystem (skipped under --no-fs / --fs-from)
 # -------------------------
+if [[ "$NO_FS" != true && -z "$FS_FROM_VERSION" ]]; then
 echo "→ Copying filesystem image"
 
 # FS_SRC / FS_SIZE / FS_HASH were resolved before the confirmation prompt, so
@@ -485,6 +548,7 @@ sudo tee "$ARTIFACT_DIR/fs.json" > /dev/null <<EOF
   "url": "$OTA_BASE_URL/$PRODUCT/artifacts/${FW_VERSION:-current}/fs.bin"
 }
 EOF
+fi
 
 # -------------------------
 # Channel update
@@ -494,11 +558,19 @@ echo "→ Updating channel: $CHANNEL"
 TARGET_JSON="null"
 
 if [[ -n "$FW_VERSION" ]]; then
+  FS_MANIFEST_URL="$OTA_BASE_URL/$PRODUCT/artifacts/$FW_VERSION/fs.json"
+  if [[ "$NO_FS" == true ]]; then
+    # Empty on purpose: ota_updater treats an empty fs_manifest_url as "no
+    # filesystem half", so devices update firmware only.
+    FS_MANIFEST_URL=""
+  elif [[ -n "$FS_FROM_VERSION" ]]; then
+    FS_MANIFEST_URL="$OTA_BASE_URL/$PRODUCT/artifacts/$FS_FROM_VERSION/fs.json"
+  fi
   TARGET_JSON=$(cat <<EOF
 {
   "version": "$FW_VERSION",
   "manifest_url": "$OTA_BASE_URL/$PRODUCT/artifacts/$FW_VERSION/manifest.json",
-  "fs_manifest_url": "$OTA_BASE_URL/$PRODUCT/artifacts/$FW_VERSION/fs.json"
+  "fs_manifest_url": "$FS_MANIFEST_URL"
 }
 EOF
 )
