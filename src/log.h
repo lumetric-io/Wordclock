@@ -39,5 +39,21 @@ void initLogSettings();
 void logEnableFileSink();
 void logCloseFile();
 void logFlushFile();
+
+// Pause and resume the file sink around operations that rewrite the littlefs
+// partition underneath a live mount (the fs half of an OTA, a manual fs
+// upload). While paused, lines still reach the ring buffer and serial;
+// nothing touches the filesystem. Not the same as logEnableFileSink(), which
+// is boot-time arming and re-runs delete-on-boot and low-space recovery.
+void logPauseFileSink();
+void logResumeFileSink();
 String logLatestFilePath();
 void logRewriteUnsynced();
+
+// File sink health, reported on the heartbeat. See src/log_sink_health.h for
+// why a sink failure is now recoverable and counted rather than final: the old
+// behaviour cost a clock its log file until the next reboot and showed up
+// nowhere at all.
+bool logSinkHealthy();
+uint32_t logSinkFailureCount();
+uint32_t logBytesOnDisk();

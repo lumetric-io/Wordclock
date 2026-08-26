@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "config.h"
+#include "device_commands.h"
 #include "device_identity.h"
 #include "device_registration.h"
 #include "display_settings.h"
@@ -263,9 +264,59 @@ bool sendHeartbeat() {
   // incapable of warning" are indistinguishable in the data.
   req["logLevel"] = logLevelName();
 
+  // Whether this clock throws its logs away on the next boot. Reported for the
+  // same reason as logLevel, and it is also what closes the
+  // set_log_delete_on_boot command: there is no ack anywhere in this protocol,
+  // so a setting the beat does not carry is one the portal can never see take.
+  // Independently useful after the fact — it makes "the log I asked for is
+  // gone" an answerable question rather than a mystery.
+  req["logDeleteOnBoot"] = getLogDeleteOnBoot();
+
+  // And how many days of them are kept. The third of the three log settings,
+  // and the one that decides whether an intermittent fault is still on disk by
+  // the time anyone goes looking: pruning runs when the log file is opened, so
+  // at the default of one day a clock loses yesterday at the first midnight
+  // even with delete-on-boot off. Closes set_log_retention_days.
+  req["logRetentionDays"] = (long)getLogRetentionDays();
+
+  // Whether any of the above is actually producing a file.
+  //
+  // The three settings say what this clock intends to do with its logs. None
+  // of them says whether it is doing it, and until 2026-08-22 nothing did: a
+  // clock whose file sink had died reported `logLevel=debug`,
+  // `logDeleteOnBoot=false`, `logRetentionDays=3` and a healthy beat every
+  // hour while writing nothing to /logs for eight hours. All three log
+  // commands would have closed green against it. The RAM ring buffer at /log
+  // kept answering, so even a support session would have looked fine until
+  // somebody asked for a file.
+  //
+  // Three fields because they answer three different questions:
+  //   logSinkOk        is it writing right now
+  //   logSinkFailures  did it ever stop since boot (a sink that recovered at
+  //                    03:00 is indistinguishable from a healthy one without
+  //                    this, and the hour it lost is gone either way)
+  //   logBytes         is anything landing on disk at all. The only one that
+  //                    catches the worst variant, where writes report success
+  //                    and the bytes still are not there. Stalled bytes on a
+  //                    clock that is up and at debug level is the signature.
+  //
+  // logBytes is a size, not a health verdict: it legitimately DROPS at a boot
+  // with delete-on-boot on and at a midnight prune. Nothing should alert on it
+  // falling, only on it standing still.
+  req["logSinkOk"] = logSinkHealthy();
+  req["logSinkFailures"] = (long)logSinkFailureCount();
+  req["logBytes"] = (long)logBytesOnDisk();
+
   // Extended system diagnostics
   req["minFreeHeap"] = (long)ESP.getMinFreeHeap();
   req["heapSize"] = (long)ESP.getHeapSize();
+  // Largest block the allocator could still hand out in one piece. freeHeap
+  // says how much is left, this says whether any of it is usable: 160 kB free
+  // in 20 kB fragments fails a TLS handshake exactly as hard as having none,
+  // and that is the shape an OTA failure takes on a clock that has been up for
+  // months. minFreeHeap cannot substitute — it is a since-boot watermark and
+  // therefore monotone, so it describes one moment weeks ago, not now.
+  req["maxAllocHeap"] = (long)ESP.getMaxAllocHeap();
   req["cpuFreqMhz"] = ESP.getCpuFreqMHz();
   req["chipTemp"] = temperatureRead();
   // resetReason: esp_reset_reason_t as int. 0=UNKNOWN, 1=POWERON, 2=EXT, 3=SW, 4=PANIC,
@@ -300,10 +351,15 @@ bool sendHeartbeat() {
     logWarn("💓 Heartbeat failed: HTTP " + String(code) + " - " + body);
     return false;
   }
+  
+  // The response body used to be read and thrown away. It still says
+  // {"ok": true} on almost every beat, but the portal may now attach a
+  // `commands` array to it (P4.10) - the downlink rides the connection the
+  // clock already made. Nothing here can fail the beat: the beat is done.
+  deviceCommandsHandleResponse(body);
 
-  // The body was read and thrown away on this line until sql/028; now it may
-  // carry the rhythm the portal wants for the next beat. Cannot fail the
-  // beat: the beat is done.
+  // Same body, second optional key: the rhythm the portal wants for the next
+  // beat. Also cannot fail the beat.
   applyNextBeatSeconds(body);
 
   logInfo("💓 Heartbeat sent successfully");

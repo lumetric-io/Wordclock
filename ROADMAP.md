@@ -350,6 +350,76 @@ Not yet compiled: no native test covers `heartbeat.cpp` (it needs the Wi-Fi
 stack), so the next `pio run` is what proves `setConnectTimeout()` builds
 against espressif32@6.4.0.
 
+## The log file sink stops writing and never comes back
+
+**Fixed structurally 2026-08-22 (not yet built or flashed). The trigger is
+still unknown, which is why this stays here.**
+
+Found on the 50x50 dev clock (`f316287d`, `26.08.21-rc.3`) by
+`tools/test-log-features.sh`, written the same day to validate the log
+features the P4.10 fleet commands drive.
+
+The clock wrote its last line to `/logs/2026-08-22.log` at 00:43:29 local and
+wrote nothing for the next eight hours. Everything else looked perfect: the RAM
+ring buffer behind `/log` had every line, `/api/logs/settings` reported
+`level 0`, `delete_on_boot false`, `retention 3`, and every hourly heartbeat
+arrived. A probe line written over HTTP at 08:33:03 appeared in `/log` and
+moved the file by zero bytes. A restart brought the sink straight back
+(15705 to 20225 bytes).
+
+**Why it could not recover.** `ensureLogFile()` set `fileSinkEnabled = false`
+on a failed open, and nothing anywhere set it back: the only re-arm was
+`logEnableFileSink()`, which runs at boot and from the clear-logs route. One
+bad open at 00:43 therefore disabled file logging until someone rebooted the
+clock. Separately, `log()` ignored the return of `logFile.print()`, so a write
+that landed short was indistinguishable from one that worked.
+
+**What the fix does.** `src/log_sink_health.h` replaces the one-way latch with
+a small state machine: a failed open or a short write marks the sink unhealthy
+and schedules a retry 60 s later, and a successful open clears it. The retry
+comparison is `(long)(nowMs - retryAtMs) >= 0` because `millis()` wraps every
+49.7 days and a clock up that long is exactly the one being asked to log an
+intermittent fault. Failures are counted per incident, not per attempt, so a
+sink that is down does not add one to the count every minute. Nine native tests
+in `test/test_log_sink_health/`; the header has no hardware dependencies, so
+what the tests run is what runs on the clock.
+
+**What the fleet gets.** Three heartbeat fields, `logSinkOk`,
+`logSinkFailures` and `logBytes` (lumetric `portal/sql/019`, P4.11 in
+`infra/ROADMAP.md`). Without them a clock in this state reports healthy in
+every respect and all three log commands close green against it, which is what
+made this take eight hours to notice. `logSinkFailures` exists because the
+retry now makes "dropped out and came back" the common case, and that is
+invisible in a boolean sampled hourly.
+
+**Still open: what actually failed at 00:43.** Nothing in the logs, because the
+thing that broke is the log. What the recovered files do say is precise, and it
+points at the rollover rather than at anything the clock was doing at the time:
+
+- `2026-08-21.log` ends at 23:43:28, the hourly heartbeat.
+- `2026-08-22.log` is 190 bytes and contains exactly two lines, the 00:43:28
+  and 00:43:29 heartbeat pair, and nothing else ever.
+
+So the day tag changed at 00:43:28, `ensureLogFile()` closed the old file, ran
+the retention prune, opened the new one, and both lines were written *and
+flushed*. The sink died between then and the 01:43 beat. That rules out the
+open itself and leaves the two paths the fix now covers: either the handle went
+falsy and every reopen failed (old code: one failure, latched off forever,
+silent), or the handle stayed truthy and `print()` returned short (old code: no
+one looked). It also puts the prune loop in the frame, since deleting entries
+with `FS_IMPL.remove()` while iterating the same open directory handle runs
+once per tag change and had just run.
+
+Two hypotheses were tested against the live clock and both refuted: reading the
+open file over `/log/download` while it is being appended to does not kill the
+sink (5221, 5291, 5361 bytes, growing each time), and 160 filesystem-touching
+requests in a burst do not either.
+
+`logSinkFailures` on the fleet is the instrument for the rest. If it climbs,
+and especially if it climbs at a clock's local 00:xx, the prune loop is where
+to look next. If it never appears again, the retry has already made this a
+non-event.
+
 ## Security hardening — full-repo review findings
 
 Surfaced 2026-07-04 from a full firmware security review. The device's whole

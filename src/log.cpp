@@ -16,6 +16,10 @@ void initLogSettings() {}
 
 void logEnableFileSink() {}
 
+void logPauseFileSink() {}
+
+void logResumeFileSink() {}
+
 void logFlushFile() {}
 
 String logLatestFilePath() {
@@ -24,19 +28,43 @@ String logLatestFilePath() {
 
 void logRewriteUnsynced() {}
 
+bool logSinkHealthy() {
+  return true;
+}
+
+uint32_t logSinkFailureCount() {
+  return 0;
+}
+
+uint32_t logBytesOnDisk() {
+  return 0;
+}
+
 #else
 
 #include <Preferences.h>
 #include <time.h>
 #include <stdlib.h>
 #include "fs_compat.h"
+#include "log_sink_health.h"
 
 LogLevel LOG_LEVEL = DEFAULT_LOG_LEVEL;
 
 String logBuffer[LOG_BUFFER_SIZE];
 int logIndex = 0;
 
-static bool fileSinkEnabled = false;
+// Whether the sink is SUPPOSED to be running, which is a different question
+// from whether it is working. This one is set once by logEnableFileSink() and
+// never cleared; a fault lives in sinkHealth instead, where it can heal. The
+// two used to be one flag, and merging them is what made a transient failure
+// permanent.
+static bool fileSinkConfigured = false;
+// Set while the littlefs partition is being rewritten raw (fs OTA, manual fs
+// upload). A write through the stale mount in that window lands on blocks the
+// new image owns; volatile because the OTA task flips it while logln runs on
+// the main loop.
+static volatile bool fileSinkPaused = false;
+static LogSinkHealth sinkHealth;
 static File logFile;
 static String currentLogTag;
 static unsigned long lastFlushMs = 0;
@@ -49,6 +77,17 @@ static void closeLogFile() {
     logFile.flush();
     logFile.close();
   }
+}
+
+// Drop the handle and start the recovery clock. Deliberately silent: this runs
+// from inside log(), so a logWarn() here would recurse straight back into it.
+// The fleet learns about it from the heartbeat instead, which is the half of
+// this fix that lives in the portal.
+static void failSink() {
+  closeLogFile();
+  logFile = File();
+  currentLogTag = "";
+  sinkHealth.noteFailure(millis(), LOG_SINK_RETRY_INTERVAL_MS);
 }
 
 static String determineLogTag() {
@@ -70,10 +109,13 @@ static void ensureLogDirectory() {
 }
 
 static void ensureLogFile() {
-  if (!fileSinkEnabled) return;
+  if (!fileSinkConfigured) return;
   String tag = determineLogTag();
   if (tag.length() == 0) return;
   if (!logFile || tag != currentLogTag) {
+    // Throttle only the reopen, and only while the sink is down. The healthy
+    // path (first line after boot, and every midnight rollover) is unchanged.
+    if (!sinkHealth.shouldAttempt(millis())) return;
     closeLogFile();
     ensureLogDirectory();
     // Cleanup old logs before opening new file
@@ -116,11 +158,16 @@ static void ensureLogFile() {
 #ifdef ENABLE_DEBUG_LOGGING
       Serial.println("[log] Failed to open log file for writing: " + path);
 #endif
-      fileSinkEnabled = false;
+      // Was `fileSinkEnabled = false`, with nothing anywhere to set it back.
+      // The failure is now recorded and retried instead, because the reasons an
+      // open fails here are overwhelmingly transient: a full filesystem that
+      // the prune above may itself clear on the next attempt, or a directory
+      // handle upset by something else on the device.
+      sinkHealth.noteFailure(millis(), LOG_SINK_RETRY_INTERVAL_MS);
       return;
     }
     currentLogTag = tag;
-    // Truncate overly large log directory by deleting files older than 7 days
+    sinkHealth.noteSuccess();
   }
 }
 
@@ -171,14 +218,23 @@ void log(String msg, int level) {
   Serial.print(line);
 #endif
 
-  if (fileSinkEnabled) {
+  if (fileSinkConfigured && !fileSinkPaused) {
     ensureLogFile();
     if (logFile) {
-      logFile.print(line);
-      unsigned long now = millis();
-      if (lastFlushMs == 0 || (now - lastFlushMs) >= LOG_FLUSH_INTERVAL_MS || line.endsWith("\n")) {
-        logFile.flush();
-        lastFlushMs = now;
+      // print() has always returned how many bytes it took and nothing ever
+      // looked. That is the other half of the silent failure: a handle that
+      // stays truthy while every write goes nowhere leaves the sink "enabled",
+      // "open" and producing nothing, which is indistinguishable from a quiet
+      // clock in every readout we have.
+      size_t wrote = logFile.print(line);
+      if (wrote != line.length()) {
+        failSink();
+      } else {
+        unsigned long now = millis();
+        if (lastFlushMs == 0 || (now - lastFlushMs) >= LOG_FLUSH_INTERVAL_MS || line.endsWith("\n")) {
+          logFile.flush();
+          lastFlushMs = now;
+        }
       }
     }
   }
@@ -287,7 +343,12 @@ void logEnableFileSink() {
 #endif
   }
 
-  fileSinkEnabled = true;
+  fileSinkConfigured = true;
+  // Clear any pending retry so a re-arm from the clear-logs route takes effect
+  // at once rather than up to a minute later. The failure COUNT is deliberately
+  // left alone: it means "since boot", and clearing the logs is not evidence
+  // that the sink never dropped out.
+  sinkHealth.noteSuccess();
   currentLogTag = "";
   ensureLogFile();
   if (recoveredFromLowSpace) {
@@ -295,8 +356,53 @@ void logEnableFileSink() {
   }
 }
 
+// Reported on the heartbeat. Three fields rather than one, because they answer
+// three different questions and the fleet needs all three: is it writing right
+// now, has it ever stopped since boot, and is anything actually landing on
+// disk. A clock that recovered at 03:00 looks identical to a healthy one on the
+// first field alone.
+bool logSinkHealthy() {
+  return fileSinkConfigured && sinkHealth.healthy;
+}
+
+uint32_t logSinkFailureCount() {
+  return sinkHealth.failures;
+}
+
+// Total bytes under /logs. The only signal that catches the worst variant of
+// this fault, where writes report success and the data still is not there:
+// bytes that do not move over hours on a device that is up, at debug level and
+// beaconing. Cheap enough to do hourly, and it is the same directory walk
+// /api/logs/summary already does on demand.
+uint32_t logBytesOnDisk() {
+  File dir = FS_IMPL.open("/logs");
+  if (!dir) return 0;
+  uint32_t total = 0;
+  while (true) {
+    File entry = dir.openNextFile();
+    if (!entry) break;
+    if (!entry.isDirectory()) {
+      total += (uint32_t)entry.size();
+    }
+    entry.close();
+  }
+  dir.close();
+  return total;
+}
+
 void logCloseFile() {
   closeLogFile();
+}
+
+void logPauseFileSink() {
+  // Flag first, then close: a line logged from another task between the two
+  // must not reopen the file.
+  fileSinkPaused = true;
+  closeLogFile();
+}
+
+void logResumeFileSink() {
+  fileSinkPaused = false;
 }
 
 void logFlushFile() {
