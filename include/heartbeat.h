@@ -2,7 +2,13 @@
 
 #include <Arduino.h>
 
-// Heartbeat interval (1 hour in milliseconds)
+// Default heartbeat interval (1 hour in milliseconds). The portal can steer
+// the rhythm per beat with a `nextBeatSeconds` key in the heartbeat response
+// (portal sql/028): applied in RAM only, clamped to 60 s..24 h, and every
+// successful beat re-derives it, so an absent key or a reboot falls back
+// here. There is deliberately no NVS copy: the first beat after boot
+// (~1 minute in) re-learns the value, and a registry rollback needs nothing
+// from the fleet.
 #define HEARTBEAT_INTERVAL_MS (60 * 60 * 1000UL)
 
 // Startup delay before first heartbeat (30 seconds)
