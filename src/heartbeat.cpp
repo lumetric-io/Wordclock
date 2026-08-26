@@ -41,6 +41,9 @@
 #define HEARTBEAT_READ_TIMEOUT_MS 5000
 
 // State
+// Active beat rhythm. Starts at the compiled default and follows whatever
+// the last successful beat's response said (see applyNextBeatSeconds).
+static unsigned long s_heartbeatIntervalMs = HEARTBEAT_INTERVAL_MS;
 static unsigned long s_lastHeartbeatMs = 0;
 static unsigned long s_lastFailureMs = 0;
 static bool s_initialized = false;
@@ -55,6 +58,7 @@ static int s_lastHeartbeatHttpCode = 0;
 // Forward declarations
 static bool isAtHalfMinute();
 static bool shouldSendHeartbeat(unsigned long nowMs);
+static void applyNextBeatSeconds(const String& body);
 
 void initHeartbeat() {
   s_lastHeartbeatMs = 0;
@@ -144,7 +148,7 @@ static bool shouldSendHeartbeat(unsigned long nowMs) {
   }
   
   // Check if interval has passed
-  if (nowMs - s_lastHeartbeatMs < HEARTBEAT_INTERVAL_MS) {
+  if (nowMs - s_lastHeartbeatMs < s_heartbeatIntervalMs) {
     return false;
   }
   
@@ -160,6 +164,37 @@ static bool isAtHalfMinute() {
   }
   // Send between :28 and :32 seconds (4-second window)
   return timeinfo.tm_sec >= 28 && timeinfo.tm_sec <= 32;
+}
+
+// Server-driven beat rhythm (portal sql/028). The response may carry
+// `nextBeatSeconds`; a valid value (60..86400) becomes the interval for the
+// NEXT beat, anything else - absent key, junk, out of range, unparseable
+// body - means the compiled default. Re-deriving from scratch on every
+// successful beat is the point: the portal states the desired rhythm each
+// time, so clearing it server-side rolls the fleet back within one beat and
+// no state lingers here. RAM only, same parse budget as the commands
+// downlink (its own filtered parse; body cap mirrors MAX_RESPONSE_BYTES in
+// device_commands.cpp).
+static void applyNextBeatSeconds(const String& body) {
+  unsigned long next = HEARTBEAT_INTERVAL_MS;
+  if (body.length() > 0 && body.length() <= 4096) {
+    JsonDocument filter;
+    filter["nextBeatSeconds"] = true;
+    JsonDocument doc;
+    if (deserializeJson(doc, body.c_str(), body.length(),
+                        DeserializationOption::Filter(filter)) ==
+        DeserializationError::Ok) {
+      long secs = doc["nextBeatSeconds"] | 0L;
+      if (secs >= 60 && secs <= 86400) {
+        next = (unsigned long)secs * 1000UL;
+      }
+    }
+  }
+  if (next != s_heartbeatIntervalMs) {
+    logInfo(String("💓 Beat interval now ") + String(next / 1000UL) +
+            " s (portal-directed)");
+    s_heartbeatIntervalMs = next;
+  }
 }
 
 bool sendHeartbeat() {
@@ -292,6 +327,10 @@ bool sendHeartbeat() {
   // `commands` array to it (P4.10) - the downlink rides the connection the
   // clock already made. Nothing here can fail the beat: the beat is done.
   deviceCommandsHandleResponse(body);
+
+  // Same body, second optional key: the rhythm the portal wants for the next
+  // beat. Also cannot fail the beat.
+  applyNextBeatSeconds(body);
 
   logInfo("💓 Heartbeat sent successfully");
   return true;
