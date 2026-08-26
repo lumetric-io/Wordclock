@@ -200,6 +200,11 @@ bool sendHeartbeat() {
   req["firmware"] = FIRMWARE_VERSION;
   req["ui"] = getUiVersion();
   req["channel"] = displaySettings.getUpdateChannel();
+  // The automatic OTA toggle, next to the channel it applies to. Off is a
+  // normal owner choice (and forced while the channel is develop); the
+  // registry uses this to tell "updates switched off" from "cannot reach the
+  // OTA host" when a release is not landing. See portal/sql/026.
+  req["autoUpdate"] = displaySettings.getAutoUpdate();
 
   // Active log threshold. Matters for reading the fleet's log feed as much as
   // for support: the firmware filters in log() before anything is stored, so
