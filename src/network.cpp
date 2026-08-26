@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <WiFi.h>
+#include <esp_wifi.h>
 #if WIFI_MANAGER_ENABLED
 #ifndef ESP32
 #define ESP32
@@ -29,6 +30,24 @@ WiFiManager& getManager() {
 #endif
 
 bool g_wifiConnected = false;
+
+// True once this boot joined the factory network from the compiled-in
+// credentials rather than from anything stored. Two places need to know:
+// isInitialSetupMode() (which would otherwise stop the render loop the moment
+// the factory AP blinks) and the reconnect path (which has no stored
+// credentials to fall back on).
+bool g_usingFactoryWifi = false;
+
+// Set by storeWifiCredentials(). Only getStoredWifiSsid() reads it, to tell a
+// driver config that still holds the factory network from one an operator has
+// just overwritten with this clock's own.
+bool g_credentialsStoredThisBoot = false;
+
+// Shorter than bootstrap's 20 s budget on purpose. In the workshop the AP is
+// there and a healthy join takes a few seconds; anywhere else this is pure
+// dead time in front of the config portal, so it should be cheap to lose.
+static const unsigned long FACTORY_WIFI_TIMEOUT_MS = 10000;
+
 static unsigned long lastReconnectAttemptMs = 0;
 static unsigned long reconnectWindowStartMs = 0;
 static const unsigned long WIFI_RECONNECT_INTERVAL_MS = 60000; // 60s between manual reconnect attempts
@@ -55,6 +74,131 @@ static bool connectWithStoredCredentials() {
     delay(WIFI_CONNECT_RETRY_DELAY_MS);
   }
   return WiFi.status() == WL_CONNECTED;
+}
+
+// Until now only nextgen-bootstrap referenced these, so a secrets.h without
+// them still built every product. Keep that true: an empty SSID is the
+// documented "no factory network" case and connectFactoryWifi() skips on it.
+#ifndef BOOTSTRAP_WIFI_SSID
+#define BOOTSTRAP_WIFI_SSID ""
+#define BOOTSTRAP_WIFI_PASSWORD ""
+#endif
+
+// Fast path for a chip that has just been provisioned by nextgen-bootstrap.
+//
+// Bootstrap joins the workshop network from BOOTSTRAP_WIFI_SSID/PASSWORD, then
+// erases nvs.net80211 on its way out (safeRestart() under WORDCLOCK_BOOTSTRAP)
+// so the product firmware always enrolls fresh. Correct for a customer device,
+// but it also meant every unit coming off the OTA landed in the config portal
+// and an operator had to hand-enter the same workshop network to do five
+// minutes of hardware testing. Trying those same credentials first turns that
+// into a page refresh: mDNS re-registers `wordclock.local`, so the browser tab
+// the operator already has open simply comes back.
+//
+// Called only when no credentials are stored, so this never delays a
+// customer's clock and dies for good on a unit the moment one is enrolled.
+//
+// Deliberately RAM-only. Persisting would ship a clock that knows the factory
+// network and rejoins it if it ever hears it again; the isolation rule in
+// bootstrap_main.cpp is about the credentials never coming to rest, not about
+// never using them.
+static bool connectFactoryWifi() {
+  if (sizeof(BOOTSTRAP_WIFI_SSID) <= 1) {
+    return false;  // no factory network compiled in
+  }
+  logInfo(String("🏭 Trying factory network: ") + BOOTSTRAP_WIFI_SSID);
+  WiFi.persistent(false);
+  WiFi.begin(BOOTSTRAP_WIFI_SSID, BOOTSTRAP_WIFI_PASSWORD);
+  const unsigned long deadline = millis() + FACTORY_WIFI_TIMEOUT_MS;
+  while (WiFi.status() != WL_CONNECTED && millis() < deadline) {
+    delay(250);
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    // Persistence back on for the rest of the boot: whatever the operator
+    // enters in the portal later must still be saved normally.
+    WiFi.persistent(true);
+    g_usingFactoryWifi = true;
+    return true;
+  }
+  // Drop the half-open attempt before falling through. Without this the
+  // driver's in-memory config stays pointed at the factory SSID and the
+  // argless WiFi.begin() that WiFiManager uses to mean "this clock's own
+  // network" would keep retrying it. bootstrap_main.cpp:connectWifiHardcoded()
+  // hands off to the portal in the same boot this way; eraseAP has nothing to
+  // erase here because we only run with no stored credentials.
+  WiFi.disconnect(true /* wifioff */, true /* eraseAP */);
+  WiFi.persistent(true);
+  // disconnect(wifioff=true) powers the radio down; put it back the way
+  // initNetwork() left it so the paths below start from the same state they
+  // would have without this attempt.
+  WiFi.mode(WIFI_STA);
+  logInfo("🏭 Factory network not found; continuing with normal provisioning.");
+  return false;
+}
+
+// Enrolment from the admin page, as the counterpart to connectFactoryWifi():
+// the operator has the clock in front of them on the workshop network and
+// types the network it should actually live on.
+//
+// Deliberately does not call WiFi.begin(ssid, pass). begin() associates
+// immediately, which tears down the connection carrying the request — the
+// operator would never learn whether the save succeeded, and on a bad password
+// the clock would be stranded on neither network with nothing stored. Writing
+// the driver config with FLASH storage puts the credentials in nvs.net80211
+// now and leaves this session's association alone, so the promise the admin
+// page makes ("active after a restart") is the literal behaviour.
+//
+// The existing config is read back first so only the two fields we mean to
+// change are touched: zero-filling a wifi_config_t would also reset the scan
+// and sort methods, and a cleared pmf_cfg.capable is enough on its own to fail
+// the association against a WPA3-capable AP.
+bool storeWifiCredentials(const String& ssid, const String& password) {
+  if (ssid.isEmpty() || ssid.length() > 32) return false;
+  if (!password.isEmpty() && (password.length() < 8 || password.length() > 63)) return false;
+
+  wifi_config_t conf;
+  if (esp_wifi_get_config(WIFI_IF_STA, &conf) != ESP_OK) {
+    memset(&conf, 0, sizeof(conf));
+    conf.sta.pmf_cfg.capable = true;
+  }
+  memset(conf.sta.ssid, 0, sizeof(conf.sta.ssid));
+  memset(conf.sta.password, 0, sizeof(conf.sta.password));
+  memcpy(conf.sta.ssid, ssid.c_str(), ssid.length());
+  memcpy(conf.sta.password, password.c_str(), password.length());
+  // Both directions matter: an open network must not inherit a WPA2 floor from
+  // whatever was configured before, and a protected one must not be satisfied
+  // by an unencrypted AP answering to the same name.
+  conf.sta.threshold.authmode = password.isEmpty() ? WIFI_AUTH_OPEN : WIFI_AUTH_WPA_PSK;
+  // The operator typed a name, not a BSSID. A bssid_set left over from an
+  // earlier association would pin the clock to one access point.
+  conf.sta.bssid_set = false;
+
+  esp_wifi_set_storage(WIFI_STORAGE_FLASH);
+  const esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &conf);
+  if (err != ESP_OK) {
+    logError(String("❌ Storing WiFi credentials failed: ") + esp_err_to_name(err));
+    return false;
+  }
+  g_credentialsStoredThisBoot = true;
+  // Never the password, not even at debug level: /log is served unauthenticated
+  // and /log/download survives on the filesystem.
+  logInfo(String("💾 WiFi credentials stored for '") + ssid + "' — active after restart.");
+  return true;
+}
+
+String getStoredWifiSsid() {
+  // On the factory fast path the driver config holds the workshop network,
+  // which is not stored (connectFactoryWifi runs RAM-only) and is not this
+  // clock's own network in any sense the operator means. Reporting it would
+  // both lie about the boot behaviour and put the factory SSID on screen.
+  // Once real credentials are saved the driver config is the right answer.
+  if (g_usingFactoryWifi && !g_credentialsStoredThisBoot) return String();
+  wifi_config_t conf;
+  if (esp_wifi_get_config(WIFI_IF_STA, &conf) != ESP_OK) return String();
+  char ssid[sizeof(conf.sta.ssid) + 1];
+  memcpy(ssid, conf.sta.ssid, sizeof(conf.sta.ssid));
+  ssid[sizeof(conf.sta.ssid)] = '\0';
+  return String(ssid);
 }
 
 static void startWiFiManagerPortal() {
@@ -93,6 +237,15 @@ void initNetwork() {
   g_wifiHadCredentialsAtBoot = WiFi.SSID().length() > 0;
   logInfo(String("WiFiManager disabled (credentials present: ") + (g_wifiHadCredentialsAtBoot ? "yes" : "no") + ")");
 #endif
+
+  // Ahead of every provisioning path below — BLE and the portal both assume
+  // there is no way onto a network, and on a just-bootstrapped chip there is.
+  if (!g_wifiHadCredentialsAtBoot && connectFactoryWifi()) {
+    g_wifiConnected = true;
+    logInfo("✅ WiFi connected to factory network: " + String(WiFi.SSID()));
+    logInfo("📡 IP address: " + WiFi.localIP().toString());
+    return;
+  }
 
 #if BLE_PROVISIONING_ENABLED
 #if WIFI_MANAGER_ENABLED
@@ -171,6 +324,14 @@ void processNetwork() {
 
   bool connected = (WiFi.status() == WL_CONNECTED);
   if (connected && !g_wifiConnected) {
+    // The moment we come up on anything other than the factory network the
+    // operator has enrolled this unit for real. Drop the flag so the reconnect
+    // path goes back to the stored credentials — leaving it set would have the
+    // clock quietly reaching for the workshop AP for the rest of its life.
+    if (g_usingFactoryWifi && WiFi.SSID() != String(BOOTSTRAP_WIFI_SSID)) {
+      g_usingFactoryWifi = false;
+      logInfo("🏭 Left the factory network; using enrolled credentials.");
+    }
     logInfo("✅ WiFi connection established: " + String(WiFi.SSID()));
     logInfo("📡 IP address: " + WiFi.localIP().toString());
     lastReconnectAttemptMs = millis();
@@ -232,6 +393,13 @@ void processNetwork() {
     }
     if (lastReconnectAttemptMs == 0 || now - lastReconnectAttemptMs >= WIFI_RECONNECT_INTERVAL_MS) {
       logInfo("🔄 Attempting WiFi reconnect...");
+      if (g_usingFactoryWifi) {
+        // Nothing is stored, so the argless begin() below has nothing to
+        // reuse. Name the network explicitly — still without persisting it.
+        WiFi.persistent(false);
+        WiFi.begin(BOOTSTRAP_WIFI_SSID, BOOTSTRAP_WIFI_PASSWORD);
+        WiFi.persistent(true);
+      } else
 #if WIFI_MANAGER_ENABLED
       if (g_wifiManagerStarted) {
         // Portal active in AP+STA mode: WiFi.begin() is a no-op; use reconnect() instead.
@@ -276,6 +444,12 @@ bool isInitialSetupMode() {
   // operator is in front of the device picking an SSID. There is nothing
   // useful to render on the clock face (no NTP yet) and no point in
   // periodic STA reconnect scans (no credentials to retry).
+  //
+  // A clock on the factory network is none of that, even though it has no
+  // stored credentials: it has a time, a face worth rendering and something
+  // to reconnect to. Without this it would blank and stop retrying the moment
+  // the workshop AP blinked — the one place where someone is watching.
+  if (g_usingFactoryWifi) return false;
   return !g_wifiConnected && !g_wifiHadCredentialsAtBoot;
 }
 

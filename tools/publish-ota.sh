@@ -10,6 +10,93 @@ FW_VERSION=""
 FS_VERSION=""
 ASSUME_YES=false
 FS_ONLY=false
+FORCE_FS_VERSION=false
+FS_UNCHANGED=""
+
+# Reads one string field out of a JSON file, walking nested keys.
+# Prints an empty line on anything unexpected (missing file, missing key,
+# non-string value), because every caller treats "unknown" as "do nothing".
+read_json_field() {
+  local file="$1"
+  shift
+  python3 - "$file" "$@" <<'PY'
+import json, sys
+path = sys.argv[1]
+keys = sys.argv[2:]
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        doc = json.load(f)
+    for key in keys:
+        if not isinstance(doc, dict):
+            print("")
+            sys.exit(0)
+        doc = doc.get(key)
+        if doc is None:
+            print("")
+            sys.exit(0)
+    print(doc if isinstance(doc, str) else "")
+except Exception:
+    print("")
+PY
+}
+
+# Locates mklittlefs, which PlatformIO installs as a package rather than on
+# PATH. Prints an empty line when it cannot be found: the content comparison is
+# an optimisation, and losing it must never stop a release.
+find_mklittlefs() {
+  if command -v mklittlefs > /dev/null 2>&1; then
+    command -v mklittlefs
+    return
+  fi
+  local candidate
+  for candidate in "$HOME"/.platformio/packages/tool-mklittlefs*/mklittlefs; do
+    if [[ -x "$candidate" ]]; then
+      echo "$candidate"
+      return
+    fi
+  done
+  echo ""
+}
+
+# Hashes what a LittleFS image CONTAINS rather than the bytes it is made of.
+#
+# mklittlefs stamps the build time into the filesystem metadata, so packing the
+# same directory twice a second apart produces two different images. That was
+# measured, not assumed: two builds of an unchanged data/ differed in 17 bytes
+# out of 3 MB, at offsets 0xC44 and 0x1FDE, both decoding to the build time,
+# and unpacking the two gave identical trees. So a byte comparison between
+# releases can only ever say "different", which is why the guard below needs
+# this instead.
+#
+# The hash covers every file's relative path and contents, in a fixed order.
+# Empty output means the image could not be read, and every caller treats that
+# as "cannot tell", never as "unchanged".
+fs_content_hash() {
+  local image="$1"
+  local mk
+  mk="$(find_mklittlefs)"
+  if [[ -z "$mk" || ! -f "$image" ]]; then
+    echo ""
+    return
+  fi
+  local tmp
+  tmp="$(mktemp -d)"
+  # A corrupt image makes mklittlefs abort on a signal, and the shell that waits
+  # for it prints "Aborted (core dumped)" into the middle of a release. The
+  # trailing 'exit' is what stops that: without a second command bash execs
+  # mklittlefs in place of the subshell, so the parent does the waiting and the
+  # redirect below never gets near the message.
+  if ! ( "$mk" -u "$tmp" -b 4096 -p 256 -s "$(stat -c%s "$image")" "$image"; exit $? ) > /dev/null 2>&1; then
+    rm -rf "$tmp"
+    echo ""
+    return
+  fi
+  local hash
+  hash="$( (cd "$tmp" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) \
+           | sha256sum | awk '{print $1}')"
+  rm -rf "$tmp"
+  echo "$hash"
+}
 
 read_version_from_config() {
   local file="$1"
@@ -60,6 +147,10 @@ while [[ $# -gt 0 ]]; do
       FW_VERSION=""
       shift
       ;;
+    --force-fs-version)
+      FORCE_FS_VERSION=true
+      shift
+      ;;
     --yes)
       ASSUME_YES=true
       shift
@@ -68,7 +159,13 @@ while [[ $# -gt 0 ]]; do
       echo "Usage:"
       echo "  ./publish-ota.sh [--product <product>] [--channel <channel>]"
       echo "                   [--fw-version <version>] [--fs-version <version>]"
-      echo "                   [--yes]"
+      echo "                   [--force-fs-version] [--yes]"
+      echo
+      echo "  --force-fs-version  Publish under the given FS version even when the"
+      echo "                      image contains exactly what the published one"
+      echo "                      does. Without it, an image whose contents are"
+      echo "                      unchanged keeps its old version, so devices skip"
+      echo "                      the filesystem write and keep their logs."
       exit 0
       ;;
     *)
@@ -202,12 +299,106 @@ CHANNEL_SUFFIX="$(channel_suffix_for "$CHANNEL")"
 FW_VERSION="$(apply_channel_suffix "$FW_VERSION" "$CHANNEL_SUFFIX")"
 FS_VERSION="$(apply_channel_suffix "$FS_VERSION" "$CHANNEL_SUFFIX")"
 
+FS_TYPE="littlefs"
+if [[ -f "$BUILD_DIR/littlefs.bin" ]]; then
+  FS_SRC="$BUILD_DIR/littlefs.bin"
+else
+  echo "❌ No LittleFS image found"
+  exit 1
+fi
+FS_SIZE=$(stat -c%s "$FS_SRC")
+FS_HASH=$(sha256sum "$FS_SRC" | awk '{print $1}')
+# Recorded in fs.json so the next release can compare against it without
+# unpacking this image again. Empty when mklittlefs is not installed, which
+# every reader treats as "unknown", never as "unchanged".
+FS_CONTENT_HASH="$(fs_content_hash "$FS_SRC")"
+
+# Keep the published FS version when the image did not actually change.
+#
+# A filesystem update rewrites the whole 3 MB LittleFS partition, which takes
+# every log file with it. The device already guards against that: it skips the
+# write when the manifest's fs version equals what /.fs_image_version records
+# (src/ota_updater.cpp). That guard has never fired in practice, because
+# release.sh bumps UI_VERSION in lockstep with FIRMWARE_VERSION — so a release
+# touching only src/ still hands the fleet a "new" filesystem and wipes its
+# logs for a byte-identical image.
+#
+# Rather than ask everyone to remember not to bump it, make the pipeline
+# decide from the image: if what it contains is the same as what this channel
+# currently points at, publish it under the old version. Devices already on it
+# skip the write, devices on an older one still download (from the new URL,
+# same contents) and land on the same version string.
+#
+# The comparison is on CONTENTS, not on bytes. This guard originally compared
+# sha256 of the image and could therefore never fire: mklittlefs writes the
+# build time into the filesystem metadata, so two packs of an unchanged data/
+# are always different images. The 26.08.21-rc.3 release proved it, wiping the
+# fleet's logs for a data/ that had not been touched. See fs_content_hash().
+#
+# The byte hash is still tried first, because it is free and a match is
+# conclusive. Only when it differs does the expensive unpack happen.
+#
+# Per channel on purpose: stable and develop carry different images, and a
+# device on stable must be compared against what stable last shipped.
+#
+# Manifests published before this change carry no content_sha256, so the
+# published image is unpacked to derive one. That keeps the guard working on
+# the first release after this lands instead of one release later.
+#
+# If mklittlefs is not installed both content hashes come back empty and the
+# script behaves exactly as it did before: a new version every time.
+if [[ "$FORCE_FS_VERSION" != true ]]; then
+  PUBLISHED_FS_MANIFEST=""
+  PUBLISHED_FS_URL=""
+  if [[ -f "$CHANNEL_DIR/$CHANNEL.json" ]]; then
+    PUBLISHED_FS_URL="$(read_json_field "$CHANNEL_DIR/$CHANNEL.json" target fs_manifest_url)"
+  fi
+  if [[ -n "$PUBLISHED_FS_URL" && "$PUBLISHED_FS_URL" == "$OTA_BASE_URL"/* ]]; then
+    PUBLISHED_FS_MANIFEST="$OTA_ROOT/${PUBLISHED_FS_URL#"$OTA_BASE_URL"/}"
+  fi
+  if [[ -z "$PUBLISHED_FS_MANIFEST" ]]; then
+    PUBLISHED_FS_MANIFEST="$OTA_ROOT/$PRODUCT/artifacts/current/fs.json"
+  fi
+
+  if [[ -f "$PUBLISHED_FS_MANIFEST" ]]; then
+    PUBLISHED_FS_HASH="$(read_json_field "$PUBLISHED_FS_MANIFEST" sha256)"
+    PUBLISHED_FS_VERSION="$(read_json_field "$PUBLISHED_FS_MANIFEST" version)"
+
+    FS_SAME=false
+    if [[ -n "$PUBLISHED_FS_HASH" && "$PUBLISHED_FS_HASH" == "$FS_HASH" ]]; then
+      FS_SAME=true
+      FS_SAME_HOW="byte-identical"
+    else
+      PUBLISHED_FS_CONTENT_HASH="$(read_json_field "$PUBLISHED_FS_MANIFEST" content_sha256)"
+      if [[ -z "$PUBLISHED_FS_CONTENT_HASH" ]]; then
+        # Pre-content_sha256 manifest. fs.bin sits next to it.
+        PUBLISHED_FS_CONTENT_HASH="$(fs_content_hash "$(dirname "$PUBLISHED_FS_MANIFEST")/fs.bin")"
+      fi
+      if [[ -n "$FS_CONTENT_HASH" && "$FS_CONTENT_HASH" == "$PUBLISHED_FS_CONTENT_HASH" ]]; then
+        FS_SAME=true
+        FS_SAME_HOW="different bytes, identical contents"
+      fi
+    fi
+
+    if [[ "$FS_SAME" == true && -n "$PUBLISHED_FS_VERSION" ]]; then
+      if [[ "$PUBLISHED_FS_VERSION" != "$FS_VERSION" ]]; then
+        echo "→ Filesystem contents are unchanged from $CHANNEL ($FS_SAME_HOW)"
+        echo "  Keeping FS version $PUBLISHED_FS_VERSION (not publishing $FS_VERSION)"
+        echo "  Devices will skip the filesystem write and keep their logs."
+        echo "  Override with --force-fs-version."
+        FS_VERSION="$PUBLISHED_FS_VERSION"
+      fi
+      FS_UNCHANGED=true
+    fi
+  fi
+fi
+
 echo
 echo "Publishing to:"
 echo "  Product : $PRODUCT"
 echo "  Channel : $CHANNEL"
 echo "  FW ver  : ${FW_VERSION:-<unchanged>}"
-echo "  FS ver  : $FS_VERSION"
+echo "  FS ver  : $FS_VERSION${FS_UNCHANGED:+ (unchanged image)}"
 echo "  Artifacts dir: $ARTIFACT_DIR"
 echo
 
@@ -275,20 +466,11 @@ fi
 # -------------------------
 echo "→ Copying filesystem image"
 
-FS_TYPE="littlefs"
-if [[ -f "$BUILD_DIR/littlefs.bin" ]]; then
-  FS_SRC="$BUILD_DIR/littlefs.bin"
-else
-  echo "❌ No LittleFS image found"
-  exit 1
-fi
-
+# FS_SRC / FS_SIZE / FS_HASH were resolved before the confirmation prompt, so
+# the operator got to see the version that is really going out.
 sudo cp "$FS_SRC" "$ARTIFACT_DIR/fs.bin"
 sudo chown root:www-data "$ARTIFACT_DIR/fs.bin"
 sudo chmod 644 "$ARTIFACT_DIR/fs.bin"
-
-FS_SIZE=$(stat -c%s "$ARTIFACT_DIR/fs.bin")
-FS_HASH=$(sha256sum "$ARTIFACT_DIR/fs.bin" | awk '{print $1}')
 
 sudo tee "$ARTIFACT_DIR/fs.json" > /dev/null <<EOF
 {
@@ -299,6 +481,7 @@ sudo tee "$ARTIFACT_DIR/fs.json" > /dev/null <<EOF
   "version": "$FS_VERSION",
   "filesize": $FS_SIZE,
   "sha256": "$FS_HASH",
+  "content_sha256": "$FS_CONTENT_HASH",
   "url": "$OTA_BASE_URL/$PRODUCT/artifacts/${FW_VERSION:-current}/fs.bin"
 }
 EOF

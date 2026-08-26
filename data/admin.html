@@ -64,6 +64,33 @@
           </div>
         </div>
       </section>
+<section class="chapter" id="wifiSection">
+        <header class="section-head">
+          <span class="section-num">11</span>
+          <h2 class="section-title" data-i18n="admin.wifi.title">Wi-Fi network</h2>
+        </header>
+        <div class="section-aside">
+          <span class="label" data-i18n="admin.wifi.label">Credentials</span>
+          <div class="section-body">
+            <p class="help" data-i18n="admin.wifi.help">Sets the network this clock joins at boot. The current connection stays up — the new network is only used after a restart.</p>
+            <div class="field">
+              <span class="label" data-i18n="admin.wifi.ssid">Network name (SSID)</span>
+              <input type="text" id="wifiSsid" class="input" maxlength="32" autocomplete="off" spellcheck="false" autocapitalize="none" />
+            </div>
+            <div class="field">
+              <span class="label" data-i18n="admin.wifi.password">Password</span>
+              <input type="password" id="wifiPass" class="input" maxlength="63" autocomplete="new-password" />
+              <p class="help" data-i18n="admin.wifi.password_help">Leave empty for an open network, otherwise 8–63 characters. The stored password is never shown again.</p>
+            </div>
+            <div class="btn-row">
+              <button id="wifiSaveBtn" class="btn" data-i18n="admin.wifi.save">Save</button>
+              <button id="wifiSaveRestartBtn" class="btn line" data-i18n="admin.wifi.save_restart">Save and restart</button>
+            </div>
+            <p id="wifiMsg" class="help"></p>
+            <p class="help"><span data-i18n="admin.wifi.stored">Configured for next boot:</span> <span id="wifiStored" class="value-mono">—</span></p>
+          </div>
+        </div>
+      </section>
 <section class="chapter" id="syncUiSection">
         <header class="section-head">
           <span class="section-num">03</span>
@@ -440,6 +467,84 @@
           else syncMsg.textContent = T('admin.sync.failed', 'UI sync failed') + ' (HTTP ' + res.status + ')';
         } catch (err) { syncMsg.textContent = T('admin.sync.req_failed', 'UI sync request failed'); }
       });
+    }
+
+    // ─── Wi-Fi credentials: saved now, joined on the next boot.
+    // The device deliberately does not switch networks on save — this page is
+    // typically loaded over the very network that would drop.
+    const wifiSsidEl = document.getElementById('wifiSsid');
+    const wifiPassEl = document.getElementById('wifiPass');
+    const wifiMsgEl = document.getElementById('wifiMsg');
+    const wifiStoredEl = document.getElementById('wifiStored');
+    const wifiSaveBtn = document.getElementById('wifiSaveBtn');
+    const wifiSaveRestartBtn = document.getElementById('wifiSaveRestartBtn');
+    if (wifiSaveBtn) {
+      let wifiStoredSsid = '';
+      const renderStoredSsid = () => {
+        if (wifiStoredEl) wifiStoredEl.textContent = wifiStoredSsid || T('admin.wifi.none', 'none');
+      };
+      const setWifiMsg = (text, cls) => {
+        if (!wifiMsgEl) return;
+        wifiMsgEl.textContent = text;
+        wifiMsgEl.className = cls ? 'help ' + cls : 'help';
+      };
+      const loadWifi = async () => {
+        try {
+          const res = await fetch('/api/wifi', { cache: 'no-store' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const body = await res.json();
+          wifiStoredSsid = body.ssid || '';
+          if (wifiSsidEl && !wifiSsidEl.value) wifiSsidEl.value = wifiStoredSsid;
+        } catch (err) {
+          wifiStoredSsid = '';
+        }
+        renderStoredSsid();
+      };
+      const saveWifi = async () => {
+        const ssid = wifiSsidEl ? wifiSsidEl.value : '';
+        const password = wifiPassEl ? wifiPassEl.value : '';
+        if (!ssid) {
+          setWifiMsg(T('admin.wifi.err_ssid', 'Enter a network name'), 'text-err');
+          return false;
+        }
+        if (password && (password.length < 8 || password.length > 63)) {
+          setWifiMsg(T('admin.wifi.err_password', 'Password must be empty or 8–63 characters'), 'text-err');
+          return false;
+        }
+        setWifiMsg(T('common.saving', 'Saving…'));
+        try {
+          const res = await fetch('/api/wifi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ssid, password })
+          });
+          // Basic-Auth on an XHR gets no browser prompt, so say what to do.
+          if (res.status === 401 || res.status === 403) {
+            throw new Error(T('admin.wifi.err_auth', 'Not authorised — reload this page and sign in again'));
+          }
+          if (!res.ok) throw new Error((await res.text()) || ('HTTP ' + res.status));
+          const body = await res.json();
+          wifiStoredSsid = body.ssid || ssid;
+          renderStoredSsid();
+          if (wifiPassEl) wifiPassEl.value = '';
+          setWifiMsg(T('admin.wifi.saved', 'Saved. The clock joins this network after a restart.'), 'text-ok');
+          return true;
+        } catch (err) {
+          setWifiMsg(T('admin.wifi.save_failed', 'Save failed:') + ' ' + err.message, 'text-err');
+          return false;
+        }
+      };
+      wifiSaveBtn.addEventListener('click', () => { saveWifi(); });
+      if (wifiSaveRestartBtn) {
+        wifiSaveRestartBtn.addEventListener('click', async () => {
+          if (!(await saveWifi())) return;
+          if (!confirm(T('admin.wifi.confirm_restart', 'Restart now? The clock leaves this network and comes back on the new one.'))) return;
+          setWifiMsg(T('admin.wifi.restarting', 'Restarting…'));
+          fetch('/restart').catch(() => {});
+        });
+      }
+      loadWifi();
+      document.addEventListener('chronolett:lang', renderStoredSsid);
     }
 
     // ─── Color swatches + custom-hex fallback (mirror of dashboard.html)
