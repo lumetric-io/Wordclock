@@ -16,6 +16,7 @@
   --line-soft: rgba(14, 14, 14, 0.06);
   --line-strong: rgba(14, 14, 14, 0.40);
   --ok: #2F6F3E;
+  --ok-soft: rgba(47, 111, 62, 0.12);
   --err: #8B2F1F;
   --warn: #8B6913;
 }
@@ -359,7 +360,7 @@ section.chapter:last-of-type { border-bottom: none; }
   margin: 0;
 }
 
-/* ─── Status indicator (copper dot, hairline frame) ──── */
+/* ─── Status indicator (green = on, red = off/error) ──── */
 .status-row {
   display: flex;
   align-items: center;
@@ -388,8 +389,8 @@ section.chapter:last-of-type { border-bottom: none; }
   flex-shrink: 0;
 }
 
-.dot.on { background: var(--copper); box-shadow: 0 0 0 3px var(--copper-soft); }
-.dot.off { background: var(--graphite-40); }
+.dot.on { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.dot.off { background: var(--rust); }
 .dot.err { background: var(--rust); }
 
 .event-row {
