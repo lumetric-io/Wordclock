@@ -312,6 +312,14 @@ section.chapter:last-of-type { border-bottom: none; }
   gap: 20px;
 }
 
+/* Show/hide wrapper groups inside .section-body (logo brightness, HET IS):
+   repeat the body's grid rhythm inside the wrapper, so an h-rule or label
+   never sits flush against the next row. .hidden still wins (!important). */
+.body-group {
+  display: grid;
+  gap: 20px;
+}
+
 .section-aside {
   display: grid;
   /* Same rail bump as .section-head — keeps the body's left edge
@@ -974,9 +982,9 @@ input[type="file"]::file-selector-button {
 
 .ral-modal-head h3 {
   margin: 0;
-  font-family: "Cormorant Garamond", "Cormorant", serif;
-  font-weight: 500;
   font-size: 22px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
 }
 
 .ral-modal-body {
