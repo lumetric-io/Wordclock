@@ -103,8 +103,8 @@
               </div>
               <input type="range" min="0" max="255" id="brightnessSlider" />
             </div>
-            <div id="logoBrightnessSection" class="hidden">
-              <hr class="h-rule" style="margin: 16px 0" />
+            <div id="logoBrightnessSection" class="hidden body-group">
+              <hr class="h-rule" />
               <span class="label" data-i18n="dashboard.brightness.logo_label">Logo brightness</span>
               <div class="slider-block">
                 <div class="slider-meta">
@@ -133,7 +133,7 @@
               <span class="value-mono muted" id="logoStatus">—</span>
             </div>
             <div id="logoGrid" class="logo-color-grid"></div>
-            <hr class="h-rule" style="margin: 16px 0" />
+            <hr class="h-rule" />
             <span class="label" data-i18n="dashboard.logo.fill_label">Fill colour</span>
             <div class="swatch-grid" id="logoColorSwatches" aria-label="Logo color presets"></div>
             <div class="swatch-custom-row">
@@ -150,7 +150,7 @@
               <input type="number" id="logoColorGInput" class="input tight rgb-field" min="0" max="255" placeholder="G" />
               <input type="number" id="logoColorBInput" class="input tight rgb-field" min="0" max="255" placeholder="B" />
             </div>
-            <div class="slider-meta" style="margin-top: 12px">
+            <div class="slider-meta">
               <button id="logoFillAll" class="btn line" data-i18n="dashboard.logo.fill_all">Fill all</button>
               <button id="logoApply" class="btn" data-i18n="dashboard.logo.save">Save</button>
             </div>
@@ -219,13 +219,13 @@
               <input type="checkbox" id="animateWords" />
               <span data-i18n="dashboard.display.animate">Word-by-word animation</span>
             </label>
-            <div id="hetIsSection">
+            <div id="hetIsSection" class="body-group">
               <hr class="h-rule" />
               <label class="check-row">
                 <input type="checkbox" id="hetIsAlways2" />
                 <span data-i18n="dashboard.display.always_het_is">Always show "HET IS"</span>
               </label>
-              <div class="field" style="margin-top:12px">
+              <div class="field">
                 <span class="label"><span data-i18n="dashboard.display.show_het_is">Show "HET IS"</span> — <span id="hetIsDurationValue2" class="value-mono">30</span>s</span>
                 <div class="slider-meta">
                   <input type="number" id="hetIsDurationInput" min="0" max="360" step="1" class="input tight short" />
