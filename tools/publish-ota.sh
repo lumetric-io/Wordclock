@@ -14,6 +14,16 @@ FORCE_FS_VERSION=false
 NO_FS=false
 FS_FROM_VERSION=""
 FS_UNCHANGED=""
+REPOINT_VERSION=""
+DRY_RUN=false
+
+# nextgen-logo-105x105 was previously shipped as nextgen-logo-100x100. Any
+# channel write for the new id is mirrored to the old one (see the mirror
+# sections in both repoint and publish mode) so units still polling the old
+# PRODUCT_ID keep receiving updates.
+declare -A LEGACY_PRODUCT_ALIAS=(
+  ["nextgen-logo-105x105"]="nextgen-logo-100x100"
+)
 
 # Reads one string field out of a JSON file, walking nested keys.
 # Prints an empty line on anything unexpected (missing file, missing key,
@@ -128,11 +138,11 @@ bump_last_number() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --product)
+    -p|--product)
       PRODUCT="$2"
       shift 2
       ;;
-    --channel)
+    -c|--channel)
       CHANNEL="$2"
       shift 2
       ;;
@@ -161,16 +171,28 @@ while [[ $# -gt 0 ]]; do
       FORCE_FS_VERSION=true
       shift
       ;;
-    --yes)
+    -y|--yes)
       ASSUME_YES=true
+      shift
+      ;;
+    --repoint)
+      REPOINT_VERSION="$2"
+      shift 2
+      ;;
+    --dry-run)
+      DRY_RUN=true
       shift
       ;;
     --help|-h)
       echo "Usage:"
-      echo "  ./publish-ota.sh [--product <product>] [--channel <channel>]"
+      echo "  ./publish-ota.sh [-p <product>] [-c <channel>]"
       echo "                   [--fw-version <version>] [--fs-version <version>]"
       echo "                   [--no-fs] [--fs-from <fw>]"
-      echo "                   [--force-fs-version] [--yes]"
+      echo "                   [--force-fs-version] [-y]"
+      echo "  ./publish-ota.sh -p <product> -c <channel> --repoint <fw>"
+      echo "                   [--no-fs | --fs-from <fw>] [--dry-run] [-y]"
+      echo
+      echo "  -p/--product, -c/--channel and -y/--yes work long or short."
       echo
       echo "  --force-fs-version  Publish under the given FS version even when the"
       echo "                      image contains exactly what the published one"
@@ -193,6 +215,16 @@ while [[ $# -gt 0 ]]; do
       echo "                      means firmware only, fs untouched, while a valid"
       echo "                      fs manifest stays in place. Mutually exclusive"
       echo "                      with --no-fs."
+      echo "  --repoint <fw>      Point the channel at the already published"
+      echo "                      artifact <fw>. No build, no copy, no version"
+      echo "                      prompts: the rollback / promote path. Only"
+      echo "                      reads the OTA tree, never products/<env>, so"
+      echo "                      it works for every dir under /srv/ota, nextgen"
+      echo "                      and legacy alike. Composes with --no-fs and"
+      echo "                      --fs-from."
+      echo "  --dry-run           With --repoint: print the channel json that"
+      echo "                      would be written and touch nothing. Needs no"
+      echo "                      sudo. Not supported for a normal publish."
       exit 0
       ;;
     *)
@@ -209,6 +241,152 @@ fi
 if [[ "$FS_ONLY" == true ]] && [[ "$NO_FS" == true || -n "$FS_FROM_VERSION" ]]; then
   echo "❌ --fs-only cannot combine with --no-fs or --fs-from"
   exit 1
+fi
+if [[ -n "$REPOINT_VERSION" ]] && [[ "$FS_ONLY" == true || -n "$FW_VERSION" || -n "$FS_VERSION" || "$FORCE_FS_VERSION" == true ]]; then
+  echo "❌ --repoint takes the target version as its argument and only moves"
+  echo "   the channel pointer; it cannot combine with --fs-only, --fw-version,"
+  echo "   --fs-version or --force-fs-version"
+  exit 1
+fi
+if [[ "$DRY_RUN" == true && -z "$REPOINT_VERSION" ]]; then
+  echo "❌ --dry-run is only supported together with --repoint"
+  exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Repoint mode: move a channel onto an already-published artifact. No build,
+# no copy, no version prompts. The rollback / promote path: point a channel
+# back at a known-good release, or promote a tested artifact to stable.
+# Ported from the legacy-main publisher. Unlike the publish flow below it
+# never reads products/<env> or .pio/build, only the OTA tree, so it works
+# for every product dir under /srv/ota, nextgen and legacy alike.
+# ---------------------------------------------------------------------------
+if [[ -n "$REPOINT_VERSION" ]]; then
+  if [[ -z "$PRODUCT" || -z "$CHANNEL" ]]; then
+    echo "❌ --repoint needs -p <product> (the /srv/ota dir name) and -c <channel>"
+    exit 1
+  fi
+  if [[ "$CHANNEL" != "develop" && "$CHANNEL" != "early" && "$CHANNEL" != "stable" ]]; then
+    echo "❌ Invalid channel: $CHANNEL (stable|early|develop)"
+    exit 1
+  fi
+  PRODUCT_DIR="$OTA_ROOT/$PRODUCT"
+  if [[ ! -d "$PRODUCT_DIR" ]]; then
+    echo "❌ No such OTA product dir: $PRODUCT_DIR"
+    echo "   The product id must match the /srv/ota dir name exactly."
+    exit 1
+  fi
+
+  ART_DIR="$PRODUCT_DIR/artifacts/$REPOINT_VERSION"
+  MANIFEST_URL="$OTA_BASE_URL/$PRODUCT/artifacts/$REPOINT_VERSION/manifest.json"
+  FS_MANIFEST_URL="$OTA_BASE_URL/$PRODUCT/artifacts/$REPOINT_VERSION/fs.json"
+
+  if [[ "$NO_FS" == true ]]; then
+    # Empty on purpose: ota_updater treats an empty fs_manifest_url as "no
+    # filesystem half", so devices update firmware only.
+    FS_MANIFEST_URL=""
+  elif [[ -n "$FS_FROM_VERSION" ]]; then
+    FS_MANIFEST_URL="$OTA_BASE_URL/$PRODUCT/artifacts/$FS_FROM_VERSION/fs.json"
+    FS_FROM_MANIFEST="$PRODUCT_DIR/artifacts/$FS_FROM_VERSION/fs.json"
+    if [[ ! -f "$FS_FROM_MANIFEST" ]]; then
+      if [[ "$DRY_RUN" == true ]]; then
+        echo "⚠️  fs manifest not found: $FS_FROM_MANIFEST (would fail on a real run)"
+      else
+        echo "❌ fs manifest not found: $FS_FROM_MANIFEST"
+        echo "   Nothing published under that version. Check the name."
+        exit 1
+      fi
+    fi
+  elif [[ ! -f "$ART_DIR/fs.json" ]]; then
+    echo "⚠️  $ART_DIR/fs.json does not exist (artifact published with --no-fs?)."
+    echo "   Devices will fail the fs manifest fetch and skip the filesystem half."
+    echo "   Consider --no-fs or --fs-from <fw> to be explicit about it."
+  fi
+
+  if [[ ! -f "$ART_DIR/manifest.json" ]]; then
+    if [[ "$DRY_RUN" == true ]]; then
+      echo "⚠️  artifact not found: $ART_DIR/manifest.json (would fail on a real run)"
+    else
+      echo "❌ artifact not found: $ART_DIR/manifest.json"
+      echo "   Nothing published under that version. Publish it first, or check the name."
+      exit 1
+    fi
+  fi
+
+  LEGACY_PRODUCT="${LEGACY_PRODUCT_ALIAS[$PRODUCT]:-}"
+
+  echo "=== OTA repoint ==="
+  echo "  Product : $PRODUCT"
+  echo "  Channel : $CHANNEL   ->   $REPOINT_VERSION"
+  echo "  Manifest: $MANIFEST_URL"
+  if [[ "$NO_FS" == true ]]; then
+    echo "  FS half : SKIPPED (--no-fs, channel carries no fs_manifest_url)"
+  elif [[ -n "$FS_FROM_VERSION" ]]; then
+    echo "  FS half : pinned to $FS_FROM_VERSION"
+  else
+    echo "  FS half : $FS_MANIFEST_URL"
+  fi
+  if [[ -n "$LEGACY_PRODUCT" ]]; then
+    echo "  Mirror  : $LEGACY_PRODUCT/channels/$CHANNEL.json (renamed-product alias)"
+  fi
+  echo "  Dry run : $DRY_RUN"
+  echo
+
+  if [[ "$DRY_RUN" != true && "$ASSUME_YES" != true ]]; then
+    read -rp "Repoint $CHANNEL to $REPOINT_VERSION? [y/N]: " CONFIRM
+    [[ "$CONFIRM" == "y" || "$CONFIRM" == "Y" ]] || exit 0
+  fi
+
+  # Real writes to /srv/ota need root; dry-run never writes.
+  SUDO="sudo"
+  if [[ "$(id -u)" -eq 0 ]]; then SUDO=""; fi
+
+  write_repoint_channel() {
+    # write_repoint_channel <product>: write that product's <channel>.json.
+    # The manifest URLs stay absolute (they point at $PRODUCT's artifacts),
+    # which is exactly what the publish-mode mirror ships too.
+    local product="$1"
+    local dir="$OTA_ROOT/$product/channels"
+    local body
+    body=$(cat <<EOF
+{
+  "schema": 1,
+  "product": "$product",
+  "channel": "$CHANNEL",
+  "target": {
+    "version": "$REPOINT_VERSION",
+    "manifest_url": "$MANIFEST_URL",
+    "fs_manifest_url": "$FS_MANIFEST_URL"
+  }
+}
+EOF
+)
+    if [[ "$DRY_RUN" == true ]]; then
+      echo "---- would write $dir/$CHANNEL.json ----"
+      echo "$body"
+      echo
+      return
+    fi
+    $SUDO mkdir -p "$dir"
+    printf '%s\n' "$body" | $SUDO tee "$dir/$CHANNEL.json" > /dev/null
+    $SUDO chown root:www-data "$dir/$CHANNEL.json"
+    $SUDO chmod 644 "$dir/$CHANNEL.json"
+  }
+
+  write_repoint_channel "$PRODUCT"
+  if [[ -n "$LEGACY_PRODUCT" ]]; then
+    echo "→ Mirroring channel to legacy product path: $LEGACY_PRODUCT/$CHANNEL.json"
+    write_repoint_channel "$LEGACY_PRODUCT"
+  fi
+
+  echo
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "Dry run: nothing written."
+  else
+    echo "✅ Repoint complete"
+  fi
+  echo "Verify: curl -s $OTA_BASE_URL/$PRODUCT/channels/$CHANNEL.json"
+  exit 0
 fi
 
 echo "=== OTA Publish Script ==="
@@ -642,9 +820,6 @@ sudo chmod 644 "$CHANNEL_DIR/$CHANNEL.json"
 # hardware, and the device never validates the manifest 'product' field against
 # its own PRODUCT_ID — so the unit installs this build and, on reboot, runs as
 # 105x105 and polls the new channel directly from then on.
-declare -A LEGACY_PRODUCT_ALIAS=(
-  ["nextgen-logo-105x105"]="nextgen-logo-100x100"
-)
 LEGACY_PRODUCT="${LEGACY_PRODUCT_ALIAS[$PRODUCT]:-}"
 if [[ -n "$LEGACY_PRODUCT" ]]; then
   LEGACY_CHANNEL_DIR="$OTA_ROOT/$LEGACY_PRODUCT/channels"
