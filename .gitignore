@@ -56,3 +56,6 @@ lib/
 
 # Claude
 .claude/
+
+# OTA staging tree (published locally, shipped with tools/sync-ota.sh)
+dist/ota-stage/

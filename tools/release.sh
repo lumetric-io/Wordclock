@@ -38,6 +38,13 @@ CONFIG_FILE="$PROJECT_ROOT/src/config.h"
 BUILD_OUTPUT=""
 DIST_DIR="$PROJECT_ROOT/dist"
 MODE="full"
+PUSH_OTA=false
+OTA_SYNC_STATUS="not requested"
+# publish-ota.sh writes here instead of straight into the live webroot, so a
+# release can be cut on any machine. Getting it to the OTA host is a separate,
+# explicit step: --push-ota.
+OTA_ROOT="${OTA_ROOT:-$PROJECT_ROOT/dist/ota-stage}"
+export OTA_ROOT
 SUDO_MODE="${SUDO_MODE:-auto}" # auto|always|never
 
 VALID_PRODUCTS=("nextgen-30x30" "nextgen-50x50" "nextgen-logo-55x50" "nextgen-logo-105x105" "nextgen-mini" "nextgen-bootstrap")
@@ -1610,6 +1617,34 @@ publish_ota2_manifests() {
     echo ""
 }
 
+sync_ota_to_host() {
+    if [[ "$PUSH_OTA" != true ]]; then
+        print_info "OTA staged in $OTA_ROOT (not pushed; pass --push-ota to ship it)"
+        OTA_SYNC_STATUS="not requested"
+        echo ""
+        return 0
+    fi
+
+    print_header "Sync OTA to Host"
+
+    local target="${OTA_TARGET:-vps-ota:/srv/ota/}"
+    print_info "Staging: $OTA_ROOT"
+    print_info "Target:  $target"
+    echo ""
+
+    if OTA_STAGE="$OTA_ROOT" OTA_TARGET="$target" "$PROJECT_ROOT/tools/sync-ota.sh"; then
+        OTA_SYNC_STATUS="pushed to $target"
+        print_success "OTA tree synced to $target"
+    else
+        OTA_SYNC_STATUS="FAILED (staged tree is intact in $OTA_ROOT)"
+        print_error "OTA sync failed. The staged tree is intact; re-run:"
+        echo "  OTA_STAGE=$OTA_ROOT OTA_TARGET=$target ./tools/sync-ota.sh"
+        echo ""
+        return 1
+    fi
+    echo ""
+}
+
 rollback_changes() {
     print_header "Rolling Back Changes"
 
@@ -1724,6 +1759,9 @@ print_summary() {
     if [[ "$COVERAGE_GENERATED" == true && -n "$COVERAGE_HTML_PATH" ]]; then
         echo "  2. Review coverage report: open $COVERAGE_HTML_PATH"
     fi
+
+    echo "  OTA staging: $OTA_ROOT"
+    echo "  OTA sync: $OTA_SYNC_STATUS"
 
     # All products use OTA2
     echo "  ${step_num}. OTA2 manifests published via tools/publish-ota.sh"
@@ -1852,6 +1890,10 @@ main() {
 
     # OTA publish (all products use OTA2, including nextgen-bootstrap)
     publish_ota2_manifests
+
+    # Ship the staged tree to the OTA host. Only on request: publishing into
+    # staging is safe to repeat, pushing to the live webroot is not.
+    sync_ota_to_host
     
     # Cleanup
     cleanup
@@ -1895,6 +1937,10 @@ while [[ $# -gt 0 ]]; do
             UI_ONLY=true
             shift
             ;;
+        --push-ota)
+            PUSH_OTA=true
+            shift
+            ;;
         --help|-h)
             echo "Wordclock Release Pipeline"
             echo ""
@@ -1905,6 +1951,7 @@ while [[ $# -gt 0 ]]; do
             echo "  ./release.sh --channel <channel>           Set channel (stable|early|develop)"
             echo "  ./release.sh --version <version>           Set version (skip prompt)"
             echo "  ./release.sh --ui-only                     UI-only update (no firmware build/tag/release)"
+            echo "  ./release.sh --push-ota                    After publishing, rsync the staged OTA tree to the OTA host"
             echo "  ./release.sh --no-tag-release              Build + publish manifests without git tag/release"
             echo "  ./release.sh --update-manifest             (deprecated) Use publish-ota.sh instead"
             echo "  ./release.sh --help                        Show this help"
