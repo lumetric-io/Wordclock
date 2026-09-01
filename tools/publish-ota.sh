@@ -2,8 +2,31 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OTA_ROOT="/srv/ota"
+# Overridable so the publisher can be exercised against a scratch tree instead
+# of the live server. Defaults to the real root, so a normal release is
+# unaffected.
+OTA_ROOT="${OTA_ROOT:-/srv/ota}"
 OTA_BASE_URL="http://ota2.chronolett.com"
+
+# Writes to the live tree need root and must stay owned by www-data for nginx.
+# A scratch OTA_ROOT needs neither, and demanding sudo there would make the
+# script untestable.
+SUDO="sudo"
+OWN_WEB=true
+if [[ "$OTA_ROOT" != "/srv/ota" ]]; then
+  SUDO=""
+  OWN_WEB=false
+elif [[ $EUID -eq 0 ]]; then
+  SUDO=""
+fi
+
+own_web() {
+  if [[ "$OWN_WEB" == true ]]; then
+    $SUDO chown root:www-data "$1"
+  fi
+  $SUDO chmod 644 "$1"
+}
+
 PRODUCT=""
 CHANNEL=""
 FW_VERSION=""
@@ -647,8 +670,8 @@ if [[ "$ASSUME_YES" != true ]]; then
   [[ "$CONFIRM" == "y" ]] || exit 0
 fi
 
-sudo mkdir -p "$ARTIFACT_DIR"
-sudo mkdir -p "$CHANNEL_DIR"
+$SUDO mkdir -p "$ARTIFACT_DIR"
+$SUDO mkdir -p "$CHANNEL_DIR"
 
 # Ensure a firmware manifest reference exists when publishing FS-only updates
 if [[ -z "$FW_VERSION" ]]; then
@@ -681,14 +704,13 @@ fi
 # -------------------------
 if [[ -n "$FW_VERSION" ]]; then
   echo "→ Copying firmware.bin"
-  sudo cp "$BUILD_DIR/firmware.bin" "$ARTIFACT_DIR/firmware.bin"
-  sudo chown root:www-data "$ARTIFACT_DIR/firmware.bin"
-  sudo chmod 644 "$ARTIFACT_DIR/firmware.bin"
+  $SUDO cp "$BUILD_DIR/firmware.bin" "$ARTIFACT_DIR/firmware.bin"
+  own_web "$ARTIFACT_DIR/firmware.bin"
 
   FW_SIZE=$(stat -c%s "$ARTIFACT_DIR/firmware.bin")
   FW_HASH=$(sha256sum "$ARTIFACT_DIR/firmware.bin" | awk '{print $1}')
 
-  sudo tee "$ARTIFACT_DIR/manifest.json" > /dev/null <<EOF
+  $SUDO tee "$ARTIFACT_DIR/manifest.json" > /dev/null <<EOF
 {
   "schema": 1,
   "product": "$PRODUCT",
@@ -709,11 +731,10 @@ echo "→ Copying filesystem image"
 
 # FS_SRC / FS_SIZE / FS_HASH were resolved before the confirmation prompt, so
 # the operator got to see the version that is really going out.
-sudo cp "$FS_SRC" "$ARTIFACT_DIR/fs.bin"
-sudo chown root:www-data "$ARTIFACT_DIR/fs.bin"
-sudo chmod 644 "$ARTIFACT_DIR/fs.bin"
+$SUDO cp "$FS_SRC" "$ARTIFACT_DIR/fs.bin"
+own_web "$ARTIFACT_DIR/fs.bin"
 
-sudo tee "$ARTIFACT_DIR/fs.json" > /dev/null <<EOF
+$SUDO tee "$ARTIFACT_DIR/fs.json" > /dev/null <<EOF
 {
   "schema": 1,
   "product": "$PRODUCT",
@@ -798,7 +819,7 @@ EOF
   fi
 fi
 
-sudo tee "$CHANNEL_DIR/$CHANNEL.json" > /dev/null <<EOF
+$SUDO tee "$CHANNEL_DIR/$CHANNEL.json" > /dev/null <<EOF
 {
   "schema": 1,
   "product": "$PRODUCT",
@@ -807,8 +828,7 @@ sudo tee "$CHANNEL_DIR/$CHANNEL.json" > /dev/null <<EOF
 }
 EOF
 
-sudo chown root:www-data "$CHANNEL_DIR/$CHANNEL.json"
-sudo chmod 644 "$CHANNEL_DIR/$CHANNEL.json"
+own_web "$CHANNEL_DIR/$CHANNEL.json"
 
 # -------------------------
 # Legacy channel mirror (OTA continuity for renamed products)
@@ -824,8 +844,8 @@ LEGACY_PRODUCT="${LEGACY_PRODUCT_ALIAS[$PRODUCT]:-}"
 if [[ -n "$LEGACY_PRODUCT" ]]; then
   LEGACY_CHANNEL_DIR="$OTA_ROOT/$LEGACY_PRODUCT/channels"
   echo "→ Mirroring channel to legacy product path: $LEGACY_PRODUCT/$CHANNEL.json"
-  sudo mkdir -p "$LEGACY_CHANNEL_DIR"
-  sudo tee "$LEGACY_CHANNEL_DIR/$CHANNEL.json" > /dev/null <<EOF
+  $SUDO mkdir -p "$LEGACY_CHANNEL_DIR"
+  $SUDO tee "$LEGACY_CHANNEL_DIR/$CHANNEL.json" > /dev/null <<EOF
 {
   "schema": 1,
   "product": "$LEGACY_PRODUCT",
@@ -833,8 +853,7 @@ if [[ -n "$LEGACY_PRODUCT" ]]; then
   "target": $TARGET_JSON
 }
 EOF
-  sudo chown root:www-data "$LEGACY_CHANNEL_DIR/$CHANNEL.json"
-  sudo chmod 644 "$LEGACY_CHANNEL_DIR/$CHANNEL.json"
+  own_web "$LEGACY_CHANNEL_DIR/$CHANNEL.json"
 fi
 
 echo
