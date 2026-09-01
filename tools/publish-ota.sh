@@ -536,7 +536,6 @@ apply_channel_suffix() {
 }
 
 BUILD_DIR="$PROJECT_ROOT/.pio/build/$PRODUCT"
-ARTIFACT_DIR="$OTA_ROOT/$PRODUCT/artifacts/${FW_VERSION:-current}"
 CHANNEL_DIR="$OTA_ROOT/$PRODUCT/channels"
 
 CHANNEL_SUFFIX="$(channel_suffix_for "$CHANNEL")"
@@ -650,6 +649,21 @@ if [[ "$FORCE_FS_VERSION" != true ]]; then
 fi
 fi
 
+# Named after the version that is actually going out. For a firmware publish
+# that is FW_VERSION; for an fs-only publish it is FS_VERSION. Both are only
+# final here: the channel suffix is applied above (develop -> -dev), and the
+# unchanged-image check may have reverted FS_VERSION to what the channel
+# already ships. Deriving this any earlier missed the suffix, which put an
+# fs-only publish to develop and one to stable in the same directory --
+# the second overwrote the first and develop devices silently pulled the
+# stable filesystem image.
+ARTIFACT_VERSION="${FW_VERSION:-$FS_VERSION}"
+if [[ -z "$ARTIFACT_VERSION" ]]; then
+  echo "❌ Nothing to publish under: no firmware version and no filesystem version"
+  exit 1
+fi
+ARTIFACT_DIR="$OTA_ROOT/$PRODUCT/artifacts/$ARTIFACT_VERSION"
+
 echo
 echo "Publishing to:"
 echo "  Product : $PRODUCT"
@@ -744,7 +758,7 @@ $SUDO tee "$ARTIFACT_DIR/fs.json" > /dev/null <<EOF
   "filesize": $FS_SIZE,
   "sha256": "$FS_HASH",
   "content_sha256": "$FS_CONTENT_HASH",
-  "url": "$OTA_BASE_URL/$PRODUCT/artifacts/${FW_VERSION:-current}/fs.bin"
+  "url": "$OTA_BASE_URL/$PRODUCT/artifacts/$ARTIFACT_VERSION/fs.bin"
 }
 EOF
 fi
@@ -804,7 +818,7 @@ PY
 {
   "version": "$EXISTING_VERSION",
   "manifest_url": "$EXISTING_MANIFEST_URL",
-  "fs_manifest_url": "$OTA_BASE_URL/$PRODUCT/artifacts/current/fs.json"
+  "fs_manifest_url": "$OTA_BASE_URL/$PRODUCT/artifacts/$ARTIFACT_VERSION/fs.json"
 }
 EOF
 )
@@ -812,7 +826,7 @@ EOF
     TARGET_JSON=$(cat <<EOF
 {
   "manifest_url": "$EXISTING_MANIFEST_URL",
-  "fs_manifest_url": "$OTA_BASE_URL/$PRODUCT/artifacts/current/fs.json"
+  "fs_manifest_url": "$OTA_BASE_URL/$PRODUCT/artifacts/$ARTIFACT_VERSION/fs.json"
 }
 EOF
 )
