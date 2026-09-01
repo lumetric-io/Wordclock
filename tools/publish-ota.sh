@@ -72,7 +72,10 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OTA_ROOT="/srv/ota"
+# Overridable so the publisher can be exercised against a scratch tree instead
+# of the live server. Defaults to the real root, so a normal release is
+# unaffected.
+OTA_ROOT="${OTA_ROOT:-/srv/ota}"
 OTA_BASE_URL="http://ota2.chronolett.com"
 
 PRODUCT=""
@@ -151,11 +154,25 @@ if [[ ! -d "$PRODUCT_DIR" && "$CREATE_PRODUCT" != true ]]; then
      refusing to create it (typo guard). Pass --create-product to seed a new one."
 fi
 
-# Real writes to /srv/ota need root; dry-run never writes.
+# Real writes to /srv/ota need root and must stay owned by www-data for nginx.
+# A scratch OTA_ROOT needs neither, and demanding sudo there would make the
+# script untestable. Dry-run never writes at all.
 SUDO=""
-if [[ "$DRY_RUN" != true && "$(id -u)" -ne 0 ]]; then
-  SUDO="sudo"
+OWN_WEB=false
+if [[ "$OTA_ROOT" == "/srv/ota" ]]; then
+  OWN_WEB=true
+  if [[ "$DRY_RUN" != true && "$(id -u)" -ne 0 ]]; then
+    SUDO="sudo"
+  fi
 fi
+
+# Only meaningful on the server tree; skipped against a scratch OTA_ROOT,
+# where there is no www-data to hand ownership to.
+chown_web() {
+  if [[ "$OWN_WEB" == true ]]; then
+    $SUDO chown root:www-data "$1"
+  fi
+}
 
 emit_json() {
   # emit_json <path> <content>
@@ -167,7 +184,7 @@ emit_json() {
     return
   fi
   printf '%s\n' "$content" | $SUDO tee "$path" >/dev/null
-  $SUDO chown root:www-data "$path"
+  chown_web "$path"
   $SUDO chmod 644 "$path"
 }
 
@@ -312,7 +329,7 @@ if [[ "$DRY_RUN" == true ]]; then
   echo "---- would copy $FW_SRC -> $ART_DIR/firmware.bin ----"
 else
   $SUDO cp "$FW_SRC" "$ART_DIR/firmware.bin"
-  $SUDO chown root:www-data "$ART_DIR/firmware.bin"
+  chown_web "$ART_DIR/firmware.bin"
   $SUDO chmod 644 "$ART_DIR/firmware.bin"
 fi
 emit_json "$ART_DIR/manifest.json" "$(cat <<EOF
@@ -337,7 +354,7 @@ elif [[ "$DRY_RUN" == true ]]; then
   echo "---- would copy $FS_SRC -> $ART_DIR/fs.bin ----"
 else
   $SUDO cp "$FS_SRC" "$ART_DIR/fs.bin"
-  $SUDO chown root:www-data "$ART_DIR/fs.bin"
+  chown_web "$ART_DIR/fs.bin"
   $SUDO chmod 644 "$ART_DIR/fs.bin"
 fi
 if [[ "$NO_FS" != true && -z "$FS_FROM_VERSION" ]]; then
