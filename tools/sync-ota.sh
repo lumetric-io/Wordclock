@@ -19,6 +19,16 @@
 # means every manifest on the server always points at something that is
 # already complete.
 #
+# --seed pulls in the other direction: it copies the *.json already on the
+# host into staging, without any binaries. publish-ota.sh reads the live
+# channel JSON to decide two things -- which firmware manifest an fs-only
+# publish should keep pointing at (publish-ota.sh:608,692,791), and whether
+# the filesystem actually changed since the last release (:609-612). Against
+# an empty staging tree it finds neither: an --ui-only release aborts, and a
+# normal release silently republishes the filesystem even when it is
+# identical, costing every clock a needless write. Seeding first restores
+# both. JSON only, so it stays a few kB.
+#
 # Known limitation -- OTA_TARGET must go over the WireGuard tunnel:
 #   The ota-deploy key is pinned in authorized_keys with
 #   restrict,from="192.168.30.2". Over the public route (ron@ssh.lumetric.nl)
@@ -36,6 +46,8 @@ OTA_TARGET="${OTA_TARGET:-vps-ota:/srv/ota/}"
 
 DRY_RUN=false
 PRUNE=false
+SEED=false
+SEED_PRODUCT=""
 
 die() { echo "❌ $*" >&2; exit 1; }
 
@@ -48,6 +60,12 @@ Options:
   --prune     Also delete files on the server that no longer exist in staging.
               OFF by default: an old artifact may still be the version a clock
               that has been offline for weeks is about to ask for.
+  --seed      Reverse direction: copy the *.json already on the host into
+              staging and stop. Run this before publishing so publish-ota.sh
+              can see what the channel currently ships. Never deletes.
+  --product <id>
+              Narrow --seed to one product. Without it the whole tree's json
+              is pulled, which also widens what a later push could overwrite.
   --help      This text.
 
 Environment:
@@ -60,12 +78,71 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=true; shift ;;
     --prune)   PRUNE=true;   shift ;;
+    --seed)    SEED=true;    shift ;;
+    --product) SEED_PRODUCT="${2:-}"; shift 2 ;;
     --help|-h) usage; exit 0 ;;
     *) die "unknown argument: $1 (try --help)" ;;
   esac
 done
 
 command -v rsync > /dev/null || die "rsync not found locally"
+
+# Refuse rather than silently ignore: --prune deletes, --seed never does, and
+# an operator who typed both is not thinking about the same operation.
+if [[ "$SEED" == true && "$PRUNE" == true ]]; then
+  die "--seed and --prune are mutually exclusive (--seed never deletes anything)"
+fi
+if [[ "$SEED" != true && -n "$SEED_PRODUCT" ]]; then
+  die "--product only applies to --seed"
+fi
+
+if [[ "$SEED" == true ]]; then
+  # Pull, not push. No --chmod: these land in a local working tree, where the
+  # caller's umask is the right answer. No --delete: seeding must never remove
+  # anything a publish has already staged.
+  SEED_OPTS=(-rlptv --include='*/' --include='*.json' --exclude='*' --out-format='  %n')
+  if [[ "$DRY_RUN" == true ]]; then SEED_OPTS+=(--dry-run); fi
+
+  if [[ -n "$SEED_PRODUCT" ]]; then
+    SEED_SRC="${OTA_TARGET%/}/$SEED_PRODUCT/"
+    SEED_DST="$OTA_STAGE/$SEED_PRODUCT/"
+  else
+    SEED_SRC="${OTA_TARGET%/}/"
+    SEED_DST="$OTA_STAGE/"
+  fi
+  mkdir -p "$SEED_DST"
+
+  echo "=== OTA seed ==="
+  echo "  Source  : $SEED_SRC"
+  echo "  Staging : $SEED_DST"
+  echo "  Scope   : ${SEED_PRODUCT:-<whole tree>}, *.json only"
+  echo
+
+  seed_out=""; seed_status=0
+  seed_out="$(rsync "${SEED_OPTS[@]}" "$SEED_SRC" "$SEED_DST" 2>&1)" || seed_status=$?
+  printf '%s\n' "$seed_out"
+
+  if [[ $seed_status -ne 0 ]]; then
+    # A product that has never been published has no directory on the host.
+    # That is a normal first release, not a reason to stop a pipeline.
+    echo
+    echo "⚠️  seed incomplete (rsync exit $seed_status)"
+    echo "   Nothing was pulled. That is expected for a product that has never"
+    echo "   been published; an fs-only release will still fail for it, because"
+    echo "   there is no previous firmware manifest to keep pointing at."
+    exit 0
+  fi
+
+  seed_n="$(printf '%s\n' "$seed_out" | sed -n 's/^  //p' | grep -v '/$' | grep -c . || true)"
+  echo "=== Summary ==="
+  echo "  json seeded : $seed_n"
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "  (dry-run: nothing was actually written)"
+  fi
+  echo "✅ OTA seed complete"
+  exit 0
+fi
+
 [[ -d "$OTA_STAGE" ]] || die "staging tree does not exist: $OTA_STAGE
    Publish into it first, e.g. OTA_ROOT=$OTA_STAGE tools/publish-ota.sh ..."
 

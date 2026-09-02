@@ -40,6 +40,7 @@ DIST_DIR="$PROJECT_ROOT/dist"
 MODE="full"
 PUSH_OTA=false
 OTA_SYNC_STATUS="not requested"
+OTA_SEED_STATUS="not attempted"
 # publish-ota.sh writes here instead of straight into the live webroot, so a
 # release can be cut on any machine. Getting it to the OTA host is a separate,
 # explicit step: --push-ota.
@@ -1617,6 +1618,50 @@ publish_ota2_manifests() {
     echo ""
 }
 
+seed_ota_staging() {
+    # publish-ota.sh reads the channel JSON that is already live: an fs-only
+    # publish keeps pointing at its firmware manifest, and a normal publish
+    # uses it to notice the filesystem did not change. A staging tree starts
+    # empty, so without this an --ui-only release aborts outright and an
+    # ordinary one silently reships an identical filesystem.
+    #
+    # Only when we are going to talk to the host anyway (--push-ota), or when
+    # the release cannot work without it (--ui-only). A purely local dry run
+    # should not block on a tunnel it does not need.
+    if [[ "$PUSH_OTA" != true && "$UI_ONLY" != true ]]; then
+        return 0
+    fi
+
+    print_header "Seed OTA Staging"
+
+    local target="${OTA_TARGET:-vps-ota:/srv/ota/}"
+    local products=()
+    if [[ ${#BUILD_ALL_PRODUCTS[@]} -gt 0 ]]; then
+        products=("${BUILD_ALL_PRODUCTS[@]}")
+    else
+        products=("$PRODUCT")
+    fi
+
+    local failed=0
+    for p in "${products[@]}"; do
+        print_info "Seeding $p from $target"
+        if ! OTA_STAGE="$OTA_ROOT" OTA_TARGET="$target" \
+             "$PROJECT_ROOT/tools/sync-ota.sh" --seed --product "$p"; then
+            failed=$((failed + 1))
+            print_warning "Seed failed for $p"
+        fi
+    done
+
+    if [[ $failed -eq 0 ]]; then
+        OTA_SEED_STATUS="seeded from $target"
+    else
+        OTA_SEED_STATUS="FAILED for $failed of ${#products[@]} product(s)"
+        print_warning "Publishing without a seed: an fs-only release will abort,"
+        print_warning "and a normal one may reship an unchanged filesystem."
+    fi
+    echo ""
+}
+
 sync_ota_to_host() {
     if [[ "$PUSH_OTA" != true ]]; then
         print_info "OTA staged in $OTA_ROOT (not pushed; pass --push-ota to ship it)"
@@ -1761,6 +1806,7 @@ print_summary() {
     fi
 
     echo "  OTA staging: $OTA_ROOT"
+    echo "  OTA seed: $OTA_SEED_STATUS"
     echo "  OTA sync: $OTA_SYNC_STATUS"
 
     # All products use OTA2
@@ -1887,6 +1933,10 @@ main() {
     else
         print_info "Skipping git tag/push/GitHub release (publish manifests only)"
     fi
+
+    # Pull the live channel JSON into staging first: publish-ota.sh needs to
+    # see what the channel currently ships.
+    seed_ota_staging
 
     # OTA publish (all products use OTA2, including nextgen-bootstrap)
     publish_ota2_manifests
