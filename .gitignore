@@ -56,3 +56,6 @@ handover/
 
 # Claude
 .claude/
+
+# Build output and OTA staging trees (see tools/sync-ota.sh)
+dist/
