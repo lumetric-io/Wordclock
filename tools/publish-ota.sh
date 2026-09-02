@@ -75,6 +75,22 @@ except Exception:
 PY
 }
 
+# An fs-only publish ships a filesystem and keeps the channel pointing at the
+# firmware it already carries. Without a channel JSON there is no such
+# firmware, and there is nothing sensible to invent. Until now this fell back
+# to artifacts/current/manifest.json, a path that has never existed on any
+# server -- so the failure named a file nobody could produce.
+no_firmware_to_keep() {
+  echo "❌ Channel '$CHANNEL' has no firmware for an fs-only publish to keep"
+  echo "   $CHANNEL_DIR/$CHANNEL.json is missing or carries no manifest_url,"
+  echo "   so there is no published firmware to leave the channel pointing at."
+  echo
+  echo "   Publishing into a staging tree? Seed it from the host first:"
+  echo "     tools/sync-ota.sh --seed --product $PRODUCT"
+  echo "   Otherwise publish firmware to this channel before an fs-only update."
+  exit 1
+}
+
 # Locates mklittlefs, which PlatformIO installs as a package rather than on
 # PATH. Prints an empty line when it cannot be found: the content comparison is
 # an optimisation, and losing it must never stop a release.
@@ -611,9 +627,9 @@ if [[ "$FORCE_FS_VERSION" != true ]]; then
   if [[ -n "$PUBLISHED_FS_URL" && "$PUBLISHED_FS_URL" == "$OTA_BASE_URL"/* ]]; then
     PUBLISHED_FS_MANIFEST="$OTA_ROOT/${PUBLISHED_FS_URL#"$OTA_BASE_URL"/}"
   fi
-  if [[ -z "$PUBLISHED_FS_MANIFEST" ]]; then
-    PUBLISHED_FS_MANIFEST="$OTA_ROOT/$PRODUCT/artifacts/current/fs.json"
-  fi
+  # No channel JSON, or one without an fs_manifest_url, means we have nothing
+  # to compare against and the filesystem counts as changed. That is the same
+  # degradation as a missing mklittlefs: a new fs version every time.
 
   if [[ -f "$PUBLISHED_FS_MANIFEST" ]]; then
     PUBLISHED_FS_HASH="$(read_json_field "$PUBLISHED_FS_MANIFEST" sha256)"
@@ -705,11 +721,7 @@ PY
 )"
   fi
   if [[ -z "$EXISTING_MANIFEST_URL" ]]; then
-    CURRENT_MANIFEST="$OTA_ROOT/$PRODUCT/artifacts/current/manifest.json"
-    if [[ ! -f "$CURRENT_MANIFEST" ]]; then
-      echo "❌ Missing $CURRENT_MANIFEST (required for FS-only channel update)"
-      exit 1
-    fi
+    no_firmware_to_keep
   fi
 fi
 
@@ -806,12 +818,7 @@ PY
 )
   fi
   if [[ -z "$EXISTING_MANIFEST_URL" ]]; then
-    CURRENT_MANIFEST="$OTA_ROOT/$PRODUCT/artifacts/current/manifest.json"
-    if [[ ! -f "$CURRENT_MANIFEST" ]]; then
-      echo "❌ Missing $CURRENT_MANIFEST (required for FS-only channel update)"
-      exit 1
-    fi
-    EXISTING_MANIFEST_URL="$OTA_BASE_URL/$PRODUCT/artifacts/current/manifest.json"
+    no_firmware_to_keep
   fi
   if [[ -n "$EXISTING_VERSION" ]]; then
     TARGET_JSON=$(cat <<EOF
