@@ -284,7 +284,7 @@ check_prerequisites() {
     # Check for uncommitted changes
     if [[ -n $(git status -s) ]]; then
         print_warning "You have uncommitted changes"
-        read -p "Continue anyway? (y/N): " -n 1 -r
+        read -p "Continue anyway? (y/N): " -n 1 -r || true
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             exit 1
@@ -521,7 +521,7 @@ prompt_product_channel() {
         echo "  5) nextgen-mini"
         echo "  6) nextgen-bootstrap   (first-flash provisioning)"
         echo "  7) all nextgen products (except bootstrap)  — single channel, one version"
-        read -p "Product number (1-7): " -r
+        read -p "Product number (1-7): " -r || true
         case $REPLY in
             1) PRODUCT="nextgen-30x30" ;;
             2) PRODUCT="nextgen-50x50" ;;
@@ -552,7 +552,7 @@ prompt_product_channel() {
         echo "  1) stable"
         echo "  2) early"
         echo "  3) develop"
-        read -p "Channel (1-3): " -n 1 -r
+        read -p "Channel (1-3): " -n 1 -r || true
         echo
         case $REPLY in
             1) CHANNEL="stable" ;;
@@ -635,7 +635,7 @@ prompt_version() {
         echo ""
 
         # Ask user to confirm or enter different version
-        read -p "Use proposed version? (Y/n): " -n 1 -r
+        read -p "Use proposed version? (Y/n): " -n 1 -r || true
         echo
 
         if [[ $REPLY =~ ^[Nn]$ ]]; then
@@ -645,7 +645,7 @@ prompt_version() {
             print_info "Example: 26.6.2-rc.1"
             while true; do
                 local version_input
-                read -p "Version: " version_input
+                read -p "Version: " version_input || true
 
                 # Tolerate a fully-qualified version if pasted: strip the prefix
                 # so we don't double it up.
@@ -703,7 +703,7 @@ prompt_version() {
     print_info "Building from branch: $current_branch"
     echo ""
     
-    read -p "Continue? (Y/n): " -n 1 -r
+    read -p "Continue? (Y/n): " -n 1 -r || true
     echo
     if [[ $REPLY =~ ^[Nn]$ ]]; then
         print_error "Aborted by user"
@@ -721,6 +721,18 @@ prompt_release_notes() {
     local previous_trap
     previous_trap=$(trap -p INT)
     trap 'interrupted=true' INT
+
+    # cat reads to EOF. On a pipe that EOF arrives immediately and, worse,
+    # every later read hits it too -- which under the set -e on line 15 ends
+    # the release without printing anything. A non-interactive run gets no
+    # notes rather than a dead pipeline.
+    if [[ ! -t 0 ]]; then
+        RELEASE_NOTES=""
+        trap - INT
+        print_info "No release notes (stdin is not a terminal)"
+        echo ""
+        return 0
+    fi
 
     # Temporarily disable exit on error for handling Ctrl+C
     set +e
@@ -995,7 +1007,7 @@ commit_version_change() {
             print_warning "It appears this release was already started"
             print_info "Do you want to continue with the existing commit?"
             echo ""
-            read -p "Continue release from this point? (Y/n): " -n 1 -r
+            read -p "Continue release from this point? (Y/n): " -n 1 -r || true
             echo
             if [[ $REPLY =~ ^[Nn]$ ]]; then
                 print_error "Release cancelled"
@@ -1011,7 +1023,7 @@ commit_version_change() {
             echo "  - Version was already updated manually"
             echo "  - You're trying to release an already-released version"
             echo ""
-            read -p "Force continue anyway? (y/N): " -n 1 -r
+            read -p "Force continue anyway? (y/N): " -n 1 -r || true
             echo
             if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                 print_error "Release cancelled"
@@ -1320,7 +1332,7 @@ create_git_tag() {
             echo "  2) Delete local and remote tag, then recreate"
             echo "  3) Cancel release"
             echo ""
-            read -p "Choose option (1-3): " -n 1 -r
+            read -p "Choose option (1-3): " -n 1 -r || true
             echo
             case $REPLY in
                 1)
@@ -1346,7 +1358,7 @@ create_git_tag() {
             esac
         else
             print_info "Tag exists locally but not on remote"
-            read -p "Delete and recreate? (y/N): " -n 1 -r
+            read -p "Delete and recreate? (y/N): " -n 1 -r || true
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 git tag -d "$tag"
@@ -1390,7 +1402,7 @@ push_changes() {
     # Check if tag already exists on remote
     if git ls-remote --tags --refs origin "refs/tags/$tag" | grep -q .; then
         print_info "Tag $tag already exists on remote"
-        read -p "Skip push step? (Y/n): " -n 1 -r
+        read -p "Skip push step? (Y/n): " -n 1 -r || true
         echo
         if [[ ! $REPLY =~ ^[Nn]$ ]]; then
             print_info "Push skipped (tag already on remote)"
@@ -1399,7 +1411,7 @@ push_changes() {
         fi
     fi
     
-    read -p "Push branch and tag to origin? (Y/n): " -n 1 -r
+    read -p "Push branch and tag to origin? (Y/n): " -n 1 -r || true
     echo
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
         # Push current branch
@@ -1449,7 +1461,7 @@ create_github_release() {
         echo ""
         
         while true; do
-            read -p "Choose option (1-3): " -n 1 -r
+            read -p "Choose option (1-3): " -n 1 -r || true
             echo
             case $REPLY in
                 1)
@@ -1544,7 +1556,7 @@ publish_ota2_manifests() {
     if [[ ${#BUILD_ALL_PRODUCTS[@]} -gt 0 ]]; then
         print_info "Publishing OTA2 manifests for ${#BUILD_ALL_PRODUCTS[@]} products..."
         echo ""
-        read -p "Publish OTA2 manifests now? (Y/n): " -n 1 -r
+        read -p "Publish OTA2 manifests now? (Y/n): " -n 1 -r || true
         echo
         if [[ $REPLY =~ ^[Nn]$ ]]; then
             print_info "Skipping OTA2 publish"
@@ -1587,7 +1599,7 @@ publish_ota2_manifests() {
         print_info "FS version: $fs_version"
         echo ""
 
-        read -p "Publish OTA2 manifests now? (Y/n): " -n 1 -r
+        read -p "Publish OTA2 manifests now? (Y/n): " -n 1 -r || true
         echo
         if [[ $REPLY =~ ^[Nn]$ ]]; then
             print_info "Skipping OTA2 publish"
@@ -1865,7 +1877,7 @@ main() {
         echo ""
     else
         # Run unit tests (quality gate)
-        read -p "Run unit tests? (Y/n): " -n 1 -r
+        read -p "Run unit tests? (Y/n): " -n 1 -r || true
         echo
         if [[ ! $REPLY =~ ^[Nn]$ ]]; then
             run_unit_tests
@@ -1877,7 +1889,7 @@ main() {
         fi
 
         # Generate coverage report (optional)
-        read -p "Generate code coverage report? (y/N): " -n 1 -r
+        read -p "Generate code coverage report? (y/N): " -n 1 -r || true
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             generate_coverage_report
@@ -1915,7 +1927,7 @@ main() {
     # also installable on a per-device firmware via admin → "Install
     # bootstrap firmware". Both paths require a published bootstrap manifest.
     if [[ "$SKIP_GIT_RELEASE" != true ]]; then
-        read -p "Skip git tag/push/GitHub release? (y/N): " -n 1 -r
+        read -p "Skip git tag/push/GitHub release? (y/N): " -n 1 -r || true
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             SKIP_GIT_RELEASE=true
