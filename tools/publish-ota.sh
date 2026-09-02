@@ -524,6 +524,22 @@ channel_suffix_for() {
   esac
 }
 
+# Tags a version with the channel it is going to: develop -> -dev,
+# early -> -early, stable -> nothing.
+#
+# A version that already carries a pre-release marker is returned untouched,
+# and that is deliberate. An rc is built once and promoted: published to
+# early, tested, then handed to stable with --repoint, which moves the channel
+# pointer at an artifact that already exists. One build, one artifact
+# directory, several channels pointing at it. Suffixing would give each
+# channel its own copy of identical bytes and, worse, leave stable serving a
+# directory named "...-rc.4-early".
+#
+# The trade-off: publishing the same pre-release version twice, with different
+# content, to two channels writes both into the same directory and the second
+# wins. release.sh bumps the version every release, so that takes a manual
+# --fw-version repeated by hand. Do not "fix" this by always suffixing;
+# promotion is the case that matters.
 apply_channel_suffix() {
   local version="$1"
   local suffix="$2"
