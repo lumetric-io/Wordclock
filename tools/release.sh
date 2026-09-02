@@ -1543,13 +1543,6 @@ create_github_release() {
     echo ""
 }
 
-# Legacy OTA1 manifest update - deprecated, all products now use OTA2
-update_firmware_manifest() {
-    # All products now use OTA2 - this function is kept for backward compatibility
-    # but does nothing. Use publish_ota2_manifests() instead.
-    return 0
-}
-
 publish_ota2_manifests() {
     print_header "Publish OTA2 Manifests"
 
