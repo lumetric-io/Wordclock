@@ -45,7 +45,6 @@ OTA_STAGE="${OTA_STAGE:-$PROJECT_ROOT/dist/ota-stage}"
 OTA_TARGET="${OTA_TARGET:-vps-ota:/srv/ota/}"
 
 DRY_RUN=false
-PRUNE=false
 SEED=false
 SEED_PRODUCT=""
 
@@ -57,15 +56,15 @@ usage() {
 
 Options:
   --dry-run   Show what would transfer, change nothing on the server.
-  --prune     Also delete files on the server that no longer exist in staging.
-              OFF by default: an old artifact may still be the version a clock
-              that has been offline for weeks is about to ask for.
+              This never deletes anything on the host. See --prune.
   --seed      Reverse direction: copy the *.json already on the host into
               staging and stop. Run this before publishing so publish-ota.sh
               can see what the channel currently ships. Never deletes.
   --product <id>
               Narrow --seed to one product. Without it the whole tree's json
               is pulled, which also widens what a later push could overwrite.
+  --prune     Removed. Refuses with an explanation; pruning needs a host-side
+              job that knows which artifacts the channels still reference.
   --help      This text.
 
 Environment:
@@ -77,7 +76,15 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=true; shift ;;
-    --prune)   PRUNE=true;   shift ;;
+    --prune)
+      die "--prune was removed; it cannot be made safe here.
+   rsync --delete removes whatever is not in staging, and staging is never a
+   full mirror: a seed pulls *.json only, so pruning deletes the firmware.bin
+   and fs.bin the live channel still points at. Verified 2026-09-02 against a
+   scratch target: with a fully seeded tree the JSON survived and the binaries
+   for the current stable did not.
+   Pruning belongs on the host, as a job that reads the channel JSONs and
+   removes only artifact directories nothing references any more." ;;
     --seed)    SEED=true;    shift ;;
     --product) SEED_PRODUCT="${2:-}"; shift 2 ;;
     --help|-h) usage; exit 0 ;;
@@ -87,11 +94,6 @@ done
 
 command -v rsync > /dev/null || die "rsync not found locally"
 
-# Refuse rather than silently ignore: --prune deletes, --seed never does, and
-# an operator who typed both is not thinking about the same operation.
-if [[ "$SEED" == true && "$PRUNE" == true ]]; then
-  die "--seed and --prune are mutually exclusive (--seed never deletes anything)"
-fi
 if [[ "$SEED" != true && -n "$SEED_PRODUCT" ]]; then
   die "--product only applies to --seed"
 fi
@@ -151,9 +153,6 @@ fi
 # the group. Copying local uid/gid over would fight that.
 RSYNC_OPTS=(-rlptv --chmod=D2775,F664 --out-format='  %n')
 if [[ "$DRY_RUN" == true ]]; then RSYNC_OPTS+=(--dry-run); fi
-# --delete honours the per-pass filters, so pass 1 never deletes JSON and
-# pass 2 never deletes binaries.
-if [[ "$PRUNE" == true ]]; then RSYNC_OPTS+=(--delete); fi
 
 PASS_COUNT=0
 
@@ -161,7 +160,7 @@ run_pass() {
   local label="$1"; shift
   echo "── $label"
   local out status=0
-  out="$(rsync "${RSYNC_OPTS[@]}" "$@" "$OTA_STAGE/" "$OTA_TARGET" 2>&1)" || status=$?
+  out="$(rsync "${RSYNC_OPTS[@]}" "$@" "$PUSH_SRC" "$PUSH_DST" 2>&1)" || status=$?
   printf '%s\n' "$out"
   [[ $status -eq 0 ]] || die "rsync failed ($label, exit $status)"
   # Lines the out-format produced, minus directory entries.
@@ -170,11 +169,13 @@ run_pass() {
   echo
 }
 
+PUSH_SRC="$OTA_STAGE/"
+PUSH_DST="$OTA_TARGET"
+
 echo "=== OTA sync ==="
-echo "  Staging : $OTA_STAGE"
-echo "  Target  : $OTA_TARGET"
+echo "  Staging : $PUSH_SRC"
+echo "  Target  : $PUSH_DST"
 echo "  Mode    : $($DRY_RUN && echo 'dry-run (nothing is written)' || echo 'live')"
-echo "  Prune   : $($PRUNE && echo 'yes (--delete)' || echo 'no (stale artifacts kept)')"
 echo
 
 run_pass "pass 1/2  binaries (everything except *.json)" --exclude='*.json'
