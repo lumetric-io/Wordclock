@@ -60,5 +60,3 @@ lib/
 # Build output and OTA staging trees (see tools/sync-ota.sh)
 dist/
 
-# Flash artifacts fetched from the VPS (tools/flash.sh)
-build_cache/
