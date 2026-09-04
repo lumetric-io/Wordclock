@@ -26,12 +26,14 @@
 #   ESPTOOL   esptool command      (default: PATH, else PlatformIO's bundled one)
 #   PIO       platformio command   (default: PATH, else ~/.platformio/penv/bin/pio)
 #   BAUD      write baud rate      (default: 460800)
+#   PORT_WAIT_SECS  seconds to wait for a serial port (default: 30)
 
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_ROOT="$PROJECT_ROOT/.pio/build"
 BAUD="${BAUD:-460800}"
+PORT_WAIT_SECS="${PORT_WAIT_SECS:-30}"
 CHIP="esp32s3"
 DEFAULT_PRODUCT="nextgen-bootstrap"
 
@@ -265,47 +267,102 @@ list_ports() {
   ls /dev/ttyACM* /dev/ttyUSB* /dev/cu.usb* /dev/cu.wchusbserial* 2>/dev/null || true
 }
 
-# Usable as a serial port? Applied to an explicit --port too, not just a
-# detected one, so a typo or a permission problem reports the same way.
-validate_port() {
-  local p="$1"
-  if [ ! -e "$p" ]; then
-    echo "❌ $p does not exist." >&2
-    return 1
-  fi
-  if [ ! -w "$p" ]; then
-    echo "❌ $p is not writable by $(id -un)." >&2
-    echo "   $(ls -l "$p" 2>/dev/null)" >&2
-    echo "   Add yourself to the owning group, or run as the owning user." >&2
-    return 1
-  fi
-  return 0
+# A device node can outlive the device. After the S3 hard-resets it re-enumerates
+# on the USB bus, and in a container with a passed-through node the old /dev entry
+# lingers while every open returns ENXIO. `test -e` and `test -w` both pass on such
+# a node, so the only honest liveness test is to open it.
+#
+# Probing does open the port, which on the S3's native USB can pulse DTR/RTS and
+# reset the board. Harmless here: we only probe immediately before flashing, and
+# esptool opens the same port moments later anyway.
+port_is_live() {
+  python3 - "$1" <<'PROBE' 2>/dev/null
+import os, sys
+try:
+    fd = os.open(sys.argv[1], os.O_RDONLY | os.O_NOCTTY | os.O_NONBLOCK)
+except OSError:
+    sys.exit(1)
+os.close(fd)
+PROBE
 }
 
-# Echoes the chosen port on stdout; everything else goes to stderr.
+# Echoes a usable port on stdout; everything else goes to stderr. With an
+# argument, waits for that specific port; without one, for any live port.
+#
+# The wait is the point: between boards the port is legitimately absent for a
+# moment, and after each flash's closing hard reset it re-enumerates. Failing on
+# the first look would break the flash-many loop on the second board.
 pick_port() {
-  local ports=() line
-  while IFS= read -r line; do
-    [ -n "$line" ] && ports+=("$line")
-  done < <(list_ports)
+  local want="${1:-}"
+  local deadline=$(( $(date +%s) + PORT_WAIT_SECS ))
+  local announced=0
+  local ports=() line chosen
 
-  if [ "${#ports[@]}" -eq 0 ]; then
-    echo "❌ No serial device found (/dev/ttyACM*, /dev/ttyUSB*, /dev/cu.usb*)" >&2
-    return 1
-  fi
+  while :; do
+    ports=()
+    if [ -n "$want" ]; then
+      port_is_live "$want" && ports=("$want")
+    else
+      while IFS= read -r line; do
+        [ -n "$line" ] || continue
+        port_is_live "$line" && ports+=("$line")
+      done < <(list_ports)
+    fi
 
-  local chosen
+    [ "${#ports[@]}" -gt 0 ] && break
+
+    if [ "$(date +%s)" -ge "$deadline" ]; then
+      echo "❌ No usable serial port after ${PORT_WAIT_SECS}s${want:+ ($want)}." >&2
+      # Tell the stale-node case apart from a genuinely absent board: a stale
+      # node still looks present in /dev, so "not found" would be misleading.
+      # Diagnose only what was actually asked for -- with --port, another port
+      # being stale is not the caller's problem.
+      local stale=0
+      local candidates
+      if [ -n "$want" ]; then
+        if [ ! -e "$want" ]; then
+          echo "   $want does not exist." >&2
+          return 1
+        fi
+        candidates="$want"
+      else
+        candidates="$(list_ports)"
+      fi
+      for line in $candidates; do
+        port_is_live "$line" || { echo "   $line exists but will not open." >&2; stale=1; }
+      done
+      if [ "$stale" -eq 1 ]; then
+        echo "   The device re-enumerated and this node is stale." >&2
+        echo "   Replug the board, or re-attach it on the host." >&2
+      else
+        echo "   Looked for /dev/ttyACM*, /dev/ttyUSB*, /dev/cu.usb*" >&2
+      fi
+      return 1
+    fi
+
+    if [ "$announced" -eq 0 ]; then
+      echo "Waiting up to ${PORT_WAIT_SECS}s for a serial port..." >&2
+      announced=1
+    fi
+    sleep 0.5
+  done
+
   if [ "${#ports[@]}" -eq 1 ]; then
     chosen="${ports[0]}"
     echo "Port: $chosen" >&2
   else
-    echo "Multiple serial devices found — select one:" >&2
+    echo "Multiple serial devices found -- select one:" >&2
     select chosen in "${ports[@]}"; do
       [ -n "${chosen:-}" ] && break
     done
   fi
 
-  validate_port "$chosen" || return 1
+  if [ ! -w "$chosen" ]; then
+    echo "❌ $chosen is not writable by $(id -un)." >&2
+    echo "   $(ls -l "$chosen" 2>/dev/null)" >&2
+    echo "   Add yourself to the owning group, or run as the owning user." >&2
+    return 1
+  fi
 
   printf '%s\n' "$chosen"
 }
@@ -352,12 +409,7 @@ echo
 while true; do
   PORT=""
   if [ "$FIRST_PASS" -eq 1 ] && [ -n "$PORT_OVERRIDE" ]; then
-    if validate_port "$PORT_OVERRIDE"; then
-      PORT="$PORT_OVERRIDE"
-      echo "Port: $PORT (from --port)"
-    else
-      FAIL_COUNT=$((FAIL_COUNT + 1))
-    fi
+    PORT="$(pick_port "$PORT_OVERRIDE")" || FAIL_COUNT=$((FAIL_COUNT + 1))
   else
     PORT="$(pick_port)" || FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
